@@ -1,0 +1,31 @@
+# provider
+
+Narrow, capability-gated host adapters — the named providers a runtime binds after aiueos grants.
+
+**Tier**: `T3`  **Role**: `provider`
+
+Split out of the overloaded core repos by ADR-2607266000 so that each
+responsibility has exactly one owner and the dependency direction is
+checkable from outside.
+
+## Owns
+
+- `provider.conformance (the shared provider contract)`
+- `provider.clock / .http / .llm / .log / .state / .storage / .ui`
+- `their -transport backings`
+
+## Does not own
+
+- be linked into a compiler
+- grant itself authority
+- expose ambient WASI
+
+## Depends on
+
+- nothing (contract/leaf tier)
+
+## Test
+
+```bash
+clojure -M:test
+```
