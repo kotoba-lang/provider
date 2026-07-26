@@ -7,4 +7,4 @@
   :tier :t3
   :role :provider
   :must-not [:be-linked-into-a-compiler :grant-itself-authority :expose-ambient-WASI]
-  :depends-on []}}
+  :depends-on ["kotoba-lang/kotoba-kir"]}}
