@@ -1,6 +1,6 @@
 (ns provider-test
   (:require [clojure.test :refer [deftest is]]
-            [provider.conformance]
+            [provider.conformance :as conformance]
             [provider.clock]
             [provider.clock-transport]
             [provider.http]
@@ -8,7 +8,7 @@
             [provider.llm]
             [provider.llm-transport]
             [provider.log]
-            [provider.state]
+            [provider.state :as state]
             [provider.storage]
             [provider.storage-transport]
             [provider.ui]))
@@ -28,3 +28,19 @@
   (is (some? (find-ns 'provider.storage)) "provider.storage must load")
   (is (some? (find-ns 'provider.storage-transport)) "provider.storage-transport must load")
   (is (some? (find-ns 'provider.ui)) "provider.ui must load"))
+
+(deftest state-provider-and-conformance-are-owned-here
+  (let [provider (state/provider {:message "one"})
+        put [state/request-type :put [state/put-type :message "two"]]
+        get [state/request-type :get [state/get-type :message]]
+        written ((:invoke provider) put)
+        found ((:invoke provider) get)
+        receipt (conformance/validate-suite!
+                 {:state/transact state/capability-id}
+                 [{:name :state/transact :id state/capability-id
+                   :provider provider}])]
+    (is (= :written (second written)))
+    (is (= :found (second found)))
+    (is (= "two" (get-in found [2 2])))
+    (is (= [{:name :state/transact :id state/capability-id}]
+           (:capabilities receipt)))))
