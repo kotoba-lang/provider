@@ -7,12 +7,9 @@
   :task-stream-handle-slice`); this namespace is the reference-runtime semantic
   vector for the synchronous bool write ops.
 
-  The kit field type `:bytes` is represented on the reference host as a
-  `:string` field (opaque UTF-8 payload) because `kotoba.kir.value` does not
-  yet admit `:bytes` as a runtime typed value. Effectful Component fixtures
-  already lower block bodies as strings the same way. A dedicated binary
-  bytes value type for the reference runtime is deferred. Payload length is
-  bounded by `max-pull-bytes` (65536).
+  The kit field type `:bytes` is a first-class runtime leaf (JVM byte-array,
+  cljs Uint8Array) via kotoba.kir.value (ADR 0120). Payload length is bounded
+  by max-pull-bytes (65536), matching value/bytes-value-byte-limit.
 
   Bindings are host-owned allowlist keywords. Digests, keys, etags, and next
   refs are bounded strings. No ambient object store or network."
@@ -25,10 +22,8 @@
 (def expected-etag-type [:option :string])
 
 (def put-block-request-type
-  ;; Kit uses [:bytes :bytes]; dual-runtime binds the payload as :string
-  ;; (see ns docstring). Field name remains :bytes for kit alignment.
   [:record :kotoba.object/put-block-request
-   [[:binding :keyword] [:digest :string] [:bytes :string]]])
+   [[:binding :keyword] [:digest :string] [:bytes :bytes]]])
 
 (def cas-request-type
   [:record :kotoba.object/compare-and-set-ref-request
@@ -43,10 +38,9 @@
    :kotoba.object/compare-and-set-ref-request cas-request-type})
 
 (defn- bounded-payload!
-  "Validate the reference-runtime host representation of kit `:bytes`
-  (plain string, UTF-8 byte length ≤ max-pull-bytes)."
+  "Validate the reference-runtime host representation of kit `:bytes`."
   [payload]
-  (value/bounded-string! payload max-pull-bytes))
+  (value/bounded-bytes! payload max-pull-bytes))
 
 (defn- expected-etag
   "Decode `[:option :string]` into nil or a bounded string."
