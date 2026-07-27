@@ -1,7 +1,14 @@
 (ns provider.http
-  "Bounded HTTPS reference provider. Network authority remains host-owned."
+  "Bounded HTTPS reference provider. Network authority remains host-owned.
+
+  `:timeout-ms` and response `:status` are `:i64` ABI fields. On `:cljs` the
+  canonical representation is JS `bigint` (same rule ADR 0073 applied to
+  clock and ADR 0079 / provider#2 applied to log sequence). Plain cljs
+  numbers fail `typed-cap-call` result validation and make range checks
+  unreliable when mixed with bigint."
   (:require [clojure.string :as string]
-            [kotoba.kir.value :as value]))
+            [kotoba.kir.value :as value]
+            #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
 (def capability-id 4)
 (def max-headers 32)
@@ -75,6 +82,42 @@
                :message "transport failed"
                :retryable false}})))
 
+(defn- timeout-in-range?
+  "Admitted when 1 ≤ timeout-ms ≤ max-timeout-ms in the host's canonical
+  i64 representation. On `:cljs` the guest supplies a bigint; comparing a
+  bigint against plain numbers with `<=` works in modern JS but we normalize
+  through `i64/->bigint` so both bounds and the value are the same type."
+  [timeout-ms]
+  #?(:clj (and (integer? timeout-ms) (<= 1 timeout-ms max-timeout-ms))
+     :cljs (let [t (i64/->bigint timeout-ms)
+                 lo i64/one
+                 hi (i64/->bigint max-timeout-ms)]
+             (and (i64/bigint-value? t)
+                  (not (i64/k-neg? t))
+                  (<= lo t)
+                  (<= t hi)))))
+
+(defn- canonical-status
+  "Ensure response status is a canonical i64 for the ABI boundary."
+  [status]
+  #?(:clj (do (when-not (and (integer? status) (<= 100 status 599))
+                (throw (ex-info "HTTP transport status is invalid"
+                                {:phase :http-provider :status status})))
+              status)
+     :cljs (let [s (i64/->bigint status)]
+             (when-not (and (<= (i64/->bigint 100) s)
+                            (<= s (i64/->bigint 599)))
+               (throw (ex-info "HTTP transport status is invalid"
+                               {:phase :http-provider :status status})))
+             s)))
+
+(defn- host-timeout-ms
+  "Transport receives a host-native number for APIs that need it (JVM
+  Duration, etc.). On cljs the guest value is bigint."
+  [timeout-ms]
+  #?(:clj timeout-ms
+     :cljs (js/Number (i64/->bigint timeout-ms))))
+
 (defn provider
   "Creates an HTTPS POST provider around a host-supplied synchronous transport.
   `allowed-origins` is an exact, closed set such as #{\"https://api.example\"}.
@@ -103,17 +146,15 @@
                          {:phase :http-provider :origin origin}))))
      (validate-headers! headers)
      (value/bounded-string! body value/string-value-byte-limit)
-     (when-not (<= 1 timeout-ms max-timeout-ms)
+     (when-not (timeout-in-range? timeout-ms)
        (throw (ex-info "HTTP timeout is outside the admitted range"
                        {:phase :http-provider :timeout-ms timeout-ms})))
      (let [reply (invoke-transport
                   transport {:url url :headers (header-map headers)
-                             :body body :timeout-ms timeout-ms})]
+                             :body body :timeout-ms (host-timeout-ms timeout-ms)})]
        (if-let [{:keys [code message retryable]} (:error reply)]
          (error code message retryable)
-         (let [{:keys [status headers body]} reply]
-           (when-not (<= 100 status 599)
-             (throw (ex-info "HTTP transport status is invalid"
-                             {:phase :http-provider :status status})))
+         (let [{:keys [status headers body]} reply
+               status* (canonical-status status)]
            (value/bounded-string! body value/string-value-byte-limit)
-           [result-type :ok [response-type status (typed-headers headers) body]]))))})
+           [result-type :ok [response-type status* (typed-headers headers) body]]))))})
