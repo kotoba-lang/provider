@@ -1,6 +1,11 @@
 (ns provider.llm
-  "Bounded synchronous LLM reference provider. Credentials and SDKs stay host-owned."
-  (:require [kotoba.kir.value :as value]))
+  "Bounded synchronous LLM reference provider. Credentials and SDKs stay host-owned.
+
+  max-output-tokens, temperature-milli, and usage token counts are `:i64` ABI
+  fields. On `:cljs` the canonical representation is JS `bigint` (same rule
+  as clock/log/http/state/storage/ui). `integer?` does not recognize bigint."
+  (:require [kotoba.kir.value :as value]
+            #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
 (def capability-id 11)
 (def max-input-bytes 65536)
@@ -44,8 +49,27 @@
                :message "provider failed"
                :retryable false}})))
 
+(defn- canonical-i64 [n]
+  #?(:clj n :cljs (i64/->bigint n)))
+
+(defn- host-i64 [n]
+  "Transport may prefer a plain host number (JSON max_tokens)."
+  #?(:clj n :cljs (js/Number (i64/->bigint n))))
+
 (defn- valid-token-count? [tokens]
-  (and (integer? tokens) (<= 0 tokens)))
+  (let [t (canonical-i64 tokens)]
+    #?(:clj (and (integer? t) (<= 0 t))
+       :cljs (and (i64/bigint-value? t)
+                  (not (i64/k-neg? t))))))
+
+(defn- in-closed-range?
+  "lo ≤ n ≤ hi for canonical i64 values."
+  [n lo hi]
+  (let [v (canonical-i64 n)
+        a (canonical-i64 lo)
+        b (canonical-i64 hi)]
+    #?(:clj (and (integer? v) (<= a v b))
+       :cljs (and (i64/bigint-value? v) (<= a v) (<= v b)))))
 
 (defn provider
   "Creates a typed LLM provider around a host-supplied synchronous transport.
@@ -71,25 +95,27 @@
                        {:phase :llm-provider :model model})))
      (value/bounded-string! system max-input-bytes)
      (value/bounded-string! prompt max-input-bytes)
-     (when-not (<= 1 output-tokens max-output-tokens)
+     (when-not (in-closed-range? output-tokens 1 max-output-tokens)
        (throw (ex-info "LLM output token budget is outside the admitted range"
                        {:phase :llm-provider :max-output-tokens output-tokens})))
-     (when-not (<= 0 temperature-milli max-temperature-milli)
+     (when-not (in-closed-range? temperature-milli 0 max-temperature-milli)
        (throw (ex-info "LLM temperature is outside the admitted range"
                        {:phase :llm-provider :temperature-milli temperature-milli})))
      (let [reply (invoke-transport
                   transport {:model model :system system :prompt prompt
-                             :max-output-tokens output-tokens
-                             :temperature-milli temperature-milli})]
+                             :max-output-tokens (host-i64 output-tokens)
+                             :temperature-milli (host-i64 temperature-milli)})]
        (if-let [{:keys [code message retryable]} (:error reply)]
          (error code message retryable)
-         (let [{:keys [text finish-reason input-tokens output-tokens]} reply]
+         (let [{:keys [text finish-reason input-tokens output-tokens]} reply
+               in-tok (canonical-i64 input-tokens)
+               out-tok (canonical-i64 output-tokens)]
            (value/bounded-string! text max-output-bytes)
            (value/bounded-keyword! finish-reason value/keyword-value-byte-limit)
-           (when-not (and (valid-token-count? input-tokens)
-                          (valid-token-count? output-tokens)
-                          (<= output-tokens max-output-tokens))
+           (when-not (and (valid-token-count? in-tok)
+                          (valid-token-count? out-tok)
+                          (in-closed-range? out-tok 0 max-output-tokens))
              (throw (ex-info "LLM transport usage is invalid" {:phase :llm-provider})))
            [result-type :ok
             [completion-type text finish-reason
-             [usage-type input-tokens output-tokens]]]))))})
+             [usage-type in-tok out-tok]]]))))})
