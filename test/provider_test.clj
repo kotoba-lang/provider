@@ -8,6 +8,7 @@
             [provider.llm]
             [provider.llm-transport]
             [provider.log]
+            [provider.object]
             [provider.state :as state]
             [provider.storage]
             [provider.storage-transport]
@@ -24,6 +25,7 @@
   (is (some? (find-ns 'provider.llm)) "provider.llm must load")
   (is (some? (find-ns 'provider.llm-transport)) "provider.llm-transport must load")
   (is (some? (find-ns 'provider.log)) "provider.log must load")
+  (is (some? (find-ns 'provider.object)) "provider.object must load")
   (is (some? (find-ns 'provider.state)) "provider.state must load")
   (is (some? (find-ns 'provider.storage)) "provider.storage must load")
   (is (some? (find-ns 'provider.storage-transport)) "provider.storage-transport must load")
