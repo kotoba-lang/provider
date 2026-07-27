@@ -1,6 +1,12 @@
 (ns provider.state
-  "Bounded deterministic reference provider for :state/transact v1."
-  (:require [kotoba.kir.value :as value]))
+  "Bounded deterministic reference provider for :state/transact v1.
+
+  Entry `:version` is an `:i64` ABI field. On `:cljs` the canonical
+  representation is JS `bigint` (same rule ADR 0073 / provider#2 / #3
+  applied to clock, log, and http). Plain `inc` on a number fails
+  `typed-cap-call` result validation with `invalid-parametric-value`."
+  (:require [kotoba.kir.value :as value]
+            #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
 (def capability-id 8)
 (def max-entries 256)
@@ -36,6 +42,20 @@
 (defn- entry [key {:keys [value version]}]
   [entry-type key value version])
 
+(defn- initial-version
+  "First version number assigned to an entry in a fresh instance with
+  `initial-count` pre-seeded keys (each seed gets version 1; next free
+  counter starts at initial-count+1)."
+  [initial-count]
+  #?(:clj (inc initial-count)
+     :cljs (+ (i64/->bigint initial-count) i64/one)))
+
+(defn- next-version! [version-atom]
+  (swap! version-atom #?(:clj inc :cljs (fn [n] (+ n i64/one)))))
+
+(defn- seed-version []
+  #?(:clj 1 :cljs i64/one))
+
 (defn provider
   "Creates one isolated bounded state provider. State is host-owned and is
   observable by guest code only through the typed request/result contract."
@@ -47,8 +67,11 @@
    (doseq [[key text] initial]
      (value/bounded-keyword! key value/keyword-value-byte-limit)
      (value/bounded-string! text value/string-value-byte-limit))
-   (let [cells (atom (into {} (map (fn [[key text]] [key {:value text :version 1}])) initial))
-         next-version (atom (inc (count initial)))]
+   (let [seed-v (seed-version)
+         cells (atom (into {} (map (fn [[key text]]
+                                     [key {:value text :version seed-v}]))
+                           initial))
+         next-version (atom (initial-version (count initial)))]
      {:request-type request-type
       :result-type result-type
       :invoke
@@ -67,7 +90,7 @@
             (value/bounded-string! text value/string-value-byte-limit)
             (if (and (not (contains? @cells key)) (>= (count @cells) max-entries))
               (result :error [error-type :state/capacity "state entry limit reached"])
-              (let [version (swap! next-version inc)
+              (let [version (next-version! next-version)
                     stored {:value text :version version}]
                 (swap! cells assoc key stored)
                 (result :written (entry key stored)))))
