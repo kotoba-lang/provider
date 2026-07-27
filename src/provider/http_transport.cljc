@@ -61,13 +61,19 @@
      would otherwise violate ADR 0026's own invariant that 'the guest never
      receives a connection, stream, promise, or host exception'.
 
-  JVM only (`:clj`) for now, for the same reason as ADR 0064's LLM
-  transport: `java.net.http.HttpClient.send` is genuinely blocking, matching
-  every reference provider's synchronous transport contract in this repo
-  (`kotoba.compiler.reference-runtime` has no promise/callback machinery for
-  a provider to return through); nbb/cljs has no built-in synchronous HTTP
-  primitive. The `:cljs` branch below throws a clearly-labeled 'not yet
-  implemented' instead of silently pretending to support it."
+  ## `:cljs` / nbb production transport (ADR 0117)
+
+  nbb/Node has no built-in *synchronous* HTTP primitive (`fetch` is
+  Promise-based). This namespace keeps the reference provider's synchronous
+  `(fn [request] -> reply)` contract by running each hop in a child
+  `node` process via `child_process.spawnSync` (the same blocking-subprocess
+  pattern this monorepo already uses for conformance launchers). The
+  redirect loop, allow-list revalidation, and connect-refusal asymmetry
+  stay in portable cljs so they match the `:clj` loop's structure and
+  remain unit-testable with `with-redefs`. Destination-IP blocking on
+  `:cljs` resolves hostnames through the same child (`dns.lookup`); IP
+  literals are checked without DNS. DNS-rebinding TOCTOU remains an
+  explicit remaining gap (same honesty as ADR 0066's `:clj` path)."
   (:require [clojure.string :as string]
             [provider.http :as http]
             [kotoba.kir.value :as value])
@@ -196,21 +202,14 @@
                (do (.write out buf 0 n)
                    (recur (+ total n))))))))))
 
-#?(:clj
-   (defn- truncate-to-byte-limit
-     "Trims `s` (already produced by a UTF-8-with-replacement decode of at
-     most `limit` raw bytes) until its OWN re-encoded UTF-8 byte count is
-     `<= limit`. A trailing malformed multi-byte sequence in the raw input
-     is replaced by the JDK decoder with a single U+FFFD (3 UTF-8 bytes),
-     which can occasionally make the decoded string's own byte count
-     slightly EXCEED the raw byte count it was decoded from -- this loop is
-     the safety net that guarantees the value handed to
-     `value/bounded-string!` downstream never trips it."
-     [s limit]
-     (loop [s s]
-       (if (<= (value/utf8-byte-count! s) limit)
-         s
-         (recur (subs s 0 (max 0 (dec (count s)))))))))
+(defn- truncate-to-byte-limit
+  "Trims `s` until its re-encoded UTF-8 byte count is `<= limit`. Shared by
+  `:clj` (post-decode safety net) and `:cljs` (header/body folding)."
+  [s limit]
+  (loop [s s]
+    (if (<= (value/utf8-byte-count! s) limit)
+      s
+      (recur (subs s 0 (max 0 (dec (count s))))))))
 
 #?(:clj
    (defn- decode-bounded-body [^bytes raw]
@@ -453,20 +452,244 @@
             result))))))
 
 #?(:cljs
+   (def ^:private hop-script
+     "Node one-shot POST (no redirect follow). Reads JSON from stdin, writes JSON to stdout.
+     Fields: url, headers (object), body (string), timeoutMs (number)."
+     (str
+      "const https=require('https');const http=require('http');const {URL}=require('url');\n"
+      "const MAX_BODY=65536;const MAX_HEADERS=32;const RESTRICTED=new Set(["
+      "'connection','content-length','expect','host','upgrade']);\n"
+      "let raw='';process.stdin.setEncoding('utf8');"
+      "process.stdin.on('data',c=>raw+=c);process.stdin.on('end',()=>{\n"
+      "  const req=JSON.parse(raw);\n"
+      "  const u=new URL(req.url);\n"
+      "  const lib=u.protocol==='https:'?https:http;\n"
+      "  const headers={};\n"
+      "  for (const [k,v] of Object.entries(req.headers||{})) {\n"
+      "    const lk=String(k).toLowerCase();\n"
+      "    if (!RESTRICTED.has(lk)) headers[lk]=String(v);\n"
+      "  }\n"
+      "  const body=Buffer.from(String(req.body||''),'utf8');\n"
+      "  headers['content-length']=String(body.length);\n"
+      "  const opts={method:'POST',hostname:u.hostname,port:u.port||(u.protocol==='https:'?443:80),"
+      "path:u.pathname+u.search,headers,timeout:Number(req.timeoutMs)||30000};\n"
+      "  const r=lib.request(opts,res=>{\n"
+      "    const chunks=[];let n=0;\n"
+      "    res.on('data',c=>{if(n<MAX_BODY){const take=c.slice(0,MAX_BODY-n);chunks.push(take);n+=take.length;}});\n"
+      "    res.on('end',()=>{\n"
+      "      const outHeaders={};let count=0;\n"
+      "      for (const [k,v] of Object.entries(res.headers||{})) {\n"
+      "        if(count>=MAX_HEADERS) break;\n"
+      "        const name=String(k).toLowerCase();\n"
+      "        if(name.length>512) continue;\n"
+      "        const val=Array.isArray(v)?v[0]:v;\n"
+      "        if(val==null) continue;\n"
+      "        let s=String(val);if(Buffer.byteLength(s,'utf8')>65536) s=s.slice(0,65536);\n"
+      "        outHeaders[name]=s;count++;\n"
+      "      }\n"
+      "      const body=Buffer.concat(chunks).toString('utf8');\n"
+      "      process.stdout.write(JSON.stringify({status:res.statusCode,headers:outHeaders,body,"
+      "location:res.headers.location||null}));process.exit(0);\n"
+      "    });\n"
+      "  });\n"
+      "  r.on('timeout',()=>{r.destroy();process.stdout.write(JSON.stringify("
+      "{error:{code:'http/transport',message:'hop timeout',retryable:true}}));process.exit(0);});\n"
+      "  r.on('error',e=>{process.stdout.write(JSON.stringify("
+      "{error:{code:'http/transport',message:String(e&&e.message||e),retryable:true}}));process.exit(0);});\n"
+      "  r.write(body);r.end();\n"
+      "});\n")))
+
+#?(:cljs
+   (def ^:private dns-script
+     "Resolve host; print JSON {addresses:[...]} or {error:true}."
+     (str
+      "const dns=require('dns');\n"
+      "const host=process.argv[1];\n"
+      "dns.lookup(host,{all:true},(err,addrs)=>{\n"
+      "  if(err){process.stdout.write(JSON.stringify({error:true}));process.exit(0);return;}\n"
+      "  process.stdout.write(JSON.stringify({addresses:(addrs||[]).map(a=>a.address)}));process.exit(0);\n"
+      "});\n")))
+
+#?(:cljs
+   (defn- private-ip-literal?
+     "Pure check for IPv4/IPv6 string literals (no DNS)."
+     [host]
+     (when (string? host)
+       (let [h (if (and (string/starts-with? host "[") (string/ends-with? host "]"))
+                 (subs host 1 (dec (count host)))
+                 host)]
+         (or (= h "0.0.0.0")
+             (= h "::")
+             (= h "::1")
+             (boolean (re-matches #"127\.\d+\.\d+\.\d+" h))
+             (boolean (re-matches #"10\.\d+\.\d+\.\d+" h))
+             (boolean (re-matches #"192\.168\.\d+\.\d+" h))
+             (boolean (re-matches #"169\.254\.\d+\.\d+" h))
+             (boolean (re-matches #"172\.(1[6-9]|2\d|3[0-1])\.\d+\.\d+" h))
+             (boolean (re-matches #"(?i)fe80:.*" h))
+             (boolean (re-matches #"(?i)f[cd][0-9a-f]{2}:.*" h))
+             (boolean (re-matches #"22[4-9]\.\d+\.\d+\.\d+" h))
+             (boolean (re-matches #"23\d\.\d+\.\d+\.\d+" h)))))))
+
+#?(:cljs
+   (defn- dns-addresses
+     [host]
+     (let [child (js/require "child_process")
+           result (.spawnSync child js/process.execPath
+                              #js ["-e" dns-script host]
+                              #js {:encoding "utf8" :timeout 5000})]
+       (if (or (.-error result) (not (zero? (or (.-status result) 1))))
+         []
+         (try
+           (let [parsed (js->clj (js/JSON.parse (.-stdout result)) :keywordize-keys true)]
+             (if (:error parsed) [] (vec (:addresses parsed))))
+           (catch :default _ []))))))
+
+#?(:cljs
+   (defn destination-blocked?
+     "Best-effort private/loopback/link-local/multicast destination block.
+     IP literals checked purely; hostnames resolved via child `dns.lookup`.
+     DNS failure => not blocked (connect error surfaces on the hop)."
+     [host]
+     (if (private-ip-literal? host)
+       true
+       (boolean (some private-ip-literal? (dns-addresses host))))))
+
+#?(:cljs
+   (defn- redirect-target
+     "Resolve location against base-url; return absolute URL string or nil."
+     [base-url location]
+     (try
+       (let [resolved (str (js/URL. location base-url))]
+         (when (and (<= (value/utf8-byte-count! resolved) http/max-url-bytes)
+                    (canonical-origin resolved))
+           resolved))
+       (catch :default _ nil))))
+
+#?(:cljs
+   (defn- connect-refusal-reason
+     [url allowed-origins]
+     (let [origin (canonical-origin url)]
+       (cond
+         (or (nil? origin) (not (contains? allowed-origins origin))) :not-in-allow-list
+         (destination-blocked? (.-hostname (js/URL. url))) :destination-blocked
+         :else nil))))
+
+#?(:cljs
+   (defn- refusal-error [reason url]
+     {:error {:code :http/destination-blocked
+              :message (case reason
+                         :destination-blocked
+                         (str "resolved address for " (.-hostname (js/URL. url))
+                              " is not an allowed destination"
+                              " (loopback/link-local/private/multicast)")
+                         :not-in-allow-list
+                         (str "destination is outside the allowed-origins set: " url))
+              :retryable false}}))
+
+#?(:cljs
+   (defn- send-hop
+     "One bounded synchronous POST via spawnSync node; no redirect follow."
+     [url headers body timeout-ms]
+     (let [child (js/require "child_process")
+           payload (js/JSON.stringify
+                    (clj->js {:url url
+                              :headers (into {} (map (fn [[k v]] [(name k) v]) headers))
+                              :body body
+                              :timeoutMs timeout-ms}))
+           ;; wall-clock bound: hop timeout + connect slack
+           wall-ms (+ (long timeout-ms) 5000)
+           result (.spawnSync child js/process.execPath
+                              #js ["-e" hop-script]
+                              #js {:input payload :encoding "utf8" :timeout wall-ms})]
+       (cond
+         (.-error result)
+         {:error {:code :http/transport :message "hop spawn failed" :retryable true}}
+         (not (zero? (or (.-status result) 1)))
+         (try
+           (let [parsed (js->clj (js/JSON.parse (or (.-stdout result) "{}")) :keywordize-keys true)]
+             (if (:error parsed) parsed
+                 {:error {:code :http/transport :message "hop failed" :retryable true}}))
+           (catch :default _
+             {:error {:code :http/transport :message "hop failed" :retryable true}}))
+         :else
+         (try
+           (let [parsed (js->clj (js/JSON.parse (.-stdout result)) :keywordize-keys true)]
+             (if (:error parsed)
+               parsed
+               (let [hdrs (into {}
+                                (map (fn [[k v]]
+                                       [(keyword (string/lower-case (name k)))
+                                        (truncate-to-byte-limit (str v) value/string-value-byte-limit)])
+                                     (:headers parsed)))
+                     body* (truncate-to-byte-limit (str (:body parsed)) value/string-value-byte-limit)]
+                 {:status (:status parsed)
+                  :headers hdrs
+                  :body body*
+                  :location (:location parsed)})))
+           (catch :default e
+             {:error {:code :http/transport
+                      :message (str "hop decode failed: " (.-message e))
+                      :retryable false}}))))))
+
+#?(:cljs
+   (defn- follow-and-collect!
+     "Redirect loop matching the :clj asymmetry (first-hop refuse vs
+     subsequent-hop decline-to-follow)."
+     [{:keys [allowed-origins max-redirects]} initial-url headers body timeout-ms]
+     (if-let [reason (connect-refusal-reason initial-url allowed-origins)]
+       (refusal-error reason initial-url)
+       (loop [current-url initial-url
+              redirects-left max-redirects]
+         (let [resp (send-hop current-url headers body timeout-ms)]
+           (if (:error resp)
+             resp
+             (let [status (:status resp)
+                   location (:location resp)
+                   candidate (when (and (<= 300 status 399) location (pos? redirects-left))
+                               (redirect-target current-url location))]
+               (if (and candidate (nil? (connect-refusal-reason candidate allowed-origins)))
+                 (recur candidate (dec redirects-left))
+                 (dissoc resp :location)))))))))
+
+#?(:cljs
    (defn production-transport
-     "Not yet implemented for the cljs/nbb host. See ns docstring: the
-     synchronous `(fn [request] -> reply)` transport contract this repo's
-     reference providers assume needs a genuinely blocking HTTP call, and
-     nbb/Node's `fetch` is Promise-based -- faking synchrony over it is a
-     separate, reviewable design decision this task does not make on
-     cljs's behalf. Use the JVM/:clj transport
-     (`provider.http/provider` hosted via
-     `kotoba.compiler.reference-runtime`, the same JVM/Chicory host path
-     ADR 0024-0030's other reference providers already run under) until a
-     cljs-native synchronous or provider-level-async transport contract is
-     designed."
+     "Build a synchronous transport fn for nbb/cljs Node hosts.
+
+     Uses `child_process.spawnSync` + a one-shot Node hop script so the
+     reference provider's `(fn [request] -> reply)` contract stays
+     synchronous. Redirect loop, allow-list, and destination-IP block match
+     the `:clj` transport's semantics (ADR 0066 / ADR 0117).
+
+     Options: same as `:clj` — `:allowed-origins` (required),
+     `:max-redirects`, `:on-call`. `:connect-timeout-ms` is accepted for
+     API parity but hop timeout is the guest `timeout-ms` (Node request
+     timeout); connect-level separation is a remaining gap on cljs."
      ([] (production-transport {}))
-     ([_opts]
-      (throw (ex-info
-              "provider.http-transport/production-transport is JVM-only (:clj) for now; see ns docstring"
-              {:phase :http-transport :host :cljs})))))
+     ([{:keys [allowed-origins max-redirects connect-timeout-ms on-call]
+        :or {max-redirects default-max-redirects
+             connect-timeout-ms default-connect-timeout-ms
+             on-call (fn [_])}}]
+      (when-not (and (set? allowed-origins) (seq allowed-origins) (every? string? allowed-origins))
+        (throw (ex-info "http-transport requires a non-empty :allowed-origins set (the same one given to http/provider)"
+                        {:phase :http-transport})))
+      (doseq [origin allowed-origins]
+        (when-not (= origin (canonical-origin origin))
+          (throw (ex-info "http-transport :allowed-origins entries must already be canonical https origins"
+                          {:phase :http-transport :origin origin}))))
+      (when-not (and (integer? max-redirects) (<= 0 max-redirects 20))
+        (throw (ex-info "http-transport :max-redirects must be a small bounded integer in [0, 20]"
+                        {:phase :http-transport :max-redirects max-redirects})))
+      (let [allowed-origins-set (set allowed-origins)]
+        (fn [{:keys [url headers body timeout-ms]}]
+          (let [started (js/Date.now)
+                safe-audit! (fn [event] (try (on-call event) (catch :default _ nil)))
+                result (follow-and-collect!
+                        {:allowed-origins allowed-origins-set
+                         :max-redirects max-redirects}
+                        url headers body timeout-ms)]
+            (safe-audit! {:url url
+                          :status (:status result)
+                          :error? (boolean (:error result))
+                          :latency-ms (- (js/Date.now) started)})
+            result))))))
