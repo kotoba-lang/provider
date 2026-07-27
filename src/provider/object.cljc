@@ -7,11 +7,12 @@
   :task-stream-handle-slice`); this namespace is the reference-runtime semantic
   vector for the synchronous bool write ops.
 
-  The kit field type `:bytes` is represented on the reference host as a plain
-  string (opaque UTF-8 payload), matching effectful component fixtures that
-  already lower block bodies as strings. A dedicated binary bytes value type
-  for the reference runtime is deferred. Payload length is bounded by
-  `max-pull-bytes` (65536).
+  The kit field type `:bytes` is represented on the reference host as a
+  `:string` field (opaque UTF-8 payload) because `kotoba.kir.value` does not
+  yet admit `:bytes` as a runtime typed value. Effectful Component fixtures
+  already lower block bodies as strings the same way. A dedicated binary
+  bytes value type for the reference runtime is deferred. Payload length is
+  bounded by `max-pull-bytes` (65536).
 
   Bindings are host-owned allowlist keywords. Digests, keys, etags, and next
   refs are bounded strings. No ambient object store or network."
@@ -24,8 +25,10 @@
 (def expected-etag-type [:option :string])
 
 (def put-block-request-type
+  ;; Kit uses [:bytes :bytes]; dual-runtime binds the payload as :string
+  ;; (see ns docstring). Field name remains :bytes for kit alignment.
   [:record :kotoba.object/put-block-request
-   [[:binding :keyword] [:digest :string] [:bytes :bytes]]])
+   [[:binding :keyword] [:digest :string] [:bytes :string]]])
 
 (def cas-request-type
   [:record :kotoba.object/compare-and-set-ref-request
