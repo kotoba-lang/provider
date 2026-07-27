@@ -1,6 +1,12 @@
 (ns provider.log
-  "Bounded structured log reference provider. No host logger object is exposed."
-  (:require [kotoba.kir.value :as value]))
+  "Bounded structured log reference provider. No host logger object is exposed.
+
+  Sequence numbers are `:i64` fields on the ABI boundary. On `:cljs` the
+  canonical representation is JS `bigint` (same as `provider.clock`'s
+  observation sequence — ADR 0073); a plain cljs number from `inc` fails
+  `typed-cap-call` result validation with `invalid-parametric-value`."
+  (:require [kotoba.kir.value :as value]
+            #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
 (def read-capability-id 5)
 (def append-capability-id 6)
@@ -36,6 +42,25 @@
    :kotoba.log/read-request read-request-type
    :kotoba.log/read-result read-result-type})
 
+(defn- initial-sequence []
+  #?(:clj 0 :cljs i64/zero))
+
+(defn- next-sequence! [sequence-number]
+  (swap! sequence-number #?(:clj inc :cljs (fn [n] (+ n i64/one)))))
+
+(defn- one-after [n]
+  #?(:clj (inc n) :cljs (+ n i64/one)))
+
+(defn- one-before [n]
+  #?(:clj (dec n) :cljs (- n i64/one)))
+
+(defn- take-count
+  "Convert an `:i64` read limit into a host count for `take`. On `:cljs`
+  the guest may supply a bigint; `take` only accepts a plain number."
+  [limit]
+  #?(:clj limit
+     :cljs (js/Number limit)))
+
 (defn- validate-fields! [fields]
   (when (> (count fields) max-fields)
     (throw (ex-info "log field limit reached" {:phase :log-provider})))
@@ -54,7 +79,7 @@
   and read results explicitly report whether the requested cursor was truncated."
   []
   (let [entries (atom [])
-        sequence-number (atom 0)
+        sequence-number (atom (initial-sequence))
         append-provider
         {:request-type append-request-type
          :result-type append-result-type
@@ -66,7 +91,7 @@
            (value/bounded-keyword! event value/keyword-value-byte-limit)
            (value/bounded-string! message value/string-value-byte-limit)
            (validate-fields! fields)
-           (let [sequence (swap! sequence-number inc)
+           (let [sequence (next-sequence! sequence-number)
                  entry [entry-type sequence level event message [field-set-type fields]]]
              (swap! entries
                     (fn [current]
@@ -90,11 +115,11 @@
                              {:phase :log-provider :limit limit})))
            (let [current @entries
                  latest @sequence-number
-                 oldest (if (seq current) (second (first current)) (inc latest))
-                 truncated (< after-sequence (dec oldest))
+                 oldest (if (seq current) (second (first current)) (one-after latest))
+                 truncated (< after-sequence (one-before oldest))
                  selected (->> current
                                (drop-while #(<= (second %) after-sequence))
-                               (take limit)
+                               (take (take-count limit))
                                vec)]
              [read-result-type oldest latest truncated [entry-set-type selected]]))}]
     {:providers {read-capability-id read-provider
