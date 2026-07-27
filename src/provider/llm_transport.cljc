@@ -30,16 +30,14 @@
   chat.completions route on a different host; see `resolve-model`'s
   docstring for the full investigation.
 
-  JVM only (`:clj`) for now. `java.net.http.HttpClient` gives a genuinely
-  BLOCKING `.send`, which is what every reference provider's synchronous
-  `(fn [request] -> reply)` transport contract in this repo assumes --
-  `kotoba.compiler.reference-runtime` has no promise/callback machinery for a
-  provider to return through. nbb/cljs has no built-in synchronous HTTP
-  primitive (Node's global `fetch` is Promise-based), so faking synchrony
-  there (busy-polling, a hand-rolled event-loop pump) would be a bigger,
-  separately-reviewable undertaking than this task -- the `:cljs` branch
-  below throws a clearly-labeled 'not yet implemented' instead of silently
-  pretending to support it. See docs/adr/0064-production-llm-transport-murakumo-main.md."
+  ## `:cljs` / nbb production transport (ADR 0118)
+
+  nbb/Node has no built-in *synchronous* HTTP primitive. This namespace keeps
+  the reference provider's synchronous `(fn [request] -> reply)` contract by
+  running alias GET and `/v1/messages` POST in a child `node` process via
+  `child_process.spawnSync` (same pattern as ADR 0117's HTTP transport).
+  Wire shape, ①→②→③ model resolution, typed HTTP status errors, and
+  `:on-call` audit match the `:clj` transport. See ADR 0064 + ADR 0118."
   (:require [clojure.string :as string]
             #?(:clj [clojure.data.json :as json]))
   #?(:clj
@@ -157,69 +155,63 @@
 ;; documented live text-inference contract; see docs/adr/0064)
 ;; ---------------------------------------------------------------------------
 
-#?(:clj
-   (defn- request-body [{:keys [wire-model system prompt max-output-tokens
-                                temperature-milli]}]
-     (cond-> {"model" wire-model
-              "max_tokens" (int max-output-tokens)
-              "messages" [{"role" "user" "content" prompt}]
-              "temperature" (/ (double temperature-milli) 1000.0)}
-       (seq system) (assoc "system" system))))
+(defn- request-body [{:keys [wire-model system prompt max-output-tokens
+                             temperature-milli]}]
+  (cond-> {"model" wire-model
+           "max_tokens" (int max-output-tokens)
+           "messages" [{"role" "user" "content" prompt}]
+           "temperature" (/ (double temperature-milli) 1000.0)}
+    (seq system) (assoc "system" system)))
 
-#?(:clj
-   (defn- extract-text
-     "Concatenate every `type=\"text\"` content block. A refusal or an
-     otherwise-empty completion yields \"\" (allowed by
-     `value/bounded-string!` -- zero bytes is within any positive limit),
-     never nil."
-     [content-blocks]
-     (->> content-blocks
-          (filter #(= "text" (:type %)))
-          (map #(:text % ""))
-          (apply str))))
+(defn- extract-text
+  "Concatenate every `type=\"text\"` content block. A refusal or an
+  otherwise-empty completion yields \"\" (allowed by
+  `value/bounded-string!` -- zero bytes is within any positive limit),
+  never nil."
+  [content-blocks]
+  (->> content-blocks
+       (filter #(= "text" (:type %)))
+       (map #(:text % ""))
+       (apply str)))
 
-#?(:clj
-   (defn- finish-reason-keyword
-     "Map an upstream `stop_reason` string to a bounded kotoba keyword,
-     defensively sanitized -- an upstream value this namespace doesn't
-     control must never surface a byte-limit-violating or non-keyword-safe
-     string past this boundary."
-     [stop-reason]
-     (if (string? stop-reason)
-       (let [safe (-> stop-reason
-                      (subs 0 (min (count stop-reason) 64))
-                      (string/replace #"[^a-zA-Z0-9_.-]" "-"))]
-         (if (seq safe) (keyword safe) :unknown))
-       :unknown)))
+(defn- finish-reason-keyword
+  "Map an upstream `stop_reason` string to a bounded kotoba keyword,
+  defensively sanitized -- an upstream value this namespace doesn't
+  control must never surface a byte-limit-violating or non-keyword-safe
+  string past this boundary."
+  [stop-reason]
+  (if (string? stop-reason)
+    (let [safe (-> stop-reason
+                   (subs 0 (min (count stop-reason) 64))
+                   (string/replace #"[^a-zA-Z0-9_.-]" "-"))]
+      (if (seq safe) (keyword safe) :unknown))
+    :unknown))
 
-#?(:clj
-   (defn- token-count [usage k]
-     (let [v (get usage k)]
-       (if (and (integer? v) (<= 0 v)) v 0))))
+(defn- token-count [usage k]
+  (let [v (get usage k)]
+    (if (and (integer? v) (<= 0 v)) v 0)))
 
-#?(:clj
-   (defn- truncate-for-error-message [s limit]
-     (let [s (str s)]
-       (if (> (count s) limit) (str (subs s 0 limit) "...") s))))
+(defn- truncate-for-error-message [s limit]
+  (let [s (str s)]
+    (if (> (count s) limit) (str (subs s 0 limit) "...") s)))
 
-#?(:clj
-   (defn- error-for-status
-     "Non-2xx HTTP status -> a typed `{:error ...}` reply (never thrown --
-     `provider.llm/invoke-transport` only catches exceptions
-     as a last-resort fallback; a real HTTP error is not exceptional here and
-     carries useful `:retryable` information the generic catch can't)."
-     [status body]
-     (let [retryable? (or (= status 429) (>= status 500))
-           code (case (int status)
-                  429 :llm/rate-limited
-                  401 :llm/unauthorized
-                  403 :llm/forbidden
-                  404 :llm/not-found
-                  (if (>= status 500) :llm/upstream-error :llm/request-rejected))]
-       {:error {:code code
-                :message (str "murakumo transport HTTP " status ": "
-                              (truncate-for-error-message body 400))
-                :retryable retryable?}})))
+(defn- error-for-status
+  "Non-2xx HTTP status -> a typed `{:error ...}` reply (never thrown --
+  `provider.llm/invoke-transport` only catches exceptions
+  as a last-resort fallback; a real HTTP error is not exceptional here and
+  carries useful `:retryable` information the generic catch can't)."
+  [status body]
+  (let [retryable? (or (= status 429) (>= status 500))
+        code (case (int status)
+               429 :llm/rate-limited
+               401 :llm/unauthorized
+               403 :llm/forbidden
+               404 :llm/not-found
+               (if (>= status 500) :llm/upstream-error :llm/request-rejected))]
+    {:error {:code code
+             :message (str "murakumo transport HTTP " status ": "
+                           (truncate-for-error-message body 400))
+             :retryable retryable?}}))
 
 #?(:clj
    (defn- send-messages-request
@@ -352,20 +344,171 @@
                   (error-for-status status body))))))))))
 
 #?(:cljs
+   (def ^:private node-http-script
+     "One-shot HTTP GET or POST. stdin JSON:
+      {method, url, headers, body, timeoutMs}
+      stdout JSON: {status, body} | {error:true, message}"
+     (str
+      "const https=require('https');const http=require('http');const {URL}=require('url');\n"
+      "let raw='';process.stdin.setEncoding('utf8');\n"
+      "process.stdin.on('data',c=>raw+=c);process.stdin.on('end',()=>{\n"
+      "  try{\n"
+      "    const req=JSON.parse(raw);\n"
+      "    const u=new URL(req.url);\n"
+      "    const lib=u.protocol==='https:'?https:http;\n"
+      "    const headers=Object.assign({},req.headers||{});\n"
+      "    const bodyBuf=req.body!=null?Buffer.from(String(req.body),'utf8'):null;\n"
+      "    if(bodyBuf){headers['content-length']=String(bodyBuf.length);}\n"
+      "    const opts={method:req.method||'GET',hostname:u.hostname,"
+      "port:u.port||(u.protocol==='https:'?443:80),"
+      "path:u.pathname+u.search,headers,timeout:Number(req.timeoutMs)||30000};\n"
+      "    const r=lib.request(opts,res=>{\n"
+      "      const chunks=[];res.on('data',c=>chunks.push(c));\n"
+      "      res.on('end',()=>{\n"
+      "        process.stdout.write(JSON.stringify({status:res.statusCode,"
+      "body:Buffer.concat(chunks).toString('utf8')}));process.exit(0);\n"
+      "      });\n"
+      "    });\n"
+      "    r.on('timeout',()=>{r.destroy();process.stdout.write(JSON.stringify("
+      "{error:true,message:'timeout'}));process.exit(0);});\n"
+      "    r.on('error',e=>{process.stdout.write(JSON.stringify("
+      "{error:true,message:String(e&&e.message||e)}));process.exit(0);});\n"
+      "    if(bodyBuf) r.write(bodyBuf);\n"
+      "    r.end();\n"
+      "  }catch(e){process.stdout.write(JSON.stringify({error:true,message:String(e)}));process.exit(0);}\n"
+      "});\n")))
+
+#?(:cljs
+   (defn- getenv [name]
+     (let [v (aget js/process.env name)]
+       (when (and v (seq (string/trim v))) v))))
+
+#?(:cljs
+   (defn- node-http
+     "Synchronous HTTP via spawnSync. Returns {:status n :body s} or nil on failure."
+     [{:keys [method url headers body timeout-ms]}]
+     (let [child (js/require "child_process")
+           payload (js/JSON.stringify
+                    (clj->js {:method (or method "GET")
+                              :url url
+                              :headers (or headers {})
+                              :body body
+                              :timeoutMs (or timeout-ms 30000)}))
+           wall (+ (long (or timeout-ms 30000)) 5000)
+           result (.spawnSync child js/process.execPath
+                              #js ["-e" node-http-script]
+                              #js {:input payload :encoding "utf8" :timeout wall})]
+       (try
+         (let [parsed (js->clj (js/JSON.parse (or (.-stdout result) "{}"))
+                               :keywordize-keys true)]
+           (when-not (:error parsed)
+             {:status (:status parsed) :body (:body parsed)}))
+         (catch :default _ nil)))))
+
+#?(:cljs
+   (defn- http-get-json
+     [url connect-timeout-ms]
+     (when-let [{:keys [status body]} (node-http {:method "GET" :url url
+                                                   :headers {"accept" "application/json"}
+                                                   :timeout-ms connect-timeout-ms})]
+       (when (= 200 status)
+         (try
+           (js->clj (js/JSON.parse body) :keywordize-keys true)
+           (catch :default _ nil))))))
+
+#?(:cljs
+   (defn resolve-model
+     "cljs counterpart of the :clj resolve-model (① override → ② alias GET → ③ fallback).
+     No :http-client option — network uses spawnSync Node hops."
+     [{:keys [endpoint-override model-override connect-timeout-ms]
+       :or {connect-timeout-ms default-connect-timeout-ms}}]
+     (let [endpoint-override (or endpoint-override (getenv env-endpoint-var))
+           model-override (or model-override (getenv env-model-var))]
+       (cond
+         (or endpoint-override model-override)
+         {:endpoint (or endpoint-override default-endpoint)
+          :model (or model-override alias-name)
+          :resolution :override}
+         :else
+         (let [alias-url (str default-endpoint alias-path)
+               resolved (http-get-json alias-url connect-timeout-ms)
+               resolved-model (:alias-for resolved)]
+           (if resolved-model
+             {:endpoint default-endpoint :model resolved-model :resolution :alias}
+             {:endpoint default-endpoint :model alias-name :resolution :fallback}))))))
+
+#?(:cljs
+   (defn- send-messages-request
+     [{:keys [endpoint api-key request-timeout-ms]} body-map]
+     (let [url (str endpoint messages-path)
+           headers (cond-> {"content-type" "application/json"
+                            "anthropic-version" "2023-06-01"}
+                     api-key (assoc "authorization" (str "Bearer " api-key)))
+           body-json (js/JSON.stringify (clj->js body-map))]
+       (or (node-http {:method "POST" :url url :headers headers
+                       :body body-json :timeout-ms request-timeout-ms})
+           {:status 0 :body "transport failed"}))))
+
+#?(:cljs
    (defn production-transport
-     "Not yet implemented for the cljs/nbb host. See ns docstring: the
-     synchronous `(fn [request] -> reply)` transport contract this repo's
-     reference providers assume needs a genuinely blocking HTTP call, and
-     nbb/Node's `fetch` is Promise-based -- faking synchrony over it (a busy
-     poll, a hand-rolled microtask pump) is a separate, reviewable design
-     decision this task does not make on cljs's behalf. Use the JVM/:clj
-     transport (`provider.llm/provider` hosted via
-     `kotoba.compiler.reference-runtime`, the same JVM/Chicory host path
-     ADR 0024-0030's other reference providers already run under) until a
-     cljs-native synchronous or provider-level-async transport contract is
-     designed."
+     "Build a synchronous transport fn for nbb/cljs Node hosts (ADR 0118).
+
+     Uses `child_process.spawnSync` + a one-shot Node HTTP script so the
+     reference provider's `(fn [request] -> reply)` contract stays
+     synchronous. ①→②→③ resolution, Anthropic Messages wire shape, typed
+     HTTP errors, and `:on-call` match the `:clj` transport (ADR 0064).
+
+     Options: same as `:clj` — `:endpoint-override`, `:model-override`,
+     `:api-key`, `:connect-timeout-ms`, `:request-timeout-ms`,
+     `:alias-cache-ttl-ms`, `:on-call`."
      ([] (production-transport {}))
-     ([_opts]
-      (throw (ex-info
-              "provider.llm-transport/production-transport is JVM-only (:clj) for now; see ns docstring"
-              {:phase :llm-transport :host :cljs})))))
+     ([opts]
+      (let [api-key (or (:api-key opts) (getenv env-api-key-var))
+            request-timeout-ms (:request-timeout-ms opts default-request-timeout-ms)
+            connect-timeout-ms (:connect-timeout-ms opts default-connect-timeout-ms)
+            ttl (:alias-cache-ttl-ms opts default-alias-cache-ttl-ms)
+            on-call (:on-call opts (fn [_]))
+            cache (atom nil)
+            resolve! (fn []
+                       (let [now (js/Date.now)
+                             cached @cache]
+                         (if (and cached (pos? ttl) (< (- now (:at cached)) ttl))
+                           (:resolved cached)
+                           (let [resolved (resolve-model
+                                           {:endpoint-override (:endpoint-override opts)
+                                            :model-override (:model-override opts)
+                                            :connect-timeout-ms connect-timeout-ms})]
+                             (reset! cache {:resolved resolved :at now})
+                             resolved))))]
+        (fn [{:keys [system prompt max-output-tokens temperature-milli]}]
+          (let [{:keys [endpoint model resolution]} (resolve!)
+                started (js/Date.now)
+                body-map (request-body {:wire-model model
+                                        :system system
+                                        :prompt prompt
+                                        :max-output-tokens max-output-tokens
+                                        :temperature-milli temperature-milli})
+                safe-audit! (fn [event]
+                              (try (on-call event) (catch :default _ nil)))
+                {:keys [status body]}
+                (send-messages-request
+                 {:endpoint endpoint :api-key api-key
+                  :request-timeout-ms request-timeout-ms}
+                 body-map)
+                latency-ms (- (js/Date.now) started)]
+            (if (= 200 status)
+              (let [parsed (js->clj (js/JSON.parse body) :keywordize-keys true)
+                    text (extract-text (:content parsed))
+                    finish-reason (finish-reason-keyword (:stop_reason parsed))
+                    usage (:usage parsed)
+                    input-tokens (token-count usage :input_tokens)
+                    output-tokens (token-count usage :output_tokens)]
+                (safe-audit! {:resolution resolution :wire-model model :status :ok
+                              :input-tokens input-tokens :output-tokens output-tokens
+                              :latency-ms latency-ms})
+                {:text text :finish-reason finish-reason
+                 :input-tokens input-tokens :output-tokens output-tokens})
+              (do
+                (safe-audit! {:resolution resolution :wire-model model :status :http-error
+                              :http-status status :latency-ms latency-ms})
+                (error-for-status (or status 0) (or body ""))))))))))
