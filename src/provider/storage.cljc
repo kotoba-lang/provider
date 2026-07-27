@@ -1,6 +1,13 @@
 (ns provider.storage
-  "Bounded durable-storage adapter. Paths and backend handles stay host-owned."
-  (:require [kotoba.kir.value :as value]))
+  "Bounded durable-storage adapter. Paths and backend handles stay host-owned.
+
+  Entry `:version`, option expected-version, and conflict current-version are
+  `:i64` ABI fields. On `:cljs` the canonical representation is JS `bigint`
+  (same rule ADR 0073 / provider#2–#4 applied to clock, log, http, state).
+  `cljs.core/integer?` does not recognize bigint, so `valid-version?` and
+  host↔ABI conversion must branch by host."
+  (:require [kotoba.kir.value :as value]
+            #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
 (def capability-id 12)
 (def max-value-bytes 65536)
@@ -44,33 +51,55 @@
 (defn- result [tag payload]
   [result-type tag payload])
 
-(defn- valid-version? [version]
-  (and (integer? version) (<= 1 version)))
+(defn- valid-version?
+  "A storage version is a positive whole number in the host's canonical i64
+  representation. On `:cljs` that is a non-negative bigint ≥ 1."
+  [version]
+  #?(:clj (and (integer? version) (<= 1 version))
+     :cljs (and (i64/bigint-value? version)
+                (not (i64/k-neg? version))
+                (not (i64/k-zero? version)))))
+
+(defn- canonical-version
+  "Normalize a host-supplied version (plain number from mock/JSON transport
+  or already-bigint guest value) to the ABI i64 representation."
+  [version]
+  #?(:clj version
+     :cljs (i64/->bigint version)))
+
+(defn- host-version
+  "Transport may prefer a plain host number (JSON). On cljs guest→host."
+  [version]
+  #?(:clj version
+     :cljs (js/Number (i64/->bigint version))))
 
 (defn- option-version [version]
   (if (nil? version)
     [expected-version-type false]
-    (do
-      (when-not (valid-version? version)
+    (let [v (canonical-version version)]
+      (when-not (valid-version? v)
         (throw (ex-info "storage version is invalid" {:phase :storage-provider})))
-      [expected-version-type true version])))
+      [expected-version-type true v])))
 
 (defn- expected-version [[actual-type present? version]]
   (when-not (= actual-type expected-version-type)
     (throw (ex-info "storage expected-version contract mismatch"
                     {:phase :storage-provider})))
   (when present?
-    (when-not (valid-version? version)
-      (throw (ex-info "storage expected version is invalid"
-                      {:phase :storage-provider})))
-    version))
+    (let [v (canonical-version version)]
+      (when-not (valid-version? v)
+        (throw (ex-info "storage expected version is invalid"
+                        {:phase :storage-provider})))
+      ;; transport gets host-native number for JSON/HTTP backends
+      (host-version v))))
 
 (defn- entry [key stored]
-  (let [{:keys [value version]} stored]
+  (let [{:keys [value version]} stored
+        v (canonical-version version)]
     (value/bounded-string! value max-value-bytes)
-    (when-not (valid-version? version)
+    (when-not (valid-version? v)
       (throw (ex-info "storage version is invalid" {:phase :storage-provider})))
-    [entry-type key value version]))
+    [entry-type key value v]))
 
 (defn- error [{:keys [code message retryable]}]
   (value/bounded-keyword! code value/keyword-value-byte-limit)
