@@ -4,10 +4,11 @@
              :ambient-listen false
              :listen-authority :host-only
              :pairing :accept-then-reply
-             :max-inflight 1
+             :max-queue-depth 8
+             :max-pending-accept 1
              :execution :synchronous-reference}
  :limits {:path-bytes 4096 :headers 32 :body-bytes 65536
-          :status [100 599]}
+          :status [100 599] :queue-depth [1 256]}
  :capabilities
  [{:name :http/accept :id 17
    :request

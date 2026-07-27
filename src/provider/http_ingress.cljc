@@ -1,5 +1,5 @@
 (ns provider.http-ingress
-  "HTTP ingress lifecycle reference provider (W5 family-3 first slice).
+  "HTTP ingress lifecycle reference provider (W5 family-3).
 
   Host owns listen/socket acceptance. The guest never receives a server socket,
   connection, or ambient network. Instead:
@@ -8,8 +8,9 @@
   - guest polls with `:http/accept` (option of request)
   - guest completes with `:http/reply` (bool accepted)
 
-  v1 is single-inflight: at most one queued request and one accepted-but-
-  unreplied request. Status is canonical i64 (bigint on cljs)."
+  Pairing remains accept-then-reply (one pending unreplied request). The
+  host-owned queue is multi-inflight: default depth 8 (parametric). Status
+  is canonical i64 (bigint on cljs)."
   (:require [kotoba.kir.value :as value]
             #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
@@ -18,6 +19,7 @@
 (def max-headers 32)
 (def max-path-bytes 4096)
 (def max-body-bytes 65536)
+(def default-max-queue-depth 8)
 
 (def header-type
   [:record :kotoba.http/header [[:name :keyword] [:value :string]]])
@@ -99,61 +101,73 @@
 
 (defn create-provider
   "Build accept + reply providers sharing one host-owned ingress queue.
-  Returns `{:providers {17 accept 18 reply} :enqueue! f :snapshot f}`."
-  []
-  (let [queue (atom [])
-        pending (atom nil)
-        enqueue!
-        (fn [method path headers body]
-          (when (seq @queue)
-            (throw (ex-info "HTTP ingress queue is full"
-                            {:phase :http-ingress-provider})))
-          (when (some? @pending)
-            (throw (ex-info "HTTP ingress has an unreplied accepted request"
-                            {:phase :http-ingress-provider})))
-          (let [req (typed-incoming method path headers body)]
-            (reset! queue [req])
-            true))]
-    {:providers
-     {accept-capability-id
-      {:request-type accept-request-type
-       :result-type accept-result-type
-       :invoke
-       (fn [[actual-type slot]]
-         (when-not (= actual-type accept-request-type)
-           (throw (ex-info "HTTP accept contract mismatch"
-                           {:phase :http-ingress-provider})))
-         (when-not (i64= slot (i64-zero))
-           (throw (ex-info "HTTP accept slot must be 0 in v1"
-                           {:phase :http-ingress-provider :slot slot})))
-         (when (some? @pending)
-           (throw (ex-info "HTTP accept requires reply before next accept"
-                           {:phase :http-ingress-provider})))
-         (if-let [req (first @queue)]
-           (do (reset! queue [])
-               (reset! pending req)
-               [accept-result-type true req])
-           [accept-result-type false]))}
 
-      reply-capability-id
-      {:request-type reply-request-type
-       :result-type reply-result-type
-       :invoke
-       (fn [[actual-type status [_ headers] body]]
-         (when-not (= actual-type reply-request-type)
-           (throw (ex-info "HTTP reply contract mismatch"
-                           {:phase :http-ingress-provider})))
-         (when (nil? @pending)
-           (throw (ex-info "HTTP reply requires a prior accept"
-                           {:phase :http-ingress-provider})))
-         (let [st (canonical-status status)]
-           (when-not (valid-status? st)
-             (throw (ex-info "HTTP reply status is outside the admitted range"
-                             {:phase :http-ingress-provider :status status})))
-           (validate-headers! headers)
-           (value/bounded-string! body max-body-bytes)
-           (reset! pending nil)
-           true))}}
-     :enqueue! enqueue!
-     :snapshot (fn [] {:queued (count @queue)
-                       :pending? (some? @pending)})}))
+  Options:
+    :max-queue-depth — positive integer, default `default-max-queue-depth` (8).
+
+  Host may enqueue while a request is pending reply. Accept still requires
+  reply before the next accept (single pending). Returns
+  `{:providers {17 accept 18 reply} :enqueue! f :snapshot f}`."
+  ([] (create-provider {}))
+  ([{:keys [max-queue-depth] :or {max-queue-depth default-max-queue-depth}}]
+   (when-not (and (integer? max-queue-depth) (pos? max-queue-depth)
+                  (<= max-queue-depth 256))
+     (throw (ex-info "HTTP ingress max-queue-depth must be in [1,256]"
+                     {:phase :http-ingress-provider
+                      :max-queue-depth max-queue-depth})))
+   (let [queue (atom [])
+         pending (atom nil)
+         enqueue!
+         (fn [method path headers body]
+           (when (>= (count @queue) max-queue-depth)
+             (throw (ex-info "HTTP ingress queue is full"
+                             {:phase :http-ingress-provider
+                              :max-queue-depth max-queue-depth})))
+           (let [req (typed-incoming method path headers body)]
+             (swap! queue conj req)
+             true))]
+     {:providers
+      {accept-capability-id
+       {:request-type accept-request-type
+        :result-type accept-result-type
+        :invoke
+        (fn [[actual-type slot]]
+          (when-not (= actual-type accept-request-type)
+            (throw (ex-info "HTTP accept contract mismatch"
+                            {:phase :http-ingress-provider})))
+          (when-not (i64= slot (i64-zero))
+            (throw (ex-info "HTTP accept slot must be 0 in v1"
+                            {:phase :http-ingress-provider :slot slot})))
+          (when (some? @pending)
+            (throw (ex-info "HTTP accept requires reply before next accept"
+                            {:phase :http-ingress-provider})))
+          (if-let [req (first @queue)]
+            (do (swap! queue (fn [q] (vec (rest q))))
+                (reset! pending req)
+                [accept-result-type true req])
+            [accept-result-type false]))}
+
+       reply-capability-id
+       {:request-type reply-request-type
+        :result-type reply-result-type
+        :invoke
+        (fn [[actual-type status [_ headers] body]]
+          (when-not (= actual-type reply-request-type)
+            (throw (ex-info "HTTP reply contract mismatch"
+                            {:phase :http-ingress-provider})))
+          (when (nil? @pending)
+            (throw (ex-info "HTTP reply requires a prior accept"
+                            {:phase :http-ingress-provider})))
+          (let [st (canonical-status status)]
+            (when-not (valid-status? st)
+              (throw (ex-info "HTTP reply status is outside the admitted range"
+                              {:phase :http-ingress-provider :status status})))
+            (validate-headers! headers)
+            (value/bounded-string! body max-body-bytes)
+            (reset! pending nil)
+            true))}}
+      :enqueue! enqueue!
+      :max-queue-depth max-queue-depth
+      :snapshot (fn [] {:queued (count @queue)
+                        :pending? (some? @pending)
+                        :max-queue-depth max-queue-depth})})))
