@@ -77,14 +77,14 @@
   silently mask a real conditional-version conflict, which is a strictly
   worse failure mode than a typed, visible error.
 
-  JVM only (`:clj`) for now, for the same reason as ADR 0064's LLM transport
-  and ADR 0066's HTTP transport: `java.net.http.HttpClient.send` is
-  genuinely blocking, matching every reference provider's synchronous
-  transport contract in this repo (`kotoba.compiler.reference-runtime` has no
-  promise/callback machinery for a provider to return through); nbb/cljs has
-  no built-in synchronous HTTP primitive. The `:cljs` branch below throws a
-  clearly-labeled 'not yet implemented' instead of silently pretending to
-  support it."
+  ## `:cljs` / nbb production transport (ADR 0119)
+
+  nbb/Node has no built-in *synchronous* HTTP primitive. This namespace keeps
+  the reference provider's synchronous `(fn [request] -> reply)` contract by
+  running each `/storage/v1/transact` POST in a child `node` process via
+  `child_process.spawnSync` (same pattern as ADR 0117 HTTP / ADR 0118 LLM).
+  Required host-configured `:endpoint`, fixed-path JSON wire, fail-closed
+  sanitization, and typed HTTP errors match the `:clj` transport (ADR 0071)."
   (:require [clojure.string :as string]
             [provider.storage :as storage]
             [kotoba.kir.value :as value]
@@ -126,6 +126,11 @@
      (let [v (System/getenv name)]
        (when (and v (seq (string/trim v))) v))))
 
+#?(:cljs
+   (defn- getenv [name]
+     (let [v (aget js/process.env name)]
+       (when (and v (seq (string/trim v))) v))))
+
 (defn resolve-endpoint
   "Resolve the fixed, host-configured storage-backend origin: an explicit
   `:endpoint` construction option, else the `KOTOBA_STORAGE_ENDPOINT` env
@@ -135,7 +140,7 @@
   namespace's safety design, not an oversight."
   [opts]
   (or (:endpoint opts)
-      #?(:clj (getenv env-endpoint-var) :cljs nil)
+      (getenv env-endpoint-var)
       (throw (ex-info
               (str "storage-transport requires an :endpoint construction option (or "
                    env-endpoint-var
@@ -403,20 +408,116 @@
                 (error-for-status status body)))))))))
 
 #?(:cljs
+   (def ^:private node-http-script
+     "One-shot HTTP POST. stdin JSON: {url, headers, body, timeoutMs}
+      stdout JSON: {status, body} | {error:true, message}"
+     (str
+      "const https=require('https');const http=require('http');const {URL}=require('url');\n"
+      "const MAX_BODY=73728;\n"
+      "let raw='';process.stdin.setEncoding('utf8');\n"
+      "process.stdin.on('data',c=>raw+=c);process.stdin.on('end',()=>{\n"
+      "  try{\n"
+      "    const req=JSON.parse(raw);\n"
+      "    const u=new URL(req.url);\n"
+      "    const lib=u.protocol==='https:'?https:http;\n"
+      "    const headers=Object.assign({},req.headers||{});\n"
+      "    const bodyBuf=Buffer.from(String(req.body||''),'utf8');\n"
+      "    headers['content-length']=String(bodyBuf.length);\n"
+      "    const opts={method:'POST',hostname:u.hostname,"
+      "port:u.port||(u.protocol==='https:'?443:80),"
+      "path:u.pathname+u.search,headers,timeout:Number(req.timeoutMs)||10000};\n"
+      "    const r=lib.request(opts,res=>{\n"
+      "      const chunks=[];let n=0;\n"
+      "      res.on('data',c=>{if(n<MAX_BODY){const take=c.slice(0,MAX_BODY-n);chunks.push(take);n+=take.length;}});\n"
+      "      res.on('end',()=>{\n"
+      "        process.stdout.write(JSON.stringify({status:res.statusCode,"
+      "body:Buffer.concat(chunks).toString('utf8')}));process.exit(0);\n"
+      "      });\n"
+      "    });\n"
+      "    r.on('timeout',()=>{r.destroy();process.stdout.write(JSON.stringify("
+      "{error:true,message:'timeout'}));process.exit(0);});\n"
+      "    r.on('error',e=>{process.stdout.write(JSON.stringify("
+      "{error:true,message:String(e&&e.message||e)}));process.exit(0);});\n"
+      "    r.write(bodyBuf);r.end();\n"
+      "  }catch(e){process.stdout.write(JSON.stringify({error:true,message:String(e)}));process.exit(0);}\n"
+      "});\n")))
+
+#?(:cljs
+   (defn- node-http-post
+     "Synchronous POST via spawnSync. Returns {:status n :body s}."
+     [{:keys [url headers body timeout-ms]}]
+     (let [child (js/require "child_process")
+           payload (js/JSON.stringify
+                    (clj->js {:url url
+                              :headers (or headers {})
+                              :body body
+                              :timeoutMs (or timeout-ms default-request-timeout-ms)}))
+           wall (+ (long (or timeout-ms default-request-timeout-ms)) 5000)
+           result (.spawnSync child js/process.execPath
+                              #js ["-e" node-http-script]
+                              #js {:input payload :encoding "utf8" :timeout wall})]
+       (try
+         (let [parsed (js->clj (js/JSON.parse (or (.-stdout result) "{}"))
+                               :keywordize-keys true)]
+           (if (:error parsed)
+             {:status 0 :body (str (:message parsed))}
+             {:status (:status parsed)
+              :body (truncate-to-byte-limit (str (:body parsed)) response-byte-limit)}))
+         (catch :default e
+           {:status 0 :body (str "transport decode failed: " (.-message e))})))))
+
+#?(:cljs
+   (defn- send-transact-request
+     [{:keys [endpoint path api-key request-timeout-ms]} body-json]
+     (let [url (str endpoint path)
+           headers (cond-> {"content-type" "application/json"
+                            "accept" "application/json"}
+                     api-key (assoc "authorization" (str "Bearer " api-key)))]
+       (node-http-post {:url url :headers headers :body body-json
+                        :timeout-ms request-timeout-ms}))))
+
+#?(:cljs
    (defn production-transport
-     "Not yet implemented for the cljs/nbb host. See ns docstring: the
-     synchronous `(fn [request] -> reply)` transport contract this repo's
-     reference providers assume needs a genuinely blocking HTTP call, and
-     nbb/Node's `fetch` is Promise-based -- faking synchrony over it is a
-     separate, reviewable design decision this task does not make on cljs's
-     behalf. Use the JVM/:clj transport
-     (`provider.storage/provider` hosted via
-     `kotoba.compiler.reference-runtime`, the same JVM/Chicory host path
-     ADR 0024-0030's other reference providers already run under) until a
-     cljs-native synchronous or provider-level-async transport contract is
-     designed."
+     "Build a synchronous transport fn for nbb/cljs Node hosts (ADR 0119).
+
+     Uses `child_process.spawnSync` + a one-shot Node HTTP script so the
+     reference provider's `(fn [request] -> reply)` contract stays
+     synchronous. Required host-configured `:endpoint`, fixed-path JSON wire,
+     fail-closed sanitization, and typed HTTP errors match the `:clj`
+     transport (ADR 0071).
+
+     Options: same as `:clj` — `:endpoint` (required), `:path`, `:api-key`,
+     `:connect-timeout-ms`, `:request-timeout-ms`, `:on-call`."
      ([] (production-transport {}))
-     ([_opts]
-      (throw (ex-info
-              "provider.storage-transport/production-transport is JVM-only (:clj) for now; see ns docstring"
-              {:phase :storage-transport :host :cljs})))))
+     ([opts]
+      (let [endpoint (resolve-endpoint opts)
+            path (:path opts default-path)
+            api-key (or (:api-key opts) (getenv env-api-key-var))
+            request-timeout-ms (:request-timeout-ms opts default-request-timeout-ms)
+            on-call (:on-call opts (fn [_]))]
+        (fn [{:keys [namespace operation key value expected-version] :as request}]
+          (let [started (js/Date.now)
+                safe-audit! (fn [event] (try (on-call event) (catch :default _ nil)))
+                body-json (js/JSON.stringify (clj->js (request-body request)))
+                {:keys [status body]}
+                (send-transact-request
+                 {:endpoint endpoint :path path :api-key api-key
+                  :request-timeout-ms request-timeout-ms}
+                 body-json)
+                latency-ms (- (js/Date.now) started)]
+            (if (= 200 status)
+              (try
+                (let [parsed (js->clj (js/JSON.parse body) :keywordize-keys true)
+                      reply (wire->reply parsed)]
+                  (safe-audit! {:namespace namespace :operation operation :key key
+                                :status :ok :http-status status :latency-ms latency-ms})
+                  reply)
+                (catch :default e
+                  (safe-audit! {:namespace namespace :operation operation :key key
+                                :status :http-error :http-status status :latency-ms latency-ms})
+                  (invalid-response-error
+                   (str "storage transport reply decode failed: " (.-message e)))))
+              (do
+                (safe-audit! {:namespace namespace :operation operation :key key
+                              :status :http-error :http-status status :latency-ms latency-ms})
+                (error-for-status (or status 0) (or body ""))))))))))
