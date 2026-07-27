@@ -1,6 +1,12 @@
 (ns provider.ui
-  "Declarative bounded UI reference provider. No DOM or host object is exposed."
-  (:require [kotoba.kir.value :as value]))
+  "Declarative bounded UI reference provider. No DOM or host object is exposed.
+
+  Revisions, node-count, and event revision are `:i64` ABI fields. On `:cljs`
+  the canonical representation is JS `bigint` (same rule as clock/log/http/
+  state/storage). Plain `inc`/`=`/`<=` against numbers fails typed-cap-call
+  result validation and revision matching."
+  (:require [kotoba.kir.value :as value]
+            #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
 (def commit-capability-id 9)
 (def event-capability-id 10)
@@ -30,13 +36,36 @@
    :kotoba.ui/event-request event-request-type
    :kotoba.ui/event event-type})
 
+(defn- i64-zero []
+  #?(:clj 0 :cljs i64/zero))
+
+(defn- i64-one []
+  #?(:clj 1 :cljs i64/one))
+
+(defn- i64-inc [n]
+  #?(:clj (inc n)
+     :cljs (+ (i64/->bigint n) i64/one)))
+
+(defn- i64-count [coll]
+  #?(:clj (count coll)
+     :cljs (i64/->bigint (count coll))))
+
+(defn- i64= [a b]
+  #?(:clj (= a b)
+     :cljs (= (i64/->bigint a) (i64/->bigint b))))
+
+(defn- i64-le [a b]
+  "a <= b for canonical i64 values."
+  #?(:clj (<= a b)
+     :cljs (<= (i64/->bigint a) (i64/->bigint b))))
+
 (defn create-provider
   "Returns exact provider entries plus host-only enqueue!/snapshot functions.
   Only the :provider values are installed in the guest runtime registry."
   []
-  (let [view (atom {:revision 0 :nodes []})
+  (let [view (atom {:revision (i64-zero) :nodes []})
         events (atom [])
-        event-revision (atom 0)
+        event-revision (atom (i64-zero))
         enqueue!
         (fn [target kind text]
           (value/bounded-keyword! target value/keyword-value-byte-limit)
@@ -44,7 +73,7 @@
           (value/bounded-string! text value/string-value-byte-limit)
           (when (>= (count @events) max-events)
             (throw (ex-info "UI event queue limit reached" {:phase :ui-provider})))
-          (let [revision (swap! event-revision inc)
+          (let [revision (swap! event-revision i64-inc)
                 event [event-type revision target kind text]]
             (swap! events conj event)
             revision))]
@@ -56,7 +85,7 @@
        (fn [[actual-type base-revision [_ nodes]]]
          (when-not (= actual-type commit-request-type)
            (throw (ex-info "UI commit contract mismatch" {:phase :ui-provider})))
-         (when-not (= base-revision (:revision @view))
+         (when-not (i64= base-revision (:revision @view))
            (throw (ex-info "UI revision conflict"
                            {:phase :ui-provider :expected (:revision @view)
                             :actual base-revision})))
@@ -70,9 +99,9 @@
              (when (and has-parent? (not (contains? id-set parent)))
                (throw (ex-info "UI node parent is missing"
                                {:phase :ui-provider :node id :parent parent}))))
-           (let [revision (inc base-revision)]
+           (let [revision (i64-inc base-revision)]
              (reset! view {:revision revision :nodes (vec nodes)})
-             [commit-result-type revision (count nodes)])))}
+             [commit-result-type revision (i64-count nodes)])))}
 
       event-capability-id
       {:request-type event-request-type
@@ -81,7 +110,7 @@
        (fn [[actual-type after-revision]]
          (when-not (= actual-type event-request-type)
            (throw (ex-info "UI event request contract mismatch" {:phase :ui-provider})))
-         (if-let [event (first (drop-while #(<= (second %) after-revision) @events))]
+         (if-let [event (first (drop-while #(i64-le (second %) after-revision) @events))]
            (do (swap! events (fn [queued] (vec (remove #(= event %) queued))))
                [event-result-type true event])
            [event-result-type false]))}}
