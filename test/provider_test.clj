@@ -4,6 +4,7 @@
             [provider.clock]
             [provider.clock-transport]
             [provider.http]
+            [provider.http-ingress]
             [provider.http-transport]
             [provider.llm]
             [provider.llm-transport]
@@ -21,6 +22,7 @@
   (is (some? (find-ns 'provider.clock)) "provider.clock must load")
   (is (some? (find-ns 'provider.clock-transport)) "provider.clock-transport must load")
   (is (some? (find-ns 'provider.http)) "provider.http must load")
+  (is (some? (find-ns 'provider.http-ingress)) "provider.http-ingress must load")
   (is (some? (find-ns 'provider.http-transport)) "provider.http-transport must load")
   (is (some? (find-ns 'provider.llm)) "provider.llm must load")
   (is (some? (find-ns 'provider.llm-transport)) "provider.llm-transport must load")
