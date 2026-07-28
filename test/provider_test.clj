@@ -24,7 +24,9 @@
             [provider.secret :as secret]
             [provider.secret-transport :as secret-transport]
             [provider.git :as git]
-            [provider.git-transport :as git-transport]))
+            [provider.git-transport :as git-transport]
+            [provider.entropy :as entropy]
+            [provider.entropy-transport :as entropy-transport]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -51,7 +53,9 @@
   (is (some? (find-ns 'provider.secret)) "provider.secret must load")
   (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load")
   (is (some? (find-ns 'provider.git)) "provider.git must load")
-  (is (some? (find-ns 'provider.git-transport)) "provider.git-transport must load"))
+  (is (some? (find-ns 'provider.git-transport)) "provider.git-transport must load")
+  (is (some? (find-ns 'provider.entropy)) "provider.entropy must load")
+  (is (some? (find-ns 'provider.entropy-transport)) "provider.entropy-transport must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -399,3 +403,33 @@
         (git-transport/os-run {:git-bin "git" :worktree "/tmp"})))
   (is (thrown-with-msg? Exception #"absolute :worktree"
         (git-transport/os-run {:git-bin "/usr/bin/git" :worktree "relative"}))))
+
+(deftest entropy-validate-n-and-hex
+  (is (nil? (entropy/validate-n 16)))
+  (is (= :entropy/bad-n (entropy/validate-n 0)))
+  (is (= :entropy/too-large (entropy/validate-n 65)))
+  (is (= "0001ff" (entropy/bytes->hex [0 1 255])))
+  (is (= [0 1 255] (entropy/hex->bytes "0001ff"))))
+
+(deftest entropy-mem-draw-roundtrip
+  (let [draw (entropy/mem-draw [0xab 0xcd])
+        ps (:providers (entropy/create-providers {:draw draw}))
+        p (get ps entropy/capability-id)
+        ok ((:invoke p) [entropy/draw-request-type 4])
+        bad ((:invoke p) [entropy/draw-request-type 0])]
+    (is (= :hex (second ok)))
+    (is (= "abcdabcd" (nth ok 2)))
+    (is (= :error (second bad)))
+    (is (= :entropy/bad-n (second (nth bad 2))))))
+
+(deftest entropy-os-draw-produces-hex
+  (let [draw (entropy-transport/os-draw)
+        ps (:providers (entropy/create-providers {:draw draw}))
+        p (get ps entropy/capability-id)
+        a ((:invoke p) [entropy/draw-request-type 16])
+        b ((:invoke p) [entropy/draw-request-type 16])]
+    (is (= :hex (second a)))
+    (is (= 32 (count (nth a 2))))
+    (is (re-matches #"[0-9a-f]{32}" (nth a 2)))
+    ;; cryptographic draws should almost never collide
+    (is (not= (nth a 2) (nth b 2)))))
