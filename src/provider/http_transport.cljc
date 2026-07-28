@@ -266,6 +266,25 @@
        (.send http-client req (HttpResponse$BodyHandlers/ofInputStream)))))
 
 #?(:clj
+   (defn- send-hop-get
+     "Bounded synchronous GET (no request body) for `:http/get-stream`
+     (ADR 0128). Same header restriction and timeout wiring as `send-hop`."
+     ^HttpResponse [^HttpClient http-client ^URI uri headers timeout-ms]
+     (let [safe-headers (remove (fn [[k _]]
+                                  (contains? restricted-header-names
+                                             (string/lower-case (name k))))
+                                headers)
+           builder (-> (HttpRequest/newBuilder uri)
+                       (.timeout (Duration/ofMillis (long timeout-ms)))
+                       (.GET))
+           ^HttpRequest$Builder builder
+           (reduce (fn [^HttpRequest$Builder b [k v]]
+                     (.header b (name k) v))
+                   builder safe-headers)
+           req (.build builder)]
+       (.send http-client req (HttpResponse$BodyHandlers/ofInputStream)))))
+
+#?(:clj
    (defn- finish!
      "Bounded-reads and closes the response body, and folds the response
      headers, producing the `{:status :headers :body}` shape
@@ -279,6 +298,16 @@
        {:status status
         :headers (bounded-response-headers response-headers)
         :body (decode-bounded-body raw)})))
+
+#?(:clj
+   (defn- finish-get-stream!
+     "Bounded-read response body as host `:bytes` for get-stream (ADR 0128).
+     Cap is `http/max-pull-bytes` (same as get-stream provider)."
+     [^HttpResponse resp]
+     (let [^InputStream in (.body resp)
+           raw (try (read-bounded-bytes in (long http/max-pull-bytes))
+                    (finally (.close in)))]
+       {:bytes raw})))
 
 #?(:clj
    (defn- redirect-target
@@ -358,6 +387,28 @@
              (do (.close ^InputStream (.body resp))
                  (recur candidate (dec redirects-left)))
              (finish! resp)))))))
+
+#?(:clj
+   (defn- follow-and-collect-get!
+     "Redirect loop for GET get-stream (ADR 0128). Same allow-list /
+     destination asymmetry as `follow-and-collect!`, but the final body is
+     raw host `:bytes` (not a UTF-8 string response record)."
+     [{:keys [http-client allowed-origins max-redirects]} initial-url headers timeout-ms]
+     (if-let [reason (connect-refusal-reason initial-url allowed-origins)]
+       (refusal-error reason initial-url)
+       (loop [current-url initial-url
+              redirects-left max-redirects]
+         (let [uri (URI/create current-url)
+               resp (send-hop-get http-client uri headers timeout-ms)
+               status (.statusCode resp)
+               location (some-> (.firstValue (.headers resp) "location")
+                                (.orElse nil))
+               candidate (when (and (<= 300 status 399) location (pos? redirects-left))
+                           (redirect-target uri location))]
+           (if (and candidate (nil? (connect-refusal-reason candidate allowed-origins)))
+             (do (.close ^InputStream (.body resp))
+                 (recur candidate (dec redirects-left)))
+             (finish-get-stream! resp)))))))
 
 ;; ---------------------------------------------------------------------------
 ;; public constructor
@@ -451,6 +502,73 @@
                           :latency-ms (- (System/currentTimeMillis) started)})
             result))))))
 
+(def default-get-stream-timeout-ms
+  "Per-hop timeout for get-stream (request schema has no timeout field)."
+  30000)
+
+#?(:clj
+   (defn production-get-stream-transport
+     "Synchronous production transport for
+     `(provider.http/get-stream-provider {:transport ... :allowed-origins ...})`.
+
+     Input (after `http.cljc` get-stream allow-list + header validation):
+     `{:operation :get-stream :url <string> :headers {keyword string}}`.
+
+     Output on success: `{:bytes <byte-array>}` (ready-task shape for
+     `as-bytes-task!`). First-hop destination refusal throws
+     (redacted by `invoke-get-stream-transport`); network/IO exceptions
+     propagate similarly. Same allow-list / redirect / destination-IP
+     defenses as `production-transport` (ADR 0066 + ADR 0128)."
+     ([] (production-get-stream-transport {}))
+     ([{:keys [allowed-origins max-redirects connect-timeout-ms
+               timeout-ms on-call]
+        :or {max-redirects default-max-redirects
+             connect-timeout-ms default-connect-timeout-ms
+             timeout-ms default-get-stream-timeout-ms
+             on-call (fn [_])}}]
+      (when-not (and (set? allowed-origins) (seq allowed-origins) (every? string? allowed-origins))
+        (throw (ex-info "http-transport get-stream requires a non-empty :allowed-origins set"
+                        {:phase :http-transport})))
+      (doseq [origin allowed-origins]
+        (when-not (= origin (canonical-origin origin))
+          (throw (ex-info "http-transport :allowed-origins entries must already be canonical https origins"
+                          {:phase :http-transport :origin origin}))))
+      (when-not (and (integer? max-redirects) (<= 0 max-redirects 20))
+        (throw (ex-info "http-transport :max-redirects must be a small bounded integer in [0, 20]"
+                        {:phase :http-transport :max-redirects max-redirects})))
+      (when-not (and (integer? timeout-ms) (pos? timeout-ms))
+        (throw (ex-info "http-transport get-stream :timeout-ms must be a positive integer"
+                        {:phase :http-transport :timeout-ms timeout-ms})))
+      (let [http-client (-> (HttpClient/newBuilder)
+                            (.version HttpClient$Version/HTTP_1_1)
+                            (.followRedirects HttpClient$Redirect/NEVER)
+                            (.connectTimeout (Duration/ofMillis (long connect-timeout-ms)))
+                            (.build))
+            allowed-origins-set (set allowed-origins)
+            hop-timeout (long timeout-ms)]
+        (fn [{:keys [operation url headers]}]
+          (when-not (or (nil? operation) (= :get-stream operation))
+            (throw (ex-info "production-get-stream-transport only accepts :get-stream"
+                            {:phase :http-transport :operation operation})))
+          (let [started (System/currentTimeMillis)
+                safe-audit! (fn [event] (try (on-call event) (catch Exception _ nil)))
+                result (follow-and-collect-get!
+                        {:http-client http-client
+                         :allowed-origins allowed-origins-set
+                         :max-redirects max-redirects}
+                        url (or headers {}) hop-timeout)]
+            (safe-audit! {:url url
+                          :operation :get-stream
+                          :error? (boolean (:error result))
+                          :bytes (when (:bytes result)
+                                   (alength ^bytes (:bytes result)))
+                          :latency-ms (- (System/currentTimeMillis) started)})
+            (if (:error result)
+              (throw (ex-info "http get-stream destination blocked"
+                              {:phase :http-transport
+                               :error (:error result)}))
+              result)))))))
+
 #?(:cljs
    (def ^:private hop-script
      "Node one-shot POST (no redirect follow). Reads JSON from stdin, writes JSON to stdout.
@@ -508,6 +626,42 @@
       "dns.lookup(host,{all:true},(err,addrs)=>{\n"
       "  if(err){process.stdout.write(JSON.stringify({error:true}));process.exit(0);return;}\n"
       "  process.stdout.write(JSON.stringify({addresses:(addrs||[]).map(a=>a.address)}));process.exit(0);\n"
+      "});\n")))
+
+#?(:cljs
+   (def ^:private hop-get-script
+     "Node one-shot GET (no redirect follow). Returns bodyBase64 + status + location."
+     (str
+      "const https=require('https');const http=require('http');const {URL}=require('url');\n"
+      "const MAX_BODY=65536;const RESTRICTED=new Set(["
+      "'connection','content-length','expect','host','upgrade']);\n"
+      "let raw='';process.stdin.setEncoding('utf8');"
+      "process.stdin.on('data',c=>raw+=c);process.stdin.on('end',()=>{\n"
+      "  const req=JSON.parse(raw);\n"
+      "  const u=new URL(req.url);\n"
+      "  const lib=u.protocol==='https:'?https:http;\n"
+      "  const headers={};\n"
+      "  for (const [k,v] of Object.entries(req.headers||{})) {\n"
+      "    const lk=String(k).toLowerCase();\n"
+      "    if (!RESTRICTED.has(lk)) headers[lk]=String(v);\n"
+      "  }\n"
+      "  const opts={method:'GET',hostname:u.hostname,port:u.port||(u.protocol==='https:'?443:80),"
+      "path:u.pathname+u.search,headers,timeout:Number(req.timeoutMs)||30000};\n"
+      "  const r=lib.request(opts,res=>{\n"
+      "    const chunks=[];let n=0;\n"
+      "    res.on('data',c=>{if(n<MAX_BODY){const take=c.slice(0,MAX_BODY-n);chunks.push(take);n+=take.length;}});\n"
+      "    res.on('end',()=>{\n"
+      "      const body=Buffer.concat(chunks);\n"
+      "      process.stdout.write(JSON.stringify({status:res.statusCode,"
+      "bodyBase64:body.toString('base64'),"
+      "location:res.headers.location||null}));process.exit(0);\n"
+      "    });\n"
+      "  });\n"
+      "  r.on('timeout',()=>{r.destroy();process.stdout.write(JSON.stringify("
+      "{error:{code:'http/transport',message:'hop timeout',retryable:true}}));process.exit(0);});\n"
+      "  r.on('error',e=>{process.stdout.write(JSON.stringify("
+      "{error:{code:'http/transport',message:String(e&&e.message||e),retryable:true}}));process.exit(0);});\n"
+      "  r.end();\n"
       "});\n")))
 
 #?(:cljs
@@ -633,6 +787,49 @@
                       :retryable false}}))))))
 
 #?(:cljs
+   (defn- base64->bytes
+     "Decode base64 string to Uint8Array (host :bytes)."
+     [b64]
+     (let [buf (.from js/Buffer (str b64) "base64")]
+       (js/Uint8Array. buf))))
+
+#?(:cljs
+   (defn- send-hop-get
+     "One bounded synchronous GET via spawnSync node; returns {:bytes ...}."
+     [url headers timeout-ms]
+     (let [child (js/require "child_process")
+           payload (js/JSON.stringify
+                    (clj->js {:url url
+                              :headers (into {} (map (fn [[k v]] [(name k) v]) headers))
+                              :timeoutMs timeout-ms}))
+           wall-ms (+ (long timeout-ms) 5000)
+           result (.spawnSync child js/process.execPath
+                              #js ["-e" hop-get-script]
+                              #js {:input payload :encoding "utf8" :timeout wall-ms})]
+       (cond
+         (.-error result)
+         {:error {:code :http/transport :message "hop spawn failed" :retryable true}}
+         (not (zero? (or (.-status result) 1)))
+         (try
+           (let [parsed (js->clj (js/JSON.parse (or (.-stdout result) "{}")) :keywordize-keys true)]
+             (if (:error parsed) parsed
+                 {:error {:code :http/transport :message "hop failed" :retryable true}}))
+           (catch :default _
+             {:error {:code :http/transport :message "hop failed" :retryable true}}))
+         :else
+         (try
+           (let [parsed (js->clj (js/JSON.parse (.-stdout result)) :keywordize-keys true)]
+             (if (:error parsed)
+               parsed
+               {:status (:status parsed)
+                :bytes (base64->bytes (or (:bodyBase64 parsed) ""))
+                :location (:location parsed)}))
+           (catch :default e
+             {:error {:code :http/transport
+                      :message (str "hop decode failed: " (.-message e))
+                      :retryable false}}))))))
+
+#?(:cljs
    (defn- follow-and-collect!
      "Redirect loop matching the :clj asymmetry (first-hop refuse vs
      subsequent-hop decline-to-follow)."
@@ -651,6 +848,25 @@
                (if (and candidate (nil? (connect-refusal-reason candidate allowed-origins)))
                  (recur candidate (dec redirects-left))
                  (dissoc resp :location)))))))))
+
+#?(:cljs
+   (defn- follow-and-collect-get!
+     "GET redirect loop for get-stream (ADR 0128); final result is {:bytes ...}."
+     [{:keys [allowed-origins max-redirects]} initial-url headers timeout-ms]
+     (if-let [reason (connect-refusal-reason initial-url allowed-origins)]
+       (refusal-error reason initial-url)
+       (loop [current-url initial-url
+              redirects-left max-redirects]
+         (let [resp (send-hop-get current-url headers timeout-ms)]
+           (if (:error resp)
+             resp
+             (let [status (:status resp)
+                   location (:location resp)
+                   candidate (when (and (<= 300 status 399) location (pos? redirects-left))
+                               (redirect-target current-url location))]
+               (if (and candidate (nil? (connect-refusal-reason candidate allowed-origins)))
+                 (recur candidate (dec redirects-left))
+                 (select-keys resp [:bytes])))))))))
 
 #?(:cljs
    (defn production-transport
@@ -693,3 +909,50 @@
                           :error? (boolean (:error result))
                           :latency-ms (- (js/Date.now) started)})
             result))))))
+
+#?(:cljs
+   (defn production-get-stream-transport
+     "nbb/cljs production transport for `:http/get-stream` (ADR 0128).
+     Same spawnSync hop pattern as `production-transport`, method GET,
+     body returned as host `:bytes` (Uint8Array via base64 hop payload)."
+     ([] (production-get-stream-transport {}))
+     ([{:keys [allowed-origins max-redirects connect-timeout-ms
+               timeout-ms on-call]
+        :or {max-redirects default-max-redirects
+             connect-timeout-ms default-connect-timeout-ms
+             timeout-ms default-get-stream-timeout-ms
+             on-call (fn [_])}}]
+      (when-not (and (set? allowed-origins) (seq allowed-origins) (every? string? allowed-origins))
+        (throw (ex-info "http-transport get-stream requires a non-empty :allowed-origins set"
+                        {:phase :http-transport})))
+      (doseq [origin allowed-origins]
+        (when-not (= origin (canonical-origin origin))
+          (throw (ex-info "http-transport :allowed-origins entries must already be canonical https origins"
+                          {:phase :http-transport :origin origin}))))
+      (when-not (and (integer? max-redirects) (<= 0 max-redirects 20))
+        (throw (ex-info "http-transport :max-redirects must be a small bounded integer in [0, 20]"
+                        {:phase :http-transport :max-redirects max-redirects})))
+      (when-not (and (integer? timeout-ms) (pos? timeout-ms))
+        (throw (ex-info "http-transport get-stream :timeout-ms must be a positive integer"
+                        {:phase :http-transport :timeout-ms timeout-ms})))
+      (let [allowed-origins-set (set allowed-origins)
+            hop-timeout (long timeout-ms)]
+        (fn [{:keys [operation url headers]}]
+          (when-not (or (nil? operation) (= :get-stream operation))
+            (throw (ex-info "production-get-stream-transport only accepts :get-stream"
+                            {:phase :http-transport :operation operation})))
+          (let [started (js/Date.now)
+                safe-audit! (fn [event] (try (on-call event) (catch :default _ nil)))
+                result (follow-and-collect-get!
+                        {:allowed-origins allowed-origins-set
+                         :max-redirects max-redirects}
+                        url (or headers {}) hop-timeout)]
+            (safe-audit! {:url url
+                          :operation :get-stream
+                          :error? (boolean (:error result))
+                          :latency-ms (- (js/Date.now) started)})
+            (if (:error result)
+              (throw (ex-info "http get-stream destination blocked"
+                              {:phase :http-transport
+                               :error (:error result)}))
+              result)))))))
