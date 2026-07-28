@@ -27,4 +27,20 @@
    :capabilities [{:name :clock/now :id 7}]}
   {:name :log :version 1
    :resource "kotoba/lang/capability-kits/log-v1.edn"
-   :capabilities [{:name :log/read :id 5} {:name :log/append :id 6}]}]}
+   :capabilities [{:name :log/read :id 5} {:name :log/append :id 6}]}
+
+  {:name :secret :version 1
+   :resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :capabilities [{:name :secret/get :id 21}]}
+  {:name :process :version 1
+   :resource "kotoba/lang/capability-kits/process-v1.edn"
+   :capabilities [{:name :process/spawn :id 20}]}
+  {:name :scoped-fs :version 1
+   :resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :capabilities [{:name :fs/transact :id 19}]}
+  {:name :git :version 1
+   :resource "kotoba/lang/capability-kits/git-v1.edn"
+   :capabilities [{:name :git/run :id 22}]}
+  {:name :entropy :version 1
+   :resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :capabilities [{:name :entropy/draw :id 23}]}]}
