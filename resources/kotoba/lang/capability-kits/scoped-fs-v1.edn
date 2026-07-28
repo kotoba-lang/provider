@@ -1,0 +1,31 @@
+{:kotoba.capability-kit/name :scoped-fs
+ :kotoba.capability-kit/version 1
+ :capability {:name :fs/transact :id 19}
+ :semantics {:operations [:read :write]
+             :ambient-filesystem false
+             :path-policy :root-relative-no-escape
+             :destination-authority :host-declared-roots
+             :execution :synchronous-reference}
+ :limits {:path-bytes 1024 :value-bytes 65536}
+ :request
+ [:variant :kotoba.fs/request
+  [[:read [:record :kotoba.fs/read-request
+            [[:root :keyword] [:path :string]]]]
+   [:write [:record :kotoba.fs/write-request
+             [[:root :keyword] [:path :string] [:value :string]]]]]]
+ :result
+ [:variant :kotoba.fs/result
+  [[:content :string]
+   [:written :bool]
+   [:error [:record :kotoba.fs/error
+             [[:code :keyword] [:message :string]]]]]]
+ :transports
+ {:mem :test
+  :os-store-jvm :landed
+  :os-store-cljs :landed}
+ :qualification {:reference :implemented
+                 :dual-runtime-os-transport :landed
+                 :wasm-aot :pending
+                 :native-aot :pending
+                 :jit :pending
+                 :signed-content-addressed-package :pending}}

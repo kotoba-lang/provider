@@ -1,0 +1,27 @@
+{:kotoba.capability-kit/name :entropy
+ :kotoba.capability-kit/version 1
+ :capability {:name :entropy/draw :id 23}
+ :semantics {:operation :csprng-draw
+             :ambient-random false
+             :encoding :lowercase-hex
+             :destination-authority :host-injected-draw
+             :execution :synchronous-reference}
+ :limits {:draw-bytes [1 64]}
+ :request
+ [:record :kotoba.entropy/draw-request
+  [[:n :i64]]]
+ :result
+ [:variant :kotoba.entropy/reply
+  [[:hex :string]
+   [:error [:record :kotoba.entropy/error
+             [[:code :keyword] [:message :string]]]]]]
+ :transports
+ {:fixed :test
+  :os-draw-jvm :landed
+  :os-draw-cljs :landed}
+ :qualification {:reference :implemented
+                 :dual-runtime-os-transport :landed
+                 :wasm-aot :pending
+                 :native-aot :pending
+                 :jit :pending
+                 :signed-content-addressed-package :pending}}
