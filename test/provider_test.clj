@@ -393,3 +393,9 @@
           (is (zero? exit))
           (is (pos? (count (str/trim stdout))))))
       (is true "skip when no .git or git binary"))))
+
+(deftest git-os-run-rejects-relative-paths
+  (is (thrown-with-msg? Exception #"absolute :git-bin"
+        (git-transport/os-run {:git-bin "git" :worktree "/tmp"})))
+  (is (thrown-with-msg? Exception #"absolute :worktree"
+        (git-transport/os-run {:git-bin "/usr/bin/git" :worktree "relative"}))))
