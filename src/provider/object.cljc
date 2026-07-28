@@ -73,22 +73,34 @@
                     {:phase :object-provider :context context})))
   reply)
 
-(defn- as-ready-bytes-task!
-  "Transport returns `{:bytes <host-bytes>}` (or a raw bytes value). Wrap as
-  a ready `[:task [:stream :bytes]]` host handle."
+(defn- as-bytes-task!
+  "Transport returns:
+   - host `:bytes` or `{:bytes <bytes>}` → ready task
+   - `{:pending true}` → pending task (host later `value/task-fulfill!`)
+   - `{:bytes ... :chunks [...]}` → ready task over concatenated chunks
+  ADR 0123 pending→ready + multi-chunk first slice."
   [reply]
-  (let [payload (cond
-                  (value/bytes-value? reply) reply
-                  (and (map? reply) (value/bytes-value? (:bytes reply))) (:bytes reply)
-                  :else (throw (ex-info "object get-stream transport must return bytes"
-                                        {:phase :object-provider})))]
-    (value/make-ready-bytes-task (bounded-payload! payload))))
+  (cond
+    (and (map? reply) (true? (:pending reply)))
+    (value/make-pending-bytes-task)
+
+    (and (map? reply) (sequential? (:chunks reply)) (seq (:chunks reply)))
+    (value/make-ready-bytes-task
+     (value/concat-bytes (mapv bounded-payload! (:chunks reply))))
+
+    :else
+    (let [payload (cond
+                    (value/bytes-value? reply) reply
+                    (and (map? reply) (value/bytes-value? (:bytes reply))) (:bytes reply)
+                    :else (throw (ex-info "object get-stream transport must return bytes or pending"
+                                          {:phase :object-provider})))]
+      (value/make-ready-bytes-task (bounded-payload! payload)))))
 
 (defn get-stream-provider
   "Typed provider for `:object/get-stream` (id 14).
   Transport receives `{:operation :get-stream :binding :key}` and returns
   either a host `:bytes` payload or `{:bytes <bytes>}`. Result is always a
-  ready bytes-task (pending/cancel timing is a later slice)."
+  ready or pending bytes-task (pending→ready via value/task-fulfill!, ADR 0123)."
   [{:keys [allowed-bindings transport]}]
   (when-not (and (set? allowed-bindings)
                  (every? qualified-keyword? allowed-bindings)
@@ -111,7 +123,7 @@
      (when (zero? (value/utf8-byte-count! key))
        (throw (ex-info "object stream key must be non-empty"
                        {:phase :object-provider})))
-     (as-ready-bytes-task!
+     (as-bytes-task!
       (invoke-transport transport
                         {:operation :get-stream
                          :binding binding
