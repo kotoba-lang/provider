@@ -15,7 +15,9 @@
             [provider.state :as state]
             [provider.storage]
             [provider.storage-transport]
-            [provider.ui]))
+            [provider.ui]
+            [provider.scoped-fs :as scoped-fs]
+            [provider.process :as process]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -34,7 +36,9 @@
   (is (some? (find-ns 'provider.state)) "provider.state must load")
   (is (some? (find-ns 'provider.storage)) "provider.storage must load")
   (is (some? (find-ns 'provider.storage-transport)) "provider.storage-transport must load")
-  (is (some? (find-ns 'provider.ui)) "provider.ui must load"))
+  (is (some? (find-ns 'provider.ui)) "provider.ui must load")
+  (is (some? (find-ns 'provider.scoped-fs)) "provider.scoped-fs must load")
+  (is (some? (find-ns 'provider.process)) "provider.process must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -106,3 +110,53 @@
     (is (= "put-block" (get body "operation")))
     (is (string? (get body "bytes_base64")))
     (is (seq (get body "bytes_base64")))))
+
+
+(deftest scoped-fs-resolve-path-rejects-escapes
+  (is (= {:ok "a/b"} (scoped-fs/resolve-path "a/b")))
+  (is (= {:ok "a/b"} (scoped-fs/resolve-path "a//b/")))
+  (is (= :fs/absolute (:error (scoped-fs/resolve-path "/etc/passwd"))))
+  (is (= :fs/home-escape (:error (scoped-fs/resolve-path "~/secret"))))
+  (is (= :fs/escape (:error (scoped-fs/resolve-path "a/../b"))))
+  (is (= :fs/escape (:error (scoped-fs/resolve-path "a/./b"))))
+  (is (= :fs/empty-path (:error (scoped-fs/resolve-path ""))))
+  (is (= :fs/backslash (:error (scoped-fs/resolve-path "a\\b")))))
+
+(deftest scoped-fs-mem-store-read-write-roundtrip
+  (let [store (scoped-fs/mem-store {:cache/tmp {"hello.txt" "hi"}})
+        ps (:providers (scoped-fs/create-providers
+                        {:allowed-roots #{:cache/tmp}
+                         :store store}))
+        p (get ps scoped-fs/capability-id)
+        read-req [scoped-fs/request-type :read
+                  [scoped-fs/read-request-type :cache/tmp "hello.txt"]]
+        write-req [scoped-fs/request-type :write
+                   [scoped-fs/write-request-type :cache/tmp "hello.txt" "bye"]]
+        found ((:invoke p) read-req)
+        written ((:invoke p) write-req)
+        found2 ((:invoke p) read-req)
+        escape [scoped-fs/request-type :read
+                [scoped-fs/read-request-type :cache/tmp "../x"]]]
+    (is (= :content (second found)))
+    (is (= "hi" (nth found 2)))
+    (is (= :written (second written)))
+    (is (= "bye" (nth found2 2)))
+    (is (= :error (second ((:invoke p) escape))))))
+
+(deftest process-validate-spawn-policy
+  (is (nil? (process/validate-spawn ["echo" "hi"] 100 1000 #{"echo"})))
+  (is (= :process/empty-argv (process/validate-spawn [] 100 1000 #{"echo"})))
+  (is (= :process/not-allowed (process/validate-spawn ["rm" "-rf"] 100 1000 #{"echo"})))
+  (is (= :process/path-command (process/validate-spawn ["/bin/echo" "x"] 100 1000 #{"echo"})))
+  (is (= :process/bad-max-stdout (process/validate-spawn ["echo"] 0 1000 #{"echo"}))))
+
+(deftest process-echo-transport-roundtrip
+  (let [ps (:providers (process/create-providers
+                        {:allowed-commands #{"echo"}
+                         :spawn (process/echo-transport)}))
+        p (get ps process/capability-id)
+        reply ((:invoke p) [process/spawn-request-type ["echo" "a" "b"] 1024 5000])]
+    (is (= :ok (second reply)))
+    (let [[_ _exit stdout _stderr] (nth reply 2)]
+      (is (= 0 _exit))
+      (is (= "a b" stdout)))))
