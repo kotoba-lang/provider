@@ -1,5 +1,7 @@
 (ns provider.http
-  "Bounded HTTPS reference provider. Network authority remains host-owned.
+  "Bounded HTTPS reference providers. Network authority remains host-owned.
+
+  POST (:http/post id 4) and GET-stream (:http/get-stream id 13, ADR 0122).
 
   `:timeout-ms` and response `:status` are `:i64` ABI fields. On `:cljs` the
   canonical representation is JS `bigint` (same rule ADR 0073 applied to
@@ -30,12 +32,22 @@
 (def result-type
   [:variant :kotoba.http/result [[:ok response-type] [:error error-type]]])
 
+(def get-stream-capability-id 13)
+(def max-pull-bytes 65536)
+
+(def get-stream-request-type
+  [:record :kotoba.http/get-stream-request
+   [[:url :string] [:headers header-set-type]]])
+
+(def get-stream-result-type [:task [:stream :bytes]])
+
 (def schemas
   {:kotoba.http/header header-type
    :kotoba.http/post-request request-type
    :kotoba.http/response response-type
    :kotoba.http/error error-type
-   :kotoba.http/result result-type})
+   :kotoba.http/result result-type
+   :kotoba.http/get-stream-request get-stream-request-type})
 
 (defn- https-origin [url]
   (value/bounded-string! url max-url-bytes)
@@ -158,3 +170,56 @@
                status* (canonical-status status)]
            (value/bounded-string! body value/string-value-byte-limit)
            [result-type :ok [response-type status* (typed-headers headers) body]]))))})
+
+
+(defn- invoke-get-stream-transport [transport request]
+  (try
+    (transport request)
+    (catch #?(:clj Throwable :cljs :default) _
+      (throw (ex-info "http get-stream transport failed"
+                      {:phase :http-provider})))))
+
+(defn- as-ready-bytes-task!
+  "Transport returns host `:bytes` or `{:bytes <bytes>}`. Wrap as ready task."
+  [reply]
+  (let [payload (cond
+                  (value/bytes-value? reply) reply
+                  (and (map? reply) (value/bytes-value? (:bytes reply))) (:bytes reply)
+                  :else (throw (ex-info "http get-stream transport must return bytes"
+                                        {:phase :http-provider})))]
+    (when (> (value/bytes-byte-count payload) max-pull-bytes)
+      (throw (ex-info "http get-stream payload exceeds max-pull-bytes"
+                      {:phase :http-provider})))
+    (value/make-ready-bytes-task (value/bounded-bytes! payload max-pull-bytes))))
+
+(defn get-stream-provider
+  "Typed provider for `:http/get-stream` (id 13).
+  `allowed-origins` is the same exact-origin allowlist as POST.
+  Transport receives `{:operation :get-stream :url :headers}` and returns
+  host `:bytes` or `{:bytes <bytes>}`. Result is always a ready bytes-task."
+  [{:keys [allowed-origins transport]}]
+  (when-not (and (set? allowed-origins) (every? string? allowed-origins))
+    (throw (ex-info "HTTP allowed-origins must be a set of strings"
+                    {:phase :http-provider})))
+  (doseq [origin allowed-origins]
+    (when-not (= origin (https-origin origin))
+      (throw (ex-info "HTTP allowed origin must be canonical"
+                      {:phase :http-provider :origin origin}))))
+  (when-not (fn? transport)
+    (throw (ex-info "HTTP transport must be a function" {:phase :http-provider})))
+  {:request-type get-stream-request-type
+   :result-type get-stream-result-type
+   :invoke
+   (fn [[actual-type url [_ headers]]]
+     (when-not (= actual-type get-stream-request-type)
+       (throw (ex-info "HTTP get-stream contract mismatch" {:phase :http-provider})))
+     (let [origin (https-origin url)]
+       (when-not (contains? allowed-origins origin)
+         (throw (ex-info "HTTP origin is not allowed"
+                         {:phase :http-provider :origin origin}))))
+     (validate-headers! headers)
+     (as-ready-bytes-task!
+      (invoke-get-stream-transport
+       transport {:operation :get-stream
+                  :url url
+                  :headers (header-map headers)})))})
