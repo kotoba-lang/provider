@@ -548,6 +548,79 @@
           (= :ready (:package s))
           (= :ready (:signed-wasm s))))))
 
+(def manifest-format :kotoba.kit-package.manifest/v1)
+
+(defn production-claim-blockers
+  "Honest list of why a package cannot claim production signed provider.
+  Empty only when readiness signed-wasm gate + real (non-fixture) signed
+  kit EDN + signed Wasm receipts are all present."
+  [readiness-row kit-receipt wasm-receipt]
+  (let [s (:scores readiness-row)
+        blockers (transient [])]
+    (when-not (= :ready (:schema s)) (conj! blockers :schema-not-ready))
+    (when-not (= :ready (:dual-runtime s)) (conj! blockers :dual-runtime-not-ready))
+    (when-not (= :ready (:deny-fixtures s)) (conj! blockers :deny-fixtures-not-ready))
+    (when-not (= :ready (:quota s)) (conj! blockers :quota-not-ready))
+    (when-not (= :ready (:package s)) (conj! blockers :package-not-ready))
+    (when-not (= :ready (:signed-wasm s)) (conj! blockers :signed-wasm-not-ready))
+    (when-not (:signed-kit-receipt? kit-receipt)
+      (conj! blockers :kit-edn-receipt-unsigned))
+    (when-not (:signed-wasm-provider? wasm-receipt)
+      (conj! blockers :wasm-receipt-unsigned))
+    (when (or (:fixture? wasm-receipt)
+              (= :fixture-synthetic (:artifact-kind wasm-receipt)))
+      (conj! blockers :wasm-artifact-is-fixture))
+    (when (and kit-receipt wasm-receipt
+               (string? (:kit-edn-digest wasm-receipt))
+               (string? (get-in kit-receipt [:package :digest]))
+               (not= (:kit-edn-digest wasm-receipt)
+                     (get-in kit-receipt [:package :digest])))
+      (conj! blockers :kit-wasm-digest-mismatch))
+    (persistent! blockers)))
+
+(defn package-manifest
+  "Content-addressed package descriptor binding kit EDN + Wasm layers.
+
+  opts:
+    :kit-name keyword
+    :kit-resource path string
+    :kit-receipt map (unsigned or signed kit EDN receipt)
+    :wasm-receipt map (unsigned or signed wasm receipt)
+    :readiness-row from kit-readiness-v1
+
+  Honesty:
+  - `:production-signed-claim?` is true **only** when blockers is empty
+    (readiness signed-wasm ready + real non-fixture signed receipts).
+  - Fixture empty-module digests always leave blockers non-empty.
+  - Does not flip readiness scores; inventory uses this as the publish shape."
+  [{:keys [kit-name kit-resource kit-receipt wasm-receipt readiness-row]}]
+  (when-not readiness-row
+    (throw (ex-info "package-manifest requires :readiness-row" {:phase :kit-package})))
+  (let [blockers (production-claim-blockers readiness-row kit-receipt wasm-receipt)
+        claim? (empty? blockers)]
+    {:format manifest-format
+     :name kit-name
+     :resource kit-resource
+     :kit-id (:id readiness-row)
+     :layers
+     {:kit-edn
+      {:digest (get-in kit-receipt [:package :digest])
+       :signed? (boolean (:signed-kit-receipt? kit-receipt))
+       :format (:format kit-receipt)}
+      :wasm
+      {:digest (get-in wasm-receipt [:artifact :digest])
+       :signed? (boolean (:signed-wasm-provider? wasm-receipt))
+       :artifact-kind (:artifact-kind wasm-receipt)
+       :fixture? (boolean (:fixture? wasm-receipt))
+       :format (:format wasm-receipt)
+       :kit-edn-digest (:kit-edn-digest wasm-receipt)}}
+     :scores (:scores readiness-row)
+     :production-signed-claim? claim?
+     :blockers blockers
+     :note (if claim?
+             "production signed provider package"
+             "incomplete package; see :blockers — fixture/API receipts do not claim production")}))
+
 (defn readiness-receipt
   "Compact receipt for inventory.
   Optional second arg: kit package receipt.
@@ -555,13 +628,22 @@
   ([row] (readiness-receipt row nil nil))
   ([row package-receipt] (readiness-receipt row package-receipt nil))
   ([row package-receipt wasm-receipt]
-   {:name (:name row)
-    :id (:id row)
-    :scores (:scores row)
-    :package-digest (get-in package-receipt [:package :digest])
-    :signed-kit-receipt? (boolean (:signed-kit-receipt? package-receipt))
-    :wasm-artifact-digest (get-in wasm-receipt [:artifact :digest])
-    :signed-wasm-provider? (boolean (:signed-wasm-provider? wasm-receipt))
-    :wasm-fixture? (boolean (:fixture? wasm-receipt))
-    :production-signed-claim-allowed? (production-signed-allowed? row)
-    :evidence (:evidence row)}))
+   (let [manifest (when (or package-receipt wasm-receipt)
+                    (package-manifest
+                     {:kit-name (:name row)
+                      :kit-resource (:resource row)
+                      :kit-receipt package-receipt
+                      :wasm-receipt wasm-receipt
+                      :readiness-row row}))]
+     {:name (:name row)
+      :id (:id row)
+      :scores (:scores row)
+      :package-digest (get-in package-receipt [:package :digest])
+      :signed-kit-receipt? (boolean (:signed-kit-receipt? package-receipt))
+      :wasm-artifact-digest (get-in wasm-receipt [:artifact :digest])
+      :signed-wasm-provider? (boolean (:signed-wasm-provider? wasm-receipt))
+      :wasm-fixture? (boolean (:fixture? wasm-receipt))
+      :production-signed-claim-allowed? (production-signed-allowed? row)
+      :production-signed-claim? (boolean (:production-signed-claim? manifest))
+      :package-blockers (:blockers manifest)
+      :evidence (:evidence row)})))
