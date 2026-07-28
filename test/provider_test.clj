@@ -22,7 +22,8 @@
             [provider.process :as process]
             [provider.process-transport :as process-transport]
             [provider.secret :as secret]
-            [provider.secret-transport :as secret-transport]))
+            [provider.secret-transport :as secret-transport]
+            [provider.git :as git]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -47,7 +48,8 @@
   (is (some? (find-ns 'provider.process)) "provider.process must load")
   (is (some? (find-ns 'provider.process-transport)) "provider.process-transport must load")
   (is (some? (find-ns 'provider.secret)) "provider.secret must load")
-  (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load"))
+  (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load")
+  (is (some? (find-ns 'provider.git)) "provider.git must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -343,3 +345,29 @@
     (is (thrown-with-msg? Exception #"name→\{:service :account\}"
           (secret-transport/keychain-fetch
            {"x" {:service "s*" :account "a"}})))))
+
+
+(deftest git-validate-run-policy
+  (is (nil? (git/validate-run ["status" "--porcelain"] 100 1000)))
+  (is (nil? (git/validate-run ["rev-parse" "HEAD"] 100 1000)))
+  (is (= :git/subcommand-not-allowed
+         (git/validate-run ["push" "origin" "main"] 100 1000)))
+  (is (= :git/path-escape
+         (git/validate-run ["show" "/etc/passwd"] 100 1000)))
+  (is (= :git/path-escape
+         (git/validate-run ["log" "../x"] 100 1000)))
+  (is (= :git/empty-args (git/validate-run [] 100 1000))))
+
+(deftest git-echo-transport-roundtrip
+  (let [ps (:providers (git/create-providers
+                        {:run (git/echo-transport)
+                         :allowed-subcommands git/default-allowed-subcommands}))
+        p (get ps git/capability-id)
+        req [git/run-request-type ["status" "--short"] 1024 5000]
+        reply ((:invoke p) req)]
+    (is (= git/reply-type (first reply)))
+    (is (= :ok (second reply)))
+    (let [[_ exit stdout stderr] (nth reply 2)]
+      (is (zero? exit))
+      (is (= "status --short" stdout))
+      (is (= "" stderr)))))
