@@ -51,3 +51,52 @@
         names (set (map :name (:kits table)))]
     (doseq [n [:http :secret :process :scoped-fs :object :storage]]
       (is (contains? names n) (str n)))))
+
+(deftest signing-input-canonical
+  (is (= "kotoba.kit-package.signed/v1\nsha256\nabc\npath/x.edn\n"
+         (kit/signing-input {:digest "abc" :resource "path/x.edn"}))))
+
+(deftest signed-kit-receipt-round-trip
+  (let [path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        unsigned (kit/kit-package-receipt :secret path text)
+        {:keys [sign verify]} (kit/test-hmac-signer "test-secret-key")
+        signed (kit/sign-kit-package-receipt unsigned sign)
+        v (kit/verify-kit-package-receipt signed verify)]
+    (is (true? (:signed-kit-receipt? signed)))
+    (is (true? (get-in signed [:package :signed?])))
+    (is (false? (:signed-wasm-provider? signed)))
+    (is (false? (:production-signed-claim? signed)))
+    (is (true? (:ok? v)))
+    (is (= :signed-kit-edn-receipt (:layer v)))
+    (is (false? (:signed-wasm-provider? v)))
+    (is (= (get-in unsigned [:package :digest]) (:digest v)))))
+
+(deftest signed-kit-receipt-rejects-forgery
+  (let [path "kotoba/lang/capability-kits/http-v1.edn"
+        text (slurp (io/resource path))
+        unsigned (kit/kit-package-receipt :http path text)
+        a (kit/test-hmac-signer "key-a")
+        b (kit/test-hmac-signer "key-b")
+        signed (kit/sign-kit-package-receipt unsigned (:sign a))
+        bad (kit/verify-kit-package-receipt signed (:verify b))
+        tampered (assoc-in signed [:package :digest] (kit/sha256-hex "nope"))
+        bad2 (kit/verify-kit-package-receipt tampered (:verify a))]
+    (is (false? (:ok? bad)))
+    (is (= :bad-signature (:reason bad)))
+    (is (false? (:ok? bad2)))
+    (is (= :signing-input-mismatch (:reason bad2)))))
+
+(deftest readiness-still-blocks-production-claim-after-signed-kit
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        secret (kit/readiness-for table :secret)
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "k")
+        signed (kit/sign-kit-package-receipt
+                (kit/kit-package-receipt :secret path text) sign)
+        rr (kit/readiness-receipt secret signed)]
+    (is (true? (:signed-kit-receipt? rr)))
+    (is (false? (:production-signed-claim-allowed? rr))
+        "signed kit EDN receipt must not imply production signed Wasm")))
