@@ -14,7 +14,11 @@
   :ambient-object-store false}
  :capabilities
   [{:name :http/get-stream :id 13
-   :request :i64
+   :request
+   [:record :kotoba.http/get-stream-request
+    [[:url :string]
+     [:headers [:set [:record :kotoba.http/header
+                      [[:name :keyword] [:value :string]]]]]]]
    :result [:task [:stream :bytes]]}
   {:name :object/get-stream :id 14
    :request
