@@ -11,8 +11,12 @@
      host-injected sign over content-address of Wasm **bytes** + kit resource
      binding. Does **not** emit AOT Wasm; does **not** flip readiness
      `:signed-wasm` to ready until a real Component package + full gate exist.
+  4. **Real non-fixture Wasm package bytes** (T8.3 packaging pilot, ADR 0159) —
+     classpath `wasm-packages/*` registry + loaders. Real module digests remove
+     the fixture blocker; production claim still requires readiness
+     `:signed-wasm :ready`.
 
-  See ADR 0152–0155."
+  See ADR 0152–0159."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
@@ -22,6 +26,7 @@
                    (java.nio.charset StandardCharsets))))
 
 (def readiness-resource "kotoba/lang/kit-readiness-v1.edn")
+(def wasm-packages-resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")
 (def receipt-format :kotoba.kit-package/v1)
 (def signed-receipt-format :kotoba.kit-package.signed/v1)
 (def wasm-receipt-format :kotoba.kit-package.wasm/v1)
@@ -305,6 +310,56 @@
      (throw (ex-info "load-fixture-wasm-bytes requires inject on cljs"
                      {:phase :kit-package}))))
 
+(defn load-wasm-package-bytes
+  "Load real (non-fixture) Wasm package bytes from classpath resource path.
+  Unlike `load-fixture-wasm-bytes`, these are content-addressed provider modules
+  (see `wasm-packages-v1.edn`). Still **not** a production signed claim by itself."
+  ([resource-path]
+   #?(:clj
+      (if-let [url (io/resource resource-path)]
+        (let [in (io/input-stream url)
+              out (java.io.ByteArrayOutputStream.)]
+          (io/copy in out)
+          (.toByteArray out))
+        (throw (ex-info "wasm package resource missing"
+                        {:phase :kit-package :path resource-path})))
+      :cljs
+      (throw (ex-info "load-wasm-package-bytes requires inject on cljs"
+                      {:path resource-path :hint "pass loader"}))))
+  ([resource-path loader]
+   (or (loader resource-path)
+       (throw (ex-info "wasm package resource missing"
+                       {:phase :kit-package :path resource-path})))))
+
+(defn wasm-packages-table
+  "Parse wasm-packages-v1.edn registry text."
+  [edn-text]
+  (edn/read-string edn-text))
+
+(defn wasm-package-for
+  "Lookup one wasm package registry row by name keyword."
+  [table package-name]
+  (first (filter #(= package-name (:name %)) (:packages table))))
+
+(defn load-wasm-packages-table
+  "Load shipped wasm-packages-v1.edn from classpath (JVM)."
+  []
+  #?(:clj
+     (if-let [url (io/resource wasm-packages-resource)]
+       (wasm-packages-table (slurp url))
+       (throw (ex-info "wasm-packages-v1.edn missing" {:phase :kit-package})))
+     :cljs
+     (throw (ex-info "load-wasm-packages-table requires inject on cljs"
+                     {:phase :kit-package}))))
+
+(defn verify-wasm-package-digest
+  "True when bytes match registry entry `:sha256` (content-address check)."
+  [entry wasm-bytes]
+  (and (map? entry)
+       (string? (:sha256 entry))
+       (= (str/lower-case (:sha256 entry))
+          (str/lower-case (sha256-hex-bytes wasm-bytes)))))
+
 (defn sign-kit-package-receipt
   "Attach a host signature to an unsigned kit package receipt.
 
@@ -424,6 +479,29 @@
       :signed-kit-receipt? false
       :signed-wasm-provider? false
       :fixture? (= kind :fixture-synthetic)})))
+
+(defn real-wasm-provider-receipt
+  "Build an unsigned Wasm provider receipt from a registry entry + real bytes.
+  Forces non-fixture artifact-kind from the registry (never fixture-synthetic)."
+  [entry wasm-bytes]
+  (when-not (map? entry)
+    (throw (ex-info "real-wasm-provider-receipt requires registry entry"
+                    {:phase :kit-package})))
+  (when (or (:fixture? entry) (= :fixture-synthetic (:artifact-kind entry)))
+    (throw (ex-info "real-wasm-provider-receipt rejects fixture entries"
+                    {:phase :kit-package :name (:name entry)})))
+  (when-not (verify-wasm-package-digest entry wasm-bytes)
+    (throw (ex-info "wasm package digest mismatch"
+                    {:phase :kit-package
+                     :name (:name entry)
+                     :expected (:sha256 entry)
+                     :got (sha256-hex-bytes wasm-bytes)})))
+  (wasm-provider-receipt
+   (:name entry)
+   (or (:kit-resource entry) (:resource entry))
+   wasm-bytes
+   {:artifact-kind (or (:artifact-kind entry) :wasm-module)
+    :media-type (or (:media-type entry) "application/wasm")}))
 
 (defn sign-wasm-provider-receipt
   "Attach a host signature to an unsigned Wasm provider receipt.
@@ -592,6 +670,8 @@
   - `:production-signed-claim?` is true **only** when blockers is empty
     (readiness signed-wasm ready + real non-fixture signed receipts).
   - Fixture empty-module digests always leave blockers non-empty.
+  - Real non-fixture wasm (ADR 0159) removes `:wasm-artifact-is-fixture` only;
+    `:signed-wasm-not-ready` remains until readiness flips.
   - Does not flip readiness scores; inventory uses this as the publish shape."
   [{:keys [kit-name kit-resource kit-receipt wasm-receipt readiness-row]}]
   (when-not readiness-row

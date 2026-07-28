@@ -304,3 +304,84 @@
     (is (some #{:wasm-artifact-is-fixture} (:blockers m)))
     (is (false? (:production-signed-claim? rr)))
     (is (seq (:package-blockers rr)))))
+
+(deftest wasm-packages-registry-hash-sha256
+  (let [table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for table :hash-sha256)
+        bytes (kit/load-wasm-package-bytes (:resource entry))]
+    (is (= 1 (:kotoba.wasm-packages/version table)))
+    (is (some? entry))
+    (is (false? (:fixture? entry)))
+    (is (= :wasm-module (:artifact-kind entry)))
+    (is (= 64 (count (:sha256 entry))))
+    (is (true? (kit/verify-wasm-package-digest entry bytes)))
+    (is (= (:sha256 entry) (kit/sha256-hex-bytes bytes)))
+    ;; magic \0asm
+    (is (= [0x00 0x61 0x73 0x6d] (map #(bit-and % 0xff) (take 4 bytes))))
+    (is (not= (seq kit/empty-wasm-module-bytes) (seq bytes))
+        "real package must not be empty-module fixture")))
+
+(deftest real-wasm-provider-receipt-not-fixture
+  (let [table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for table :hash-sha256)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        rec (kit/real-wasm-provider-receipt entry bytes)]
+    (is (= :hash-sha256 (:name rec)))
+    (is (= :wasm-module (:artifact-kind rec)))
+    (is (false? (:fixture? rec)))
+    (is (false? (:signed-wasm-provider? rec)))
+    (is (false? (:production-signed-claim? rec)))
+    (is (= (:sha256 entry) (get-in rec [:artifact :digest])))))
+
+(deftest real-wasm-rejects-digest-mismatch
+  (let [table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for table :hash-sha256)]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"digest mismatch"
+          (kit/real-wasm-provider-receipt entry kit/empty-wasm-module-bytes)))))
+
+(deftest package-manifest-real-wasm-still-blocks-signed-wasm-score
+  "Real non-fixture wasm removes :wasm-artifact-is-fixture but readiness
+   :signed-wasm stays pending — production claim remains false (ADR 0159)."
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        row (kit/readiness-for table :hash-sha256)
+        path "kotoba/lang/capability-kits/hash-sha256-v1.edn"
+        text (slurp (io/resource path))
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :hash-sha256)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        {:keys [sign]} (kit/test-hmac-signer "real-wasm-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :hash-sha256 path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt entry bytes)
+                      kit-signed)
+                     sign)
+        m (kit/package-manifest
+           {:kit-name :hash-sha256
+            :kit-resource path
+            :kit-receipt kit-signed
+            :wasm-receipt wasm-signed
+            :readiness-row row})
+        rr (kit/readiness-receipt row kit-signed wasm-signed)]
+    (is (some? row))
+    (is (= :pending (get-in row [:scores :signed-wasm])))
+    (is (true? (get-in m [:layers :kit-edn :signed?])))
+    (is (true? (get-in m [:layers :wasm :signed?])))
+    (is (false? (get-in m [:layers :wasm :fixture?])))
+    (is (= :wasm-module (get-in m [:layers :wasm :artifact-kind])))
+    (is (false? (:production-signed-claim? m)))
+    (is (some #{:signed-wasm-not-ready} (:blockers m)))
+    (is (not-any? #{:wasm-artifact-is-fixture} (:blockers m))
+        "real wasm must clear fixture blocker")
+    (is (not-any? #{:kit-edn-receipt-unsigned :wasm-receipt-unsigned} (:blockers m)))
+    (is (false? (:wasm-fixture? rr)))
+    (is (false? (:production-signed-claim? rr)))
+    (is (seq (:package-blockers rr)))))
+
+(deftest readiness-covers-hash-sha256-pilot
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        names (set (map :name (:kits table)))]
+    (is (contains? names :hash-sha256))))

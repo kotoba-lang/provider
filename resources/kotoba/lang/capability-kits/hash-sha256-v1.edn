@@ -1,0 +1,25 @@
+{:kotoba.capability-kit/name :hash-sha256
+ :kotoba.capability-kit/version 1
+ :capability {:name :hash/sha256 :id :pure-allowlist}
+ :semantics {:operation :sha256-hex
+             :ambient-crypto false
+             :destination-authority :in-module
+             :execution :synchronous-reference
+             :capability-package "kotoba-lang/capability-hash-sha256"}
+ :limits {:input-bytes 1048576 :output-hex-bytes 64}
+ :request
+ [:record :kotoba.hash/sha256-request
+  [[:input-ptr :i32]
+   [:input-len :i32]
+   [:out-ptr :i32]
+   [:out-cap :i32]]]
+ :result [:i32]
+ :transports
+ {:wasm-core :reference-implemented
+  :jvm-message-digest :reference-implemented}
+ :qualification {:reference :implemented
+                 :wasm-aot :partial
+                 :native-aot :pending
+                 :jit :pending
+                 :signed-content-addressed-package :pending
+                 :notes "Real wasm module bytes shipped under wasm-packages (ADR 0159). Signed production claim still pending readiness :signed-wasm."}}

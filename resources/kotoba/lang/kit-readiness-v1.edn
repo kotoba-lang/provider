@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 first-pass readiness scores for critical kits. signed-wasm remains pending everywhere — signed Wasm *receipt API* exists (ADR 0155) but fixture digests do not count as production; do not treat reference dual-runtime as production signed."
+ "T8.2 readiness + T8.3 packaging pilot. signed-wasm remains pending everywhere — real non-fixture wasm bytes may ship (ADR 0159 hash-sha256 pilot) but production signed claim requires readiness :signed-wasm :ready; fixtures and unsigned packages never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -109,4 +109,19 @@
             :host-parity :ready
             :package :ready
             :signed-wasm :pending}
-   :evidence ["storage-v1.edn" "provider.storage dual-runtime"]}]}
+   :evidence ["storage-v1.edn" "provider.storage dual-runtime"]}
+
+  {:name :hash-sha256
+   :id :pure-allowlist
+   :resource "kotoba/lang/capability-kits/hash-sha256-v1.edn"
+   :wasm-package "kotoba/lang/wasm-packages/hash-sha256-v1.wasm"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :n/a
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["capability-hash-sha256#1" "wasm-packages/hash-sha256-v1.wasm" "ADR 0159"]
+   :note "Pure allowlist pilot: real wasm module bytes content-addressed; signed production claim still pending."}]}

@@ -1,0 +1,21 @@
+{:kotoba.wasm-packages/version 1
+ :kotoba.wasm-packages/note
+ "Content-addressed Wasm provider package registry (T8.3 real-bytes pilot).
+  Entries are real module/component bytes — not empty-module fixtures.
+  Signing + readiness :signed-wasm remain separate gates (ADR 0159)."
+
+ :packages
+ [{:name :hash-sha256
+   :resource "kotoba/lang/wasm-packages/hash-sha256-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/hash-sha256-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "ffa8de62f3114aa8134d840e9ba4febee301cc6966eadea58ad4142ad679848a"
+   :source {:repository "kotoba-lang/capability-hash-sha256"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "hash/sha256"
+            :provider-status :reference-implemented}
+   :exports {"sha256_hex" {:params [:i32 :i32 :i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending
+   :note "Real FIPS 180-4 wasm core (capability-hash-sha256#1). Package path pilot only — not a production signed claim."}]}
