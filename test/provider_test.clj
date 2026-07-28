@@ -1,5 +1,6 @@
 (ns provider-test
-  (:require [clojure.test :refer [deftest is]]
+  (:require [clojure.string :as str]
+            [clojure.test :refer [deftest is]]
             [kotoba.kir.value :as value]
             [provider.conformance :as conformance]
             [provider.clock]
@@ -17,7 +18,9 @@
             [provider.storage-transport]
             [provider.ui]
             [provider.scoped-fs :as scoped-fs]
-            [provider.process :as process]))
+            [provider.scoped-fs-transport :as scoped-fs-transport]
+            [provider.process :as process]
+            [provider.process-transport :as process-transport]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -38,7 +41,9 @@
   (is (some? (find-ns 'provider.storage-transport)) "provider.storage-transport must load")
   (is (some? (find-ns 'provider.ui)) "provider.ui must load")
   (is (some? (find-ns 'provider.scoped-fs)) "provider.scoped-fs must load")
-  (is (some? (find-ns 'provider.process)) "provider.process must load"))
+  (is (some? (find-ns 'provider.scoped-fs-transport)) "provider.scoped-fs-transport must load")
+  (is (some? (find-ns 'provider.process)) "provider.process must load")
+  (is (some? (find-ns 'provider.process-transport)) "provider.process-transport must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -160,3 +165,60 @@
     (let [[_ _exit stdout _stderr] (nth reply 2)]
       (is (= 0 _exit))
       (is (= "a b" stdout)))))
+
+
+(deftest process-transport-resolve-binary-no-path-scan
+  (is (= "/bin/echo" (process-transport/resolve-binary {"echo" "/bin/echo"} "echo")))
+  (is (nil? (process-transport/resolve-binary {"echo" "/bin/echo"} "rm")))
+  (is (nil? (process-transport/resolve-binary {} "echo"))))
+
+(deftest process-os-spawn-runs-host-mapped-echo
+  (let [echo-bin (let [f (java.io.File. "/bin/echo")]
+                   (if (.canExecute f) "/bin/echo" "/usr/bin/echo"))
+        spawn (process-transport/os-spawn {:binaries {"echo" echo-bin}})
+        ps (:providers (process/create-providers
+                        {:allowed-commands #{"echo"}
+                         :spawn spawn}))
+        p (get ps process/capability-id)
+        reply ((:invoke p) [process/spawn-request-type ["echo" "hello-os"] 4096 5000])]
+    (is (= :ok (second reply)))
+    (let [[_ exit stdout _] (nth reply 2)]
+      (is (zero? exit))
+      (is (str/includes? stdout "hello-os")))))
+
+(deftest process-os-spawn-rejects-unmapped-binary
+  (let [spawn (process-transport/os-spawn {:binaries {"echo" "/bin/echo"}})
+        reply (spawn {:argv ["rm" "-rf" "/"] :max-stdout-bytes 100 :timeout-ms 1000})]
+    (is (= :error (:tag reply)))
+    (is (= :process/no-binary (:code reply)))))
+
+(deftest scoped-fs-under-root-prefix-check
+  (is (true? (scoped-fs-transport/under-root? "/var/cache" "/var/cache")))
+  (is (true? (scoped-fs-transport/under-root? "/var/cache" "/var/cache/a")))
+  (is (false? (scoped-fs-transport/under-root? "/var/cache" "/var/cache2/x")))
+  (is (false? (scoped-fs-transport/under-root? "/var/cache" "/etc/passwd"))))
+
+(deftest scoped-fs-os-store-roundtrip-under-temp-root
+  (let [dir (doto (java.io.File. (str (System/getProperty "java.io.tmpdir")
+                                      "/kotoba-fs-test-"
+                                      (System/currentTimeMillis)))
+              (.mkdirs))
+        store (scoped-fs-transport/os-store {:roots {:cache/tmp dir}})
+        ps (:providers (scoped-fs/create-providers
+                        {:allowed-roots #{:cache/tmp}
+                         :store store}))
+        p (get ps scoped-fs/capability-id)
+        write-req [scoped-fs/request-type :write
+                   [scoped-fs/write-request-type :cache/tmp "nested/hello.txt" "os-hi"]]
+        read-req [scoped-fs/request-type :read
+                  [scoped-fs/read-request-type :cache/tmp "nested/hello.txt"]]
+        escape [scoped-fs/request-type :read
+                [scoped-fs/read-request-type :cache/tmp "../outside"]]]
+    (is (= :written (second ((:invoke p) write-req))))
+    (let [found ((:invoke p) read-req)]
+      (is (= :content (second found)))
+      (is (= "os-hi" (nth found 2))))
+    (is (= :error (second ((:invoke p) escape))))
+    ;; cleanup
+    (doseq [f (reverse (file-seq dir))]
+      (.delete f))))
