@@ -20,7 +20,9 @@
             [provider.scoped-fs :as scoped-fs]
             [provider.scoped-fs-transport :as scoped-fs-transport]
             [provider.process :as process]
-            [provider.process-transport :as process-transport]))
+            [provider.process-transport :as process-transport]
+            [provider.secret :as secret]
+            [provider.secret-transport :as secret-transport]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -43,7 +45,9 @@
   (is (some? (find-ns 'provider.scoped-fs)) "provider.scoped-fs must load")
   (is (some? (find-ns 'provider.scoped-fs-transport)) "provider.scoped-fs-transport must load")
   (is (some? (find-ns 'provider.process)) "provider.process must load")
-  (is (some? (find-ns 'provider.process-transport)) "provider.process-transport must load"))
+  (is (some? (find-ns 'provider.process-transport)) "provider.process-transport must load")
+  (is (some? (find-ns 'provider.secret)) "provider.secret must load")
+  (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -222,3 +226,50 @@
     ;; cleanup
     (doseq [f (reverse (file-seq dir))]
       (.delete f))))
+
+
+(deftest secret-validate-name-policy
+  (is (nil? (secret/validate-name "cloudflare-api-token")))
+  (is (= :secret/empty-name (secret/validate-name "")))
+  (is (= :secret/wildcard (secret/validate-name "tok*")))
+  (is (= :secret/path-name (secret/validate-name "a/b")))
+  (is (= :secret/whitespace (secret/validate-name "a b"))))
+
+(deftest secret-mem-fetch-roundtrip-and-allowlist
+  (let [ps (:providers (secret/create-providers
+                        {:allowed-names #{"murakumo-token" "cloudflare-api-token"}
+                         :fetch (secret/mem-fetch
+                                 {"murakumo-token" "s3cr3t"
+                                  "cloudflare-api-token" "cf-tok"})}))
+        p (get ps secret/capability-id)
+        ok ((:invoke p) [secret/get-request-type "murakumo-token"])
+        denied ((:invoke p) [secret/get-request-type "other"])
+        ps2 (:providers (secret/create-providers
+                         {:allowed-names #{"murakumo-token"}
+                          :fetch (secret/mem-fetch {})}))
+        p2 (get ps2 secret/capability-id)
+        missing ((:invoke p2) [secret/get-request-type "murakumo-token"])]
+    (is (= :value (second ok)))
+    (is (= "s3cr3t" (nth ok 2)))
+    (is (= :error (second denied)))
+    (is (= :secret/not-allowed (second (nth denied 2))))
+    (is (= :error (second missing)))
+    (is (= :secret/not-found (second (nth missing 2))))))
+
+(deftest secret-env-fetch-reads-only-mapped-var
+  ;; Map a well-known process env var by exact name — never enumerates env.
+  (let [fetch (secret-transport/env-fetch {"path-probe" "PATH"})
+        ps (:providers (secret/create-providers
+                        {:allowed-names #{"path-probe"}
+                         :fetch fetch}))
+        p (get ps secret/capability-id)
+        ok ((:invoke p) [secret/get-request-type "path-probe"])
+        unmapped (fetch {:name "other"})
+        missing (secret-transport/env-fetch {"gone" "KOTOBA_SECRET_DEFINITELY_UNSET_XYZ"})]
+    (is (= :value (second ok)))
+    (is (string? (nth ok 2)))
+    (is (pos? (count (nth ok 2))))
+    (is (= :error (:tag unmapped)))
+    (is (= :secret/not-found (:code unmapped)))
+    (is (= :error (:tag (missing {:name "gone"}))))
+    (is (= :secret/not-found (:code (missing {:name "gone"}))))))
