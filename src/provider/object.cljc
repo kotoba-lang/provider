@@ -77,12 +77,17 @@
   "Transport returns:
    - host `:bytes` or `{:bytes <bytes>}` → ready task
    - `{:pending true}` → pending task (host later `value/task-fulfill!`)
-   - `{:bytes ... :chunks [...]}` → ready task over concatenated chunks
-  ADR 0123 pending→ready + multi-chunk first slice."
+   - `{:chunks [...]}` → ready task over concatenated chunks (ADR 0123)
+   - `{:chunk-queue [...]}` → ready task with true multi-chunk stream (ADR 0125;
+     each stream-read! yields one producer chunk, no pre-join)"
   [reply]
   (cond
     (and (map? reply) (true? (:pending reply)))
     (value/make-pending-bytes-task)
+
+    (and (map? reply) (sequential? (:chunk-queue reply)) (seq (:chunk-queue reply)))
+    (value/make-ready-bytes-task-from-chunk-queue
+     (mapv bounded-payload! (:chunk-queue reply)))
 
     (and (map? reply) (sequential? (:chunks reply)) (seq (:chunks reply)))
     (value/make-ready-bytes-task
