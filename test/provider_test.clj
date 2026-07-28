@@ -273,3 +273,66 @@
     (is (= :secret/not-found (:code unmapped)))
     (is (= :error (:tag (missing {:name "gone"}))))
     (is (= :secret/not-found (:code (missing {:name "gone"}))))))
+
+(deftest secret-fn-fetch-wraps-one-shot-getter
+  ;; Host/kagi shape: (fn [name] string-or-nil) — no list/dump.
+  (let [calls (atom [])
+        getter (fn [n]
+                 (swap! calls conj n)
+                 (get {"murakumo-token" "hmac-secret"
+                       "cloudflare-api-token" "cf-tok"} n))
+        fetch (secret-transport/fn-fetch getter #{"murakumo-token" "cloudflare-api-token"})
+        ps (:providers (secret/create-providers
+                        {:allowed-names #{"murakumo-token" "cloudflare-api-token"}
+                         :fetch fetch}))
+        p (get ps secret/capability-id)
+        ok ((:invoke p) [secret/get-request-type "murakumo-token"])]
+    (is (= :value (second ok)))
+    (is (= "hmac-secret" (nth ok 2)))
+    (is (= ["murakumo-token"] @calls))
+    (let [cf (fetch {:name "cloudflare-api-token"})]
+      (is (= :value (:tag cf)))
+      (is (= "cf-tok" (:value cf))))
+    (is (= :secret/not-found
+           (:code ((secret-transport/fn-fetch (fn [_] nil)) {:name "x"}))))
+    (is (= :secret/fetch
+           (:code ((secret-transport/fn-fetch
+                    (fn [_] (throw (ex-info "locked" {}))))
+                   {:name "x"}))))
+    (let [deny (secret-transport/fn-fetch getter #{"murakumo-token"})]
+      (is (= :error (:tag (deny {:name "cloudflare-api-token"}))))
+      (is (= :secret/not-allowed (:code (deny {:name "cloudflare-api-token"})))))))
+
+(deftest secret-keychain-fetch-single-item-only
+  ;; Inject sh-fn — never call real security; prove argv is get-one -w only.
+  (let [argv (atom nil)
+        sh-fn (fn [& args]
+                (reset! argv (vec args))
+                {:exit 0 :out "kc-secret\n" :err ""})
+        fetch (secret-transport/keychain-fetch
+               {"murakumo-token" {:service "murakumo" :account "token"}}
+               {:sh-fn sh-fn})
+        ps (:providers (secret/create-providers
+                        {:allowed-names #{"murakumo-token"}
+                         :fetch fetch}))
+        p (get ps secret/capability-id)
+        ok ((:invoke p) [secret/get-request-type "murakumo-token"])
+        unmapped (fetch {:name "other"})
+        miss-sh (fn [& _] {:exit 44 :out "" :err "could not be found"})
+        miss ((secret-transport/keychain-fetch
+               {"murakumo-token" {:service "murakumo" :account "token"}}
+               {:sh-fn miss-sh})
+              {:name "murakumo-token"})]
+    (is (= :value (second ok)))
+    (is (= "kc-secret" (nth ok 2)))
+    (is (= ["security" "find-generic-password" "-s" "murakumo" "-a" "token" "-w"]
+           @argv)
+        "must use -w single-item read, never -g dump")
+    (is (not (some #{"-g" "dump-keychain" "dump"} @argv)))
+    (is (= :secret/not-found (:code unmapped)))
+    (is (= :secret/not-found (:code miss)))
+    (is (thrown-with-msg? Exception #"name→\{:service :account\}"
+          (secret-transport/keychain-fetch {"x" {:service "s"}})))
+    (is (thrown-with-msg? Exception #"name→\{:service :account\}"
+          (secret-transport/keychain-fetch
+           {"x" {:service "s*" :account "a"}})))))
