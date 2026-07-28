@@ -176,6 +176,13 @@
   (is (nil? (process-transport/resolve-binary {"echo" "/bin/echo"} "rm")))
   (is (nil? (process-transport/resolve-binary {} "echo"))))
 
+(deftest process-and-fs-absolute-path-predicate
+  (is (true? (process-transport/absolute-path? "/bin/echo")))
+  (is (false? (process-transport/absolute-path? "echo")))
+  (is (false? (process-transport/absolute-path? "")))
+  (is (true? (scoped-fs-transport/absolute-path? "/var/cache")))
+  (is (false? (scoped-fs-transport/absolute-path? "relative/path"))))
+
 (deftest process-os-spawn-runs-host-mapped-echo
   (let [echo-bin (let [f (java.io.File. "/bin/echo")]
                    (if (.canExecute f) "/bin/echo" "/usr/bin/echo"))
