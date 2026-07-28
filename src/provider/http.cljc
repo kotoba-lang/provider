@@ -180,12 +180,21 @@
                       {:phase :http-provider})))))
 
 (defn- as-bytes-task!
-  "Transport returns host `:bytes`, `{:bytes ...}`, `{:pending true}`, or
-  `{:chunks [...]}` (ADR 0123)."
+  "Transport returns host `:bytes`, `{:bytes ...}`, `{:pending true}`,
+  `{:chunks [...]}` (join-before-ready, ADR 0123), or
+  `{:chunk-queue [...]}` (true multi-chunk yield, ADR 0125)."
   [reply]
   (cond
     (and (map? reply) (true? (:pending reply)))
     (value/make-pending-bytes-task)
+
+    (and (map? reply) (sequential? (:chunk-queue reply)) (seq (:chunk-queue reply)))
+    (let [chunks (mapv #(value/bounded-bytes! % max-pull-bytes) (:chunk-queue reply))
+          total (reduce + 0 (map value/bytes-byte-count chunks))]
+      (when (> total max-pull-bytes)
+        (throw (ex-info "http get-stream chunk-queue exceeds max-pull-bytes"
+                        {:phase :http-provider})))
+      (value/make-ready-bytes-task-from-chunk-queue chunks))
 
     (and (map? reply) (sequential? (:chunks reply)) (seq (:chunks reply)))
     (let [joined (value/concat-bytes
