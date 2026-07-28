@@ -66,3 +66,22 @@
     (is (= [1 2] (vec (:bytes c1))))
     (is (true? (:done? c2)))
     (is (= [3] (vec (:bytes c2))))))
+
+(deftest object-get-stream-open-stream-progressive-push
+  "ADR 0126: {:open-stream true}; host enqueues then closes."
+  (let [ps (:providers (object/create-providers
+                        {:allowed-bindings #{:example/blocks}
+                         :transport (fn [_] {:open-stream true})}))
+        p (get ps object/get-stream-capability-id)
+        task ((:invoke p) [object/get-stream-request-type :example/blocks "k"])
+        stream (:stream (value/task-poll task))
+        p0 (value/stream-read! stream 100)
+        a (byte-array [10 11])
+        _ (value/stream-enqueue! stream a)
+        c1 (value/stream-read! stream 100)
+        _ (value/stream-close! stream)
+        done (value/stream-read! stream 100)]
+    (is (true? (:pending? p0)))
+    (is (= [10 11] (vec (:bytes c1))))
+    (is (false? (:done? c1)))
+    (is (true? (:done? done)))))
