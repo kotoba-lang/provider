@@ -2,6 +2,7 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
+            [ed25519.core :as ed]
             [provider.kit-package :as kit]))
 
 (deftest sha256-hex-stable
@@ -234,3 +235,39 @@
     (is (true? (:ok? vw)))
     (is (true? (:fixture? vw)))
     (is (false? (:production-signed-claim? signed)))))
+
+(deftest ed25519-identity-signer-kit-and-wasm
+  "Real Ed25519 (org-ietf-ed25519, test dep) injected via identity-signer."
+  (let [seed (byte-array 32)
+        _ (dotimes [i 32] (aset-byte seed i (unchecked-byte i)))
+        pub (ed/pubkey-from-seed seed)
+        id (kit/identity-signer
+            {:sign-bytes (fn [msg] (ed/sign seed msg))
+             :verify-bytes (fn [msg pub-b sig] (ed/verify pub-b msg sig))
+             :public-key-bytes pub
+             :alg :ed25519
+             :key-id "ed25519-test"})
+        path "kotoba/lang/capability-kits/http-v1.edn"
+        text (slurp (io/resource path))
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :http path text)
+                    (:sign id))
+        v (kit/verify-kit-package-receipt kit-signed (:verify id))
+        wasm (kit/sign-wasm-provider-receipt
+              (kit/chain-kit-and-wasm-receipts
+               (kit/wasm-provider-receipt
+                :http path (kit/load-fixture-wasm-bytes)
+                {:artifact-kind :fixture-synthetic})
+               kit-signed)
+              (:sign id))
+        vw (kit/verify-wasm-provider-receipt wasm (:verify id))]
+    (is (true? (:ok? v)))
+    (is (= :ed25519 (get-in kit-signed [:signature :alg])))
+    (is (true? (:ok? vw)))
+    (is (false? (:production-signed-claim? kit-signed)))
+    (is (= :pending
+           (get-in (kit/readiness-for
+                    (kit/readiness-table
+                     (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+                    :http)
+                   [:scores :signed-wasm])))))
