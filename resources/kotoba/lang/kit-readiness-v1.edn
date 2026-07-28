@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 first-pass readiness scores for critical kits. signed-wasm remains pending everywhere — do not treat reference dual-runtime as production signed."
+ "T8.2 first-pass readiness scores for critical kits. signed-wasm remains pending everywhere — signed Wasm *receipt API* exists (ADR 0155) but fixture digests do not count as production; do not treat reference dual-runtime as production signed."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
