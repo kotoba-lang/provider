@@ -1,25 +1,32 @@
 (ns provider.object
-  "Bounded object-store write path for stream-object-v1 (W5 dual-runtime first
-  slice). Covers `:object/put-block` and `:object/compare-and-set-ref` only.
+  "Bounded object-store reference providers for stream-object-v1.
 
-  Linear task/stream handles (`:object/get-stream`, `:http/get-stream`) remain
-  on the Component v0.3 / Wasm path (kit marks `:component-core
-  :task-stream-handle-slice`); this namespace is the reference-runtime semantic
-  vector for the synchronous bool write ops.
+  Write path: `:object/put-block` + `:object/compare-and-set-ref` (bool).
+  Read path (ADR 0121): `:object/get-stream` returns a host affine
+  `[:task [:stream :bytes]]` (ready task with one payload chunk). Linear
+  Component v0.3 handle ABI remains on the Wasm path; this namespace is the
+  reference dual-runtime semantic vector.
 
-  The kit field type `:bytes` is a first-class runtime leaf (JVM byte-array,
-  cljs Uint8Array) via kotoba.kir.value (ADR 0120). Payload length is bounded
-  by max-pull-bytes (65536), matching value/bytes-value-byte-limit.
+  Kit `:bytes` is a first-class runtime leaf (JVM byte-array, cljs
+  Uint8Array) via kotoba.kir.value (ADR 0120). Payload length is bounded by
+  max-pull-bytes (65536).
 
-  Bindings are host-owned allowlist keywords. Digests, keys, etags, and next
-  refs are bounded strings. No ambient object store or network."
+  Bindings are host-owned allowlist keywords. No ambient object store or
+  network."
   (:require [kotoba.kir.value :as value]))
 
+(def get-stream-capability-id 14)
 (def put-block-capability-id 15)
 (def cas-capability-id 16)
 (def max-pull-bytes 65536)
 
 (def expected-etag-type [:option :string])
+
+(def get-stream-request-type
+  [:record :kotoba.object/get-stream-request
+   [[:binding :keyword] [:key :string]]])
+
+(def get-stream-result-type [:task [:stream :bytes]])
 
 (def put-block-request-type
   [:record :kotoba.object/put-block-request
@@ -34,7 +41,8 @@
 (def cas-result-type :bool)
 
 (def schemas
-  {:kotoba.object/put-block-request put-block-request-type
+  {:kotoba.object/get-stream-request get-stream-request-type
+   :kotoba.object/put-block-request put-block-request-type
    :kotoba.object/compare-and-set-ref-request cas-request-type})
 
 (defn- bounded-payload!
@@ -64,6 +72,50 @@
     (throw (ex-info "object transport result must be a bool"
                     {:phase :object-provider :context context})))
   reply)
+
+(defn- as-ready-bytes-task!
+  "Transport returns `{:bytes <host-bytes>}` (or a raw bytes value). Wrap as
+  a ready `[:task [:stream :bytes]]` host handle."
+  [reply]
+  (let [payload (cond
+                  (value/bytes-value? reply) reply
+                  (and (map? reply) (value/bytes-value? (:bytes reply))) (:bytes reply)
+                  :else (throw (ex-info "object get-stream transport must return bytes"
+                                        {:phase :object-provider})))]
+    (value/make-ready-bytes-task (bounded-payload! payload))))
+
+(defn get-stream-provider
+  "Typed provider for `:object/get-stream` (id 14).
+  Transport receives `{:operation :get-stream :binding :key}` and returns
+  either a host `:bytes` payload or `{:bytes <bytes>}`. Result is always a
+  ready bytes-task (pending/cancel timing is a later slice)."
+  [{:keys [allowed-bindings transport]}]
+  (when-not (and (set? allowed-bindings)
+                 (every? qualified-keyword? allowed-bindings)
+                 (fn? transport))
+    (throw (ex-info "object get-stream requires allowed-bindings and transport"
+                    {:phase :object-provider})))
+  (doseq [b allowed-bindings]
+    (value/bounded-keyword! b value/keyword-value-byte-limit))
+  {:request-type get-stream-request-type
+   :result-type get-stream-result-type
+   :invoke
+   (fn [[actual-type binding key]]
+     (when-not (= actual-type get-stream-request-type)
+       (throw (ex-info "object get-stream contract mismatch"
+                       {:phase :object-provider})))
+     (when-not (contains? allowed-bindings binding)
+       (throw (ex-info "object binding is not allowed"
+                       {:phase :object-provider :binding binding})))
+     (value/bounded-string! key value/string-value-byte-limit)
+     (when (zero? (value/utf8-byte-count! key))
+       (throw (ex-info "object stream key must be non-empty"
+                       {:phase :object-provider})))
+     (as-ready-bytes-task!
+      (invoke-transport transport
+                        {:operation :get-stream
+                         :binding binding
+                         :key key})))})
 
 (defn put-block-provider
   "Typed provider for `:object/put-block` (id 15).
@@ -141,9 +193,10 @@
         :compare-and-set-ref)))})
 
 (defn create-providers
-  "Build both write-path providers sharing one binding allowlist and transport.
-  Returns `{:providers {15 put 16 cas}}` for reference-runtime install."
+  "Build write + get-stream providers sharing one binding allowlist and transport.
+  Returns `{:providers {14 get-stream 15 put 16 cas}}` for reference-runtime."
   [{:keys [allowed-bindings transport] :as opts}]
   {:providers
-   {put-block-capability-id (put-block-provider opts)
+   {get-stream-capability-id (get-stream-provider opts)
+    put-block-capability-id (put-block-provider opts)
     cas-capability-id (cas-provider opts)}})
