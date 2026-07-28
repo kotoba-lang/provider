@@ -1,0 +1,112 @@
+{:kotoba.kit-readiness/version 1
+ :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
+ :kotoba.kit-readiness/summary
+ "T8.2 first-pass readiness scores for critical kits. signed-wasm remains pending everywhere — do not treat reference dual-runtime as production signed."
+
+ :dimensions
+ [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
+
+ :kits
+ [{:name :http
+   :id 4
+   :resource "kotoba/lang/capability-kits/http-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["http-v1.edn" "provider.http + http_transport dual-runtime tests"]}
+
+  {:name :secret
+   :id 21
+   :resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["secret-v1.edn" "provider#26+#27" "murakumo/com-cloudflare named-fetch cutover"]}
+
+  {:name :process
+   :id 20
+   :resource "kotoba/lang/capability-kits/process-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"]}
+
+  {:name :scoped-fs
+   :id 19
+   :resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["scoped-fs-v1.edn" "provider#24+#25+#28 os-store"]}
+
+  {:name :git
+   :id 22
+   :resource "kotoba/lang/capability-kits/git-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["git-v1.edn" "provider#29+#31+#32"]}
+
+  {:name :entropy
+   :id 23
+   :resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :n/a
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["entropy-v1.edn" "provider#33" "audit N/A for pure CSPRNG draw"]}
+
+  {:name :object
+   :id 14
+   :resource "kotoba/lang/capability-kits/stream-object-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :partial
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["stream-object-v1.edn multi-cap package" "object get-stream/put-block/cas"]}
+
+  {:name :storage
+   :id 12
+   :resource "kotoba/lang/capability-kits/storage-v1.edn"
+   :scores {:schema :ready
+            :dual-runtime :ready
+            :deny-fixtures :ready
+            :quota :ready
+            :audit :partial
+            :host-parity :ready
+            :package :ready
+            :signed-wasm :pending}
+   :evidence ["storage-v1.edn" "provider.storage dual-runtime"]}]}
