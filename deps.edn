@@ -3,7 +3,7 @@
         org.clojure/data.json {:mvn/version "2.5.1"}
         io.github.kotoba-lang/kotoba-kir
         {:git/url "https://github.com/kotoba-lang/kotoba-kir.git"
-         :git/sha "1404d643ba0b9dbc92cfeffec5eb2a75a7d2d257"}}
+         :git/sha "314d65e6f6b736abd645398673e05fe1810c60ed"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {io.github.cognitect-labs/test-runner
                                {:git/url "https://github.com/cognitect-labs/test-runner.git"

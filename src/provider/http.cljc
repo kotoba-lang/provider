@@ -179,24 +179,38 @@
       (throw (ex-info "http get-stream transport failed"
                       {:phase :http-provider})))))
 
-(defn- as-ready-bytes-task!
-  "Transport returns host `:bytes` or `{:bytes <bytes>}`. Wrap as ready task."
+(defn- as-bytes-task!
+  "Transport returns host `:bytes`, `{:bytes ...}`, `{:pending true}`, or
+  `{:chunks [...]}` (ADR 0123)."
   [reply]
-  (let [payload (cond
-                  (value/bytes-value? reply) reply
-                  (and (map? reply) (value/bytes-value? (:bytes reply))) (:bytes reply)
-                  :else (throw (ex-info "http get-stream transport must return bytes"
-                                        {:phase :http-provider})))]
-    (when (> (value/bytes-byte-count payload) max-pull-bytes)
-      (throw (ex-info "http get-stream payload exceeds max-pull-bytes"
-                      {:phase :http-provider})))
-    (value/make-ready-bytes-task (value/bounded-bytes! payload max-pull-bytes))))
+  (cond
+    (and (map? reply) (true? (:pending reply)))
+    (value/make-pending-bytes-task)
+
+    (and (map? reply) (sequential? (:chunks reply)) (seq (:chunks reply)))
+    (let [joined (value/concat-bytes
+                  (mapv #(value/bounded-bytes! % max-pull-bytes) (:chunks reply)))]
+      (when (> (value/bytes-byte-count joined) max-pull-bytes)
+        (throw (ex-info "http get-stream chunks exceed max-pull-bytes"
+                        {:phase :http-provider})))
+      (value/make-ready-bytes-task joined))
+
+    :else
+    (let [payload (cond
+                    (value/bytes-value? reply) reply
+                    (and (map? reply) (value/bytes-value? (:bytes reply))) (:bytes reply)
+                    :else (throw (ex-info "http get-stream transport must return bytes or pending"
+                                          {:phase :http-provider})))]
+      (when (> (value/bytes-byte-count payload) max-pull-bytes)
+        (throw (ex-info "http get-stream payload exceeds max-pull-bytes"
+                        {:phase :http-provider})))
+      (value/make-ready-bytes-task (value/bounded-bytes! payload max-pull-bytes)))))
 
 (defn get-stream-provider
   "Typed provider for `:http/get-stream` (id 13).
   `allowed-origins` is the same exact-origin allowlist as POST.
   Transport receives `{:operation :get-stream :url :headers}` and returns
-  host `:bytes` or `{:bytes <bytes>}`. Result is always a ready bytes-task."
+  host `:bytes` or `{:bytes <bytes>}`. Result is ready or pending bytes-task (fulfill via value/task-fulfill!)."
   [{:keys [allowed-origins transport]}]
   (when-not (and (set? allowed-origins) (every? string? allowed-origins))
     (throw (ex-info "HTTP allowed-origins must be a set of strings"
@@ -218,7 +232,7 @@
          (throw (ex-info "HTTP origin is not allowed"
                          {:phase :http-provider :origin origin}))))
      (validate-headers! headers)
-     (as-ready-bytes-task!
+     (as-bytes-task!
       (invoke-get-stream-transport
        transport {:operation :get-stream
                   :url url
