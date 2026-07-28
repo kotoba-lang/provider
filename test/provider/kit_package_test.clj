@@ -100,3 +100,88 @@
     (is (true? (:signed-kit-receipt? rr)))
     (is (false? (:production-signed-claim-allowed? rr))
         "signed kit EDN receipt must not imply production signed Wasm")))
+
+(deftest empty-wasm-module-digest-stable
+  (let [d (kit/wasm-artifact-digest kit/empty-wasm-module-bytes :fixture-synthetic)]
+    (is (= :sha256 (:alg d)))
+    (is (= 64 (count (:digest d))))
+    (is (= :fixture-synthetic (:artifact-kind d)))
+    (is (false? (:signed? d)))
+    ;; magic\0asm + version is fixed → stable digest
+    (is (= (kit/sha256-hex-bytes kit/empty-wasm-module-bytes) (:digest d)))))
+
+(deftest wasm-signing-input-canonical
+  (is (= (str "kotoba.kit-package.wasm-signed/v1\n"
+              "sha256\n"
+              "deadbeef\n"
+              "kotoba/lang/capability-kits/secret-v1.edn\n"
+              "application/wasm\n"
+              "fixture-synthetic\n"
+              "kitdig\n")
+         (kit/wasm-signing-input
+          {:digest "deadbeef"
+           :resource "kotoba/lang/capability-kits/secret-v1.edn"
+           :media-type "application/wasm"
+           :artifact-kind :fixture-synthetic
+           :kit-edn-digest "kitdig"}))))
+
+(deftest signed-wasm-provider-receipt-round-trip
+  (let [path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        kit-rec (kit/kit-package-receipt :secret path text)
+        unsigned (-> (kit/wasm-provider-receipt
+                      :secret path kit/empty-wasm-module-bytes
+                      {:artifact-kind :fixture-synthetic})
+                     (kit/chain-kit-and-wasm-receipts kit-rec))
+        {:keys [sign verify]} (kit/test-hmac-signer "wasm-test-key")
+        signed (kit/sign-wasm-provider-receipt unsigned sign)
+        v (kit/verify-wasm-provider-receipt signed verify)]
+    (is (true? (:signed-wasm-provider? signed)))
+    (is (true? (:fixture? signed)))
+    (is (false? (:production-signed-claim? signed)))
+    (is (= (get-in kit-rec [:package :digest]) (:kit-edn-digest signed)))
+    (is (true? (:ok? v)))
+    (is (= :signed-wasm-provider-receipt (:layer v)))
+    (is (true? (:fixture? v)))
+    (is (false? (:production-signed-claim? v)))))
+
+(deftest signed-wasm-receipt-rejects-forgery
+  (let [path "kotoba/lang/capability-kits/http-v1.edn"
+        unsigned (kit/wasm-provider-receipt
+                  :http path kit/empty-wasm-module-bytes
+                  {:artifact-kind :fixture-synthetic})
+        a (kit/test-hmac-signer "key-a")
+        b (kit/test-hmac-signer "key-b")
+        signed (kit/sign-wasm-provider-receipt unsigned (:sign a))
+        bad (kit/verify-wasm-provider-receipt signed (:verify b))
+        tampered (assoc-in signed [:artifact :digest] (kit/sha256-hex "nope"))
+        bad2 (kit/verify-wasm-provider-receipt tampered (:verify a))]
+    (is (false? (:ok? bad)))
+    (is (= :bad-signature (:reason bad)))
+    (is (false? (:ok? bad2)))
+    (is (= :signing-input-mismatch (:reason bad2)))))
+
+(deftest readiness-still-blocks-after-signed-wasm-fixture
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        secret (kit/readiness-for table :secret)
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "k")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :secret path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/wasm-provider-receipt
+                       :secret path kit/empty-wasm-module-bytes
+                       {:artifact-kind :fixture-synthetic})
+                      kit-signed)
+                     sign)
+        rr (kit/readiness-receipt secret kit-signed wasm-signed)]
+    (is (true? (:signed-kit-receipt? rr)))
+    (is (true? (:signed-wasm-provider? rr)))
+    (is (true? (:wasm-fixture? rr)))
+    (is (string? (:wasm-artifact-digest rr)))
+    (is (= :pending (get-in secret [:scores :signed-wasm])))
+    (is (false? (:production-signed-claim-allowed? rr))
+        "fixture signed Wasm must not open production-signed claim")))
