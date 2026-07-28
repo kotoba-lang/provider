@@ -185,3 +185,52 @@
     (is (= :pending (get-in secret [:scores :signed-wasm])))
     (is (false? (:production-signed-claim-allowed? rr))
         "fixture signed Wasm must not open production-signed claim")))
+
+(deftest hex-encode-decode-round-trip
+  (let [raw (byte-array (map unchecked-byte [0 1 255 16]))
+        h (kit/hex-encode raw)]
+    (is (= "0001ff10" h))
+    (is (= (seq raw) (seq (kit/hex-decode h))))))
+
+(deftest fixture-wasm-matches-empty-module
+  (let [fix (kit/load-fixture-wasm-bytes)]
+    (is (= (seq kit/empty-wasm-module-bytes) (seq fix)))
+    (is (= (kit/sha256-hex-bytes kit/empty-wasm-module-bytes)
+           (kit/sha256-hex-bytes fix)))))
+
+(deftest identity-signer-kit-receipt-round-trip
+  "Production-shaped inject: host supplies byte sign/verify; kit-package
+   normalises to string receipt API."
+  (let [pub (byte-array (map unchecked-byte (range 32)))
+        secret "host-identity-seed"
+        sign-bytes (fn [msg-bytes]
+                     (let [msg (String. ^bytes msg-bytes java.nio.charset.StandardCharsets/UTF_8)]
+                       (kit/hex-decode (kit/hmac-sha256-hex secret msg))))
+        verify-bytes (fn [msg-bytes _pub sig-bytes]
+                       (let [msg (String. ^bytes msg-bytes java.nio.charset.StandardCharsets/UTF_8)
+                             expected (kit/hex-decode (kit/hmac-sha256-hex secret msg))]
+                         (= (seq expected) (seq sig-bytes))))
+        id (kit/identity-signer {:sign-bytes sign-bytes
+                                 :verify-bytes verify-bytes
+                                 :public-key-bytes pub
+                                 :alg :ed25519
+                                 :key-id "test-identity"})
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        signed (kit/sign-kit-package-receipt
+                (kit/kit-package-receipt :secret path text)
+                (:sign id))
+        v (kit/verify-kit-package-receipt signed (:verify id))
+        wasm (kit/sign-wasm-provider-receipt
+              (kit/wasm-provider-receipt
+               :secret path (kit/load-fixture-wasm-bytes)
+               {:artifact-kind :fixture-synthetic
+                :kit-edn-digest (get-in signed [:package :digest])})
+              (:sign id))
+        vw (kit/verify-wasm-provider-receipt wasm (:verify id))]
+    (is (= :ed25519 (get-in signed [:signature :alg])))
+    (is (= "test-identity" (get-in signed [:signature :key-id])))
+    (is (true? (:ok? v)))
+    (is (true? (:ok? vw)))
+    (is (true? (:fixture? vw)))
+    (is (false? (:production-signed-claim? signed)))))
