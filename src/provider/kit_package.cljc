@@ -11,12 +11,15 @@
      host-injected sign over content-address of Wasm **bytes** + kit resource
      binding. Does **not** emit AOT Wasm; does **not** flip readiness
      `:signed-wasm` to ready until a real Component package + full gate exist.
-  4. **Real non-fixture Wasm package bytes** (T8.3 packaging pilot, ADR 0159) —
+  4. **Real non-fixture Wasm package bytes** (T8.3 packaging, ADR 0159) —
      classpath `wasm-packages/*` registry + loaders. Real module digests remove
      the fixture blocker; production claim still requires readiness
      `:signed-wasm :ready`.
+  5. **Host-grant digest binding** (T8.3, ADR 0160) — bind host grant keys to
+     kit-edn + wasm digests + publisher key-id from signed receipts. Does **not**
+     flip readiness `:signed-wasm`.
 
-  See ADR 0152–0159."
+  See ADR 0152–0160."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
@@ -627,6 +630,7 @@
           (= :ready (:signed-wasm s))))))
 
 (def manifest-format :kotoba.kit-package.manifest/v1)
+(def grant-binding-format :kotoba.kit-package.grant-binding/v1)
 
 (defn production-claim-blockers
   "Honest list of why a package cannot claim production signed provider.
@@ -727,3 +731,125 @@
       :production-signed-claim? (boolean (:production-signed-claim? manifest))
       :package-blockers (:blockers manifest)
       :evidence (:evidence row)})))
+
+(defn grant-key
+  "Canonical host-map key for a grant binding (UTF-8 string).
+  Format lines: format, kit-name, kit-edn-digest, wasm-digest, key-id."
+  [{:keys [kit-name kit-edn-digest wasm-digest key-id]}]
+  (str (namespace grant-binding-format) "/" (name grant-binding-format) "\n"
+       (name kit-name) "\n"
+       (or kit-edn-digest "") "\n"
+       (or wasm-digest "") "\n"
+       (or key-id "") "\n"))
+
+(defn grant-binding
+  "Bind a host grant to content-addressed package digests (ADR 0160).
+
+  opts:
+    :kit-name keyword
+    :kit-receipt signed kit EDN receipt (preferred)
+    :wasm-receipt signed wasm receipt (preferred)
+    :manifest optional package-manifest (used for blockers/claim)
+    :readiness-row required for production-admissible? scoring
+    :package-entry optional wasm-packages registry entry (digest check)
+    :wasm-bytes optional real bytes to verify against package-entry
+
+  Returns a grant-binding map. `:host-admissible?` is true when kit+wasm are
+  signed, non-fixture, digests chain, and (if package-entry given) digest
+  matches registry — **without** requiring readiness `:signed-wasm :ready`.
+  `:production-admissible?` additionally requires empty production blockers
+  (includes signed-wasm readiness).
+
+  Hosts should store `:grant-key` → binding and refuse substitute digests."
+  [{:keys [kit-name kit-receipt wasm-receipt manifest readiness-row
+           package-entry wasm-bytes]}]
+  (when-not kit-name
+    (throw (ex-info "grant-binding requires :kit-name" {:phase :kit-package})))
+  (let [kit-dig (get-in kit-receipt [:package :digest])
+        wasm-dig (get-in wasm-receipt [:artifact :digest])
+        key-id (or (get-in kit-receipt [:signature :key-id])
+                   (get-in wasm-receipt [:signature :key-id]))
+        alg (or (get-in kit-receipt [:signature :alg])
+                (get-in wasm-receipt [:signature :alg]))
+        fixture? (boolean (or (:fixture? wasm-receipt)
+                              (= :fixture-synthetic (:artifact-kind wasm-receipt))))
+        blockers (if (and readiness-row (or kit-receipt wasm-receipt))
+                   (or (:blockers manifest)
+                       (production-claim-blockers readiness-row kit-receipt wasm-receipt))
+                   [:missing-readiness-or-receipts])
+        host-blockers (transient [])]
+    (when-not (:signed-kit-receipt? kit-receipt)
+      (conj! host-blockers :kit-edn-receipt-unsigned))
+    (when-not (:signed-wasm-provider? wasm-receipt)
+      (conj! host-blockers :wasm-receipt-unsigned))
+    (when fixture?
+      (conj! host-blockers :wasm-artifact-is-fixture))
+    (when (and kit-dig wasm-receipt
+               (string? (:kit-edn-digest wasm-receipt))
+               (not= kit-dig (:kit-edn-digest wasm-receipt)))
+      (conj! host-blockers :kit-wasm-digest-mismatch))
+    (when (and package-entry wasm-bytes
+               (not (verify-wasm-package-digest package-entry wasm-bytes)))
+      (conj! host-blockers :registry-digest-mismatch))
+    (when (and package-entry wasm-dig
+               (string? (:sha256 package-entry))
+               (not= (str/lower-case (:sha256 package-entry))
+                     (str/lower-case (str wasm-dig))))
+      (conj! host-blockers :registry-digest-mismatch))
+    (let [host-blockers (persistent! host-blockers)
+          host-ok? (empty? host-blockers)
+          prod-ok? (and host-ok? (empty? blockers))
+          gk (grant-key {:kit-name kit-name
+                         :kit-edn-digest kit-dig
+                         :wasm-digest wasm-dig
+                         :key-id key-id})]
+      {:format grant-binding-format
+       :name kit-name
+       :kit-edn-digest kit-dig
+       :wasm-digest wasm-dig
+       :artifact-kind (:artifact-kind wasm-receipt)
+       :fixture? fixture?
+       :key-id key-id
+       :alg alg
+       :grant-key gk
+       :host-admissible? host-ok?
+       :production-admissible? prod-ok?
+       :host-blockers host-blockers
+       :production-blockers blockers
+       :note (cond
+               prod-ok? "production-admissible grant binding"
+               host-ok? "host-admissible reference grant; readiness signed-wasm still pending"
+               :else "grant binding incomplete; see :host-blockers")})))
+
+(defn verify-grant-binding
+  "Re-check a grant-binding against current receipts (digest/key-id equality).
+  Does not re-verify cryptographic signatures — call verify-*-receipt first."
+  [binding kit-receipt wasm-receipt]
+  (cond
+    (not= grant-binding-format (:format binding))
+    {:ok? false :reason :not-grant-binding}
+
+    (not= (:kit-edn-digest binding) (get-in kit-receipt [:package :digest]))
+    {:ok? false :reason :kit-edn-digest-mismatch}
+
+    (not= (:wasm-digest binding) (get-in wasm-receipt [:artifact :digest]))
+    {:ok? false :reason :wasm-digest-mismatch}
+
+    (and (:key-id binding)
+         (not= (:key-id binding)
+               (or (get-in kit-receipt [:signature :key-id])
+                   (get-in wasm-receipt [:signature :key-id]))))
+    {:ok? false :reason :key-id-mismatch}
+
+    (not= (:grant-key binding)
+          (grant-key {:kit-name (:name binding)
+                      :kit-edn-digest (:kit-edn-digest binding)
+                      :wasm-digest (:wasm-digest binding)
+                      :key-id (:key-id binding)}))
+    {:ok? false :reason :grant-key-mismatch}
+
+    :else
+    {:ok? true
+     :host-admissible? (boolean (:host-admissible? binding))
+     :production-admissible? (boolean (:production-admissible? binding))
+     :grant-key (:grant-key binding)}))

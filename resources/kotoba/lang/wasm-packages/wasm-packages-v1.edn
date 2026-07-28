@@ -1,11 +1,39 @@
 {:kotoba.wasm-packages/version 1
  :kotoba.wasm-packages/note
- "Content-addressed Wasm provider package registry (T8.3 real-bytes pilot).
-  Entries are real module/component bytes — not empty-module fixtures.
-  Signing + readiness :signed-wasm remain separate gates (ADR 0159)."
+ "Content-addressed Wasm provider package registry (T8.3 real-bytes).
+  Pure allowlist reference modules from capability-* repos.
+  Signing + readiness :signed-wasm + host-grant binding remain separate gates (ADR 0159–0160)."
 
  :packages
- [{:name :hash-sha256
+ [{:name :math-sin
+   :resource "kotoba/lang/wasm-packages/math-sin-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/math-sin-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "609d75432c40f5d838f8c24bf9e0702fa5ae55ebedce578692456503cc5e9684"
+   :source {:repository "kotoba-lang/capability-math-sin"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "math/sin"
+            :provider-status :reference-implemented}
+   :exports {"sin" {:params [:f64] :result :f64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :math-cos
+   :resource "kotoba/lang/wasm-packages/math-cos-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/math-cos-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "3e595f02c73028988f422c3f1c8b6ff1359eb794f5aa732fdd759484c7a25a48"
+   :source {:repository "kotoba-lang/capability-math-cos"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "math/cos"
+            :provider-status :reference-implemented}
+   :exports {"cos" {:params [:f64] :result :f64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :hash-sha256
    :resource "kotoba/lang/wasm-packages/hash-sha256-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/hash-sha256-v1.edn"
    :artifact-kind :wasm-module
@@ -17,5 +45,75 @@
             :provider-status :reference-implemented}
    :exports {"sha256_hex" {:params [:i32 :i32 :i32 :i32] :result :i32}}
    :fixture? false
-   :signed-content-addressed-package :pending
-   :note "Real FIPS 180-4 wasm core (capability-hash-sha256#1). Package path pilot only — not a production signed claim."}]}
+   :signed-content-addressed-package :pending}
+
+  {:name :data-cbor
+   :resource "kotoba/lang/wasm-packages/data-cbor-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/data-cbor-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "eeebd22f73d98a96d736f866203129d46a6ff8e6401c18163ddcbc2834c48047"
+   :source {:repository "kotoba-lang/capability-data-cbor"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "data/cbor"
+            :provider-status :reference-implemented}
+   :exports {"cbor_encode" {:params [:i32 :i32 :i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :data-json
+   :resource "kotoba/lang/wasm-packages/data-json-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/data-json-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "d5c8edcebf8b5cb2732b62b87ae3302647bf7e3133877637419be4b206cb2bf3"
+   :source {:repository "kotoba-lang/capability-data-json"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "data/json"
+            :provider-status :reference-implemented}
+   :exports {"json_encode" {:params [:i32 :i32 :i32 :i32] :result :i32}
+             "json_extract_field" {:params [:i32 :i32 :i32 :i32 :i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :clock-monotonic
+   :resource "kotoba/lang/wasm-packages/clock-monotonic-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/clock-monotonic-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "826644dfd0f1cdb8bc225310a2504ad9d019a0397897415951be5d56105b681b"
+   :source {:repository "kotoba-lang/capability-clock-monotonic"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "clock/monotonic"
+            :provider-status :reference-implemented}
+   :exports {"clock_monotonic" {:params [] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :random-bytes
+   :resource "kotoba/lang/wasm-packages/random-bytes-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/random-bytes-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "59535aedb5f325d33fa0e86da8a6368d440fffb447f14a48a876ee7f565cbd8e"
+   :source {:repository "kotoba-lang/capability-random-bytes"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "random/bytes"
+            :provider-status :reference-implemented}
+   :exports {"random_bytes" {:params [:i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :time-now-days
+   :resource "kotoba/lang/wasm-packages/time-now-days-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/time-now-days-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "939e4b4f13757b429299cbd86d24dba5b69874544828550a7628bfb690a0f7fa"
+   :source {:repository "kotoba-lang/capability-time-now-days"
+            :path "artifacts/provider.core.wasm"
+            :capability-id "time/now-days"
+            :provider-status :reference-implemented}
+   :exports {"now_days" {:params [] :result :f32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}]}
