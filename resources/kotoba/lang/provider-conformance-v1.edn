@@ -44,7 +44,35 @@
   {:name :entropy :version 1
    :resource "kotoba/lang/capability-kits/entropy-v1.edn"
    :capabilities [{:name :entropy/draw :id 23}]}
+  {:name :math-sin :version 1
+   :resource "kotoba/lang/capability-kits/math-sin-v1.edn"
+   :capabilities [{:name :math/sin :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
+  {:name :math-cos :version 1
+   :resource "kotoba/lang/capability-kits/math-cos-v1.edn"
+   :capabilities [{:name :math/cos :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
   {:name :hash-sha256 :version 1
    :resource "kotoba/lang/capability-kits/hash-sha256-v1.edn"
    :capabilities [{:name :hash/sha256 :id :pure-allowlist}]
-   :note "T8.3 real wasm package pilot (ADR 0159); packaging surface, not ops kit id"}]}
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
+  {:name :data-cbor :version 1
+   :resource "kotoba/lang/capability-kits/data-cbor-v1.edn"
+   :capabilities [{:name :data/cbor :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
+  {:name :data-json :version 1
+   :resource "kotoba/lang/capability-kits/data-json-v1.edn"
+   :capabilities [{:name :data/json :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
+  {:name :clock-monotonic :version 1
+   :resource "kotoba/lang/capability-kits/clock-monotonic-v1.edn"
+   :capabilities [{:name :clock/monotonic :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
+  {:name :random-bytes :version 1
+   :resource "kotoba/lang/capability-kits/random-bytes-v1.edn"
+   :capabilities [{:name :random/bytes :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}
+  {:name :time-now-days :version 1
+   :resource "kotoba/lang/capability-kits/time-now-days-v1.edn"
+   :capabilities [{:name :time/now-days :id :pure-allowlist}]
+   :note "T8.3 pure allowlist wasm package (ADR 0159/0160)"}]}

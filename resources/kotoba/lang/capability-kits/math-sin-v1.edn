@@ -1,13 +1,13 @@
-{:kotoba.capability-kit/name :hash-sha256
+{:kotoba.capability-kit/name :math-sin
  :kotoba.capability-kit/version 1
- :capability {:name :hash/sha256 :id :pure-allowlist}
- :semantics {:operation :sha256-hex
+ :capability {:name :math/sin :id :pure-allowlist}
+ :semantics {:operation :sin
              :ambient-crypto false
              :destination-authority :in-module
              :execution :synchronous-reference
-             :capability-package "kotoba-lang/capability-hash-sha256"}
+             :capability-package "kotoba-lang/capability-math-sin"}
  :limits {:note "see capability package"}
- :request [:record :kotoba.hash-sha256/request []]
+ :request [:record :kotoba.math-sin/request []]
  :result [:i64]
  :transports
  {:wasm-core :reference-implemented
@@ -17,4 +17,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :pending
-                 :notes "Real FIPS 180-4 wasm core (capability-hash-sha256#1). Package path pilot + allowlist set (ADR 0159/0160). Signed production claim still pending readiness :signed-wasm + grant-binding (ADR 0160)."}}
+                 :notes "Pure f64 sin wasm core (capability-math-sin#1). Signed production claim still pending readiness :signed-wasm + grant-binding (ADR 0160)."}}

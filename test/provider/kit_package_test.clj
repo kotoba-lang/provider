@@ -1,5 +1,6 @@
 (ns provider.kit-package-test
   (:require [clojure.edn :as edn]
+            [clojure.string :as str]
             [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ed25519.core :as ed]
@@ -385,3 +386,122 @@
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
         names (set (map :name (:kits table)))]
     (is (contains? names :hash-sha256))))
+
+(deftest pure-allowlist-wasm-packages-all-digest-match
+  (let [table (kit/load-wasm-packages-table)]
+    (is (= 8 (count (:packages table))))
+    (doseq [entry (:packages table)]
+      (let [bytes (kit/load-wasm-package-bytes (:resource entry))]
+        (is (false? (:fixture? entry)) (str (:name entry)))
+        (is (true? (kit/verify-wasm-package-digest entry bytes))
+            (str (:name entry) " digest"))
+        (is (= [0x00 0x61 0x73 0x6d]
+               (map #(bit-and % 0xff) (take 4 bytes)))
+            (str (:name entry) " wasm magic"))))))
+
+(deftest grant-binding-host-admissible-pure-allowlist
+  "Signed real wasm + kit receipts → host-admissible grant binding;
+   production still blocked by readiness :signed-wasm."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        row (kit/readiness-for readiness :math-sin)
+        path "kotoba/lang/capability-kits/math-sin-v1.edn"
+        text (slurp (io/resource path))
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :math-sin)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        {:keys [sign]} (kit/test-hmac-signer "grant-bind-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :math-sin path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt entry bytes)
+                      kit-signed)
+                     sign)
+        m (kit/package-manifest
+           {:kit-name :math-sin
+            :kit-resource path
+            :kit-receipt kit-signed
+            :wasm-receipt wasm-signed
+            :readiness-row row})
+        gb (kit/grant-binding
+            {:kit-name :math-sin
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :manifest m
+             :readiness-row row
+             :package-entry entry
+             :wasm-bytes bytes})
+        v (kit/verify-grant-binding gb kit-signed wasm-signed)]
+    (is (true? (:host-admissible? gb)))
+    (is (false? (:production-admissible? gb)))
+    (is (empty? (:host-blockers gb)))
+    (is (some #{:signed-wasm-not-ready} (:production-blockers gb)))
+    (is (string? (:grant-key gb)))
+    (is (str/starts-with? (:grant-key gb) "kotoba.kit-package.grant-binding/v1\n"))
+    (is (true? (:ok? v)))
+    (is (true? (:host-admissible? v)))
+    (is (false? (:production-admissible? v)))))
+
+(deftest grant-binding-rejects-fixture
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        row (kit/readiness-for readiness :secret)
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "fx")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :secret path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/wasm-provider-receipt
+                       :secret path (kit/load-fixture-wasm-bytes)
+                       {:artifact-kind :fixture-synthetic})
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :secret
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row row})]
+    (is (false? (:host-admissible? gb)))
+    (is (some #{:wasm-artifact-is-fixture} (:host-blockers gb)))
+    (is (false? (:production-admissible? gb)))))
+
+(deftest grant-binding-detects-digest-swap
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        row (kit/readiness-for readiness :math-cos)
+        path "kotoba/lang/capability-kits/math-cos-v1.edn"
+        text (slurp (io/resource path))
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :math-cos)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        {:keys [sign]} (kit/test-hmac-signer "swap")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :math-cos path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt entry bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :math-cos
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row row
+             :package-entry entry
+             :wasm-bytes bytes})
+        tampered (assoc-in kit-signed [:package :digest] (kit/sha256-hex "nope"))
+        v (kit/verify-grant-binding gb tampered wasm-signed)]
+    (is (true? (:host-admissible? gb)))
+    (is (false? (:ok? v)))
+    (is (= :kit-edn-digest-mismatch (:reason v)))))
+
+(deftest readiness-covers-pure-allowlist-set
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        names (set (map :name (:kits table)))]
+    (doseq [n [:math-sin :math-cos :hash-sha256 :data-cbor :data-json
+               :clock-monotonic :random-bytes :time-now-days]]
+      (is (contains? names n) (str n)))))
