@@ -198,7 +198,8 @@
 
 (defn test-hmac-signer
   "Host-injectable signer for tests: HMAC-SHA256 with a shared secret.
-  Returns sign-fn / verify-fn pair. Production hosts inject identity.sign."
+  Returns sign-fn / verify-fn pair. Production hosts inject identity.sign
+  via `identity-signer` (or equivalent)."
   [secret-key]
   (let [key-id (str "hmac-test:" (subs (sha256-hex secret-key) 0 16))
         sign (fn [message]
@@ -210,6 +211,99 @@
                  (and (= public-key key-id)
                       (= signature (hmac-sha256-hex secret-key message))))]
     {:sign sign :verify verify :key-id key-id}))
+
+(defn hex-encode
+  "Encode binary payload as lowercase hex. Dual-runtime."
+  [data]
+  (let [ba (coerce-bytes data)]
+    #?(:clj (apply str (map #(format "%02x" (bit-and % 0xff)) ba))
+       :cljs
+       (let [buf (if (string? data)
+                   (js/Buffer.from data "utf8")
+                   (js/Buffer.from ba))]
+         (.toString buf "hex")))))
+
+(defn hex-decode
+  "Decode even-length lowercase/uppercase hex string → platform bytes."
+  [hex]
+  (when (or (str/blank? (str hex)) (odd? (count (str hex))))
+    (throw (ex-info "hex-decode requires even-length hex" {:phase :kit-package})))
+  #?(:clj
+     (let [s (str hex)
+           n (/ (count s) 2)
+           out (byte-array n)]
+       (dotimes [i n]
+         (let [b (Integer/parseInt (subs s (* 2 i) (+ (* 2 i) 2)) 16)]
+           (aset-byte out i (unchecked-byte b))))
+       out)
+     :cljs
+     (js/Buffer.from (str hex) "hex")))
+
+(defn identity-signer
+  "Wrap host identity.sign / identity.verify into kit-package inject shapes.
+
+  Production hosts should inject real identity capability implementations
+  (Ed25519 / CACAO / kagi-backed). This adapter only normalises the
+  kit-package contract:
+
+    sign-fn:  (fn [message-str] -> {:alg :key-id :public-key :signature})
+    verify-fn:(fn [message-str public-key signature] -> boolean)
+
+  opts:
+    :sign-bytes   (fn [msg-bytes] -> signature-bytes)   required
+    :verify-bytes (fn [msg-bytes pub-key-bytes sig-bytes] -> boolean) required
+    :public-key-hex or :public-key-bytes               required
+    :key-id       optional string (defaults to pubkey hex prefix)
+    :alg          default :ed25519
+    :encode       :hex (default) — signature + public-key as hex strings
+
+  Does **not** claim production readiness; readiness `:signed-wasm` stays gated."
+  [{:keys [sign-bytes verify-bytes public-key-hex public-key-bytes key-id alg encode]
+    :or {alg :ed25519 encode :hex}}]
+  (when-not (fn? sign-bytes)
+    (throw (ex-info "identity-signer requires :sign-bytes" {:phase :kit-package})))
+  (when-not (fn? verify-bytes)
+    (throw (ex-info "identity-signer requires :verify-bytes" {:phase :kit-package})))
+  (let [pub-hex (or public-key-hex
+                    (when public-key-bytes (hex-encode public-key-bytes)))
+        pub-bytes (or public-key-bytes
+                      (when public-key-hex (hex-decode public-key-hex)))]
+    (when-not (and (string? pub-hex) pub-bytes)
+      (throw (ex-info "identity-signer requires public key" {:phase :kit-package})))
+    (when-not (= encode :hex)
+      (throw (ex-info "identity-signer only supports :encode :hex"
+                      {:phase :kit-package :encode encode})))
+    (let [kid (or key-id (str (name alg) ":" (subs pub-hex 0 (min 16 (count pub-hex)))))
+          sign (fn [message]
+                 (let [sig (sign-bytes (utf8-bytes message))]
+                   {:alg alg
+                    :key-id kid
+                    :public-key pub-hex
+                    :signature (hex-encode sig)}))
+          verify (fn [message public-key signature]
+                   (try
+                     (and (= public-key pub-hex)
+                          (boolean
+                           (verify-bytes (utf8-bytes message)
+                                         pub-bytes
+                                         (hex-decode signature))))
+                     (catch #?(:clj Exception :cljs :default) _
+                       false)))]
+      {:sign sign :verify verify :key-id kid :public-key pub-hex :alg alg})))
+
+(defn load-fixture-wasm-bytes
+  "Load shipped empty-module fixture (synthetic). Not a production provider."
+  []
+  #?(:clj
+     (if-let [url (io/resource "kotoba/lang/fixtures/empty-module.wasm")]
+       (let [in (io/input-stream url)
+             out (java.io.ByteArrayOutputStream.)]
+         (io/copy in out)
+         (.toByteArray out))
+       (throw (ex-info "empty-module.wasm fixture missing" {:phase :kit-package})))
+     :cljs
+     (throw (ex-info "load-fixture-wasm-bytes requires inject on cljs"
+                     {:phase :kit-package}))))
 
 (defn sign-kit-package-receipt
   "Attach a host signature to an unsigned kit package receipt.
