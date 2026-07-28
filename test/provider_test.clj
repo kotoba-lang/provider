@@ -22,7 +22,9 @@
             [provider.process :as process]
             [provider.process-transport :as process-transport]
             [provider.secret :as secret]
-            [provider.secret-transport :as secret-transport]))
+            [provider.secret-transport :as secret-transport]
+            [provider.git :as git]
+            [provider.git-transport :as git-transport]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -47,7 +49,9 @@
   (is (some? (find-ns 'provider.process)) "provider.process must load")
   (is (some? (find-ns 'provider.process-transport)) "provider.process-transport must load")
   (is (some? (find-ns 'provider.secret)) "provider.secret must load")
-  (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load"))
+  (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load")
+  (is (some? (find-ns 'provider.git)) "provider.git must load")
+  (is (some? (find-ns 'provider.git-transport)) "provider.git-transport must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -343,3 +347,66 @@
     (is (thrown-with-msg? Exception #"name→\{:service :account\}"
           (secret-transport/keychain-fetch
            {"x" {:service "s*" :account "a"}})))))
+
+(deftest git-validate-worktree-and-log-n
+  (is (nil? (git/validate-worktree :repo/main #{:repo/main})))
+  (is (= :git/not-allowed (git/validate-worktree :repo/other #{:repo/main})))
+  (is (= :git/bad-worktree (git/validate-worktree :main #{:repo/main})))
+  (is (nil? (git/validate-log-n 10)))
+  (is (= :git/bad-n (git/validate-log-n 0)))
+  (is (= :git/n-too-large (git/validate-log-n 101))))
+
+(deftest git-mem-run-status-and-log
+  (let [run (git/mem-run {:repo/app {:branch "main"
+                                     :clean? true
+                                     :porcelain ""
+                                     :log ["abc first" "def second"]}})
+        ps (:providers (git/create-providers
+                        {:allowed-worktrees #{:repo/app}
+                         :run run}))
+        p (get ps git/capability-id)
+        st ((:invoke p) [git/request-type :status
+                         [git/status-request-type :repo/app]])
+        lg ((:invoke p) [git/request-type :log
+                         [git/log-request-type :repo/app 1]])
+        denied ((:invoke p) [git/request-type :status
+                             [git/status-request-type :repo/other]])]
+    (is (= :status (second st)))
+    (let [[_ branch clean? porcelain] (nth st 2)]
+      (is (= "main" branch))
+      (is (true? clean?))
+      (is (= "" porcelain)))
+    (is (= :log (second lg)))
+    (is (= ["abc first"] (nth (nth lg 2) 1)))
+    (is (= :error (second denied)))
+    (is (= :git/not-allowed (second (nth denied 2))))))
+
+(deftest git-os-run-against-this-repo
+  ;; Use the provider checkout itself when .git exists.
+  (let [root (java.io.File. ".")
+        git-dir (java.io.File. root ".git")
+        git-bin (let [c (java.io.File. "/usr/bin/git")
+                      b (java.io.File. "/bin/git")]
+                  (cond (.canExecute c) (.getPath c)
+                        (.canExecute b) (.getPath b)
+                        :else nil))]
+    (if (and (.isDirectory git-dir) git-bin)
+      (let [abs (.getCanonicalPath root)
+            run (git-transport/os-run {:git-bin git-bin
+                                       :worktrees {:repo/provider abs}})
+            ps (:providers (git/create-providers
+                            {:allowed-worktrees #{:repo/provider}
+                             :run run}))
+            p (get ps git/capability-id)
+            st ((:invoke p) [git/request-type :status
+                             [git/status-request-type :repo/provider]])
+            lg ((:invoke p) [git/request-type :log
+                             [git/log-request-type :repo/provider 3]])]
+        (is (= :status (second st)) (str st))
+        (let [[_ branch _clean? _] (nth st 2)]
+          (is (string? branch))
+          (is (pos? (count branch))))
+        (is (= :log (second lg)) (str lg))
+        (is (vector? (nth (nth lg 2) 1)))
+        (is (<= (count (nth (nth lg 2) 1)) 3)))
+      (is true "skip os-run when no .git or git binary"))))
