@@ -23,7 +23,8 @@
             [provider.process-transport :as process-transport]
             [provider.secret :as secret]
             [provider.secret-transport :as secret-transport]
-            [provider.git :as git]))
+            [provider.git :as git]
+            [provider.git-transport :as git-transport]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -49,7 +50,8 @@
   (is (some? (find-ns 'provider.process-transport)) "provider.process-transport must load")
   (is (some? (find-ns 'provider.secret)) "provider.secret must load")
   (is (some? (find-ns 'provider.secret-transport)) "provider.secret-transport must load")
-  (is (some? (find-ns 'provider.git)) "provider.git must load"))
+  (is (some? (find-ns 'provider.git)) "provider.git must load")
+  (is (some? (find-ns 'provider.git-transport)) "provider.git-transport must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})
@@ -371,3 +373,23 @@
       (is (zero? exit))
       (is (= "status --short" stdout))
       (is (= "" stderr)))))
+
+(deftest git-os-run-status-on-this-repo
+  (let [root (java.io.File. ".")
+        git-dir (java.io.File. root ".git")
+        git-bin (cond (.canExecute (java.io.File. "/usr/bin/git")) "/usr/bin/git"
+                      (.canExecute (java.io.File. "/bin/git")) "/bin/git"
+                      :else nil)]
+    (if (and (.exists git-dir) git-bin)
+      (let [run (git-transport/os-run {:git-bin git-bin
+                                       :worktree (.getCanonicalPath root)})
+            ps (:providers (git/create-providers {:run run}))
+            p (get ps git/capability-id)
+            reply ((:invoke p) [git/run-request-type
+                                ["rev-parse" "--abbrev-ref" "HEAD"]
+                                4096 5000])]
+        (is (= :ok (second reply)) (str reply))
+        (let [[_ exit stdout _] (nth reply 2)]
+          (is (zero? exit))
+          (is (pos? (count (str/trim stdout))))))
+      (is true "skip when no .git or git binary"))))
