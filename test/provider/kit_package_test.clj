@@ -271,3 +271,36 @@
                      (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
                     :http)
                    [:scores :signed-wasm])))))
+
+(deftest package-manifest-blocks-fixture-production-claim
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        secret (kit/readiness-for table :secret)
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "manifest-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :secret path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/wasm-provider-receipt
+                       :secret path (kit/load-fixture-wasm-bytes)
+                       {:artifact-kind :fixture-synthetic})
+                      kit-signed)
+                     sign)
+        m (kit/package-manifest
+           {:kit-name :secret
+            :kit-resource path
+            :kit-receipt kit-signed
+            :wasm-receipt wasm-signed
+            :readiness-row secret})
+        rr (kit/readiness-receipt secret kit-signed wasm-signed)]
+    (is (= :kotoba.kit-package.manifest/v1 (:format m)))
+    (is (true? (get-in m [:layers :kit-edn :signed?])))
+    (is (true? (get-in m [:layers :wasm :signed?])))
+    (is (true? (get-in m [:layers :wasm :fixture?])))
+    (is (false? (:production-signed-claim? m)))
+    (is (some #{:signed-wasm-not-ready} (:blockers m)))
+    (is (some #{:wasm-artifact-is-fixture} (:blockers m)))
+    (is (false? (:production-signed-claim? rr)))
+    (is (seq (:package-blockers rr)))))
