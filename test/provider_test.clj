@@ -11,6 +11,7 @@
             [provider.llm-transport]
             [provider.log]
             [provider.object :as object]
+            [provider.object-transport :as object-transport]
             [provider.state :as state]
             [provider.storage]
             [provider.storage-transport]
@@ -29,6 +30,7 @@
   (is (some? (find-ns 'provider.llm-transport)) "provider.llm-transport must load")
   (is (some? (find-ns 'provider.log)) "provider.log must load")
   (is (some? (find-ns 'provider.object)) "provider.object must load")
+  (is (some? (find-ns 'provider.object-transport)) "provider.object-transport must load")
   (is (some? (find-ns 'provider.state)) "provider.state must load")
   (is (some? (find-ns 'provider.storage)) "provider.storage must load")
   (is (some? (find-ns 'provider.storage-transport)) "provider.storage-transport must load")
@@ -85,3 +87,22 @@
     (is (= [10 11] (vec (:bytes c1))))
     (is (false? (:done? c1)))
     (is (true? (:done? done)))))
+
+(deftest object-transport-resolve-endpoint-requires-host-config
+  (is (thrown-with-msg? clojure.lang.ExceptionInfo #":endpoint"
+                        (object-transport/resolve-endpoint {})))
+  (is (= "https://obj.example.test"
+         (object-transport/resolve-endpoint {:endpoint "https://obj.example.test"}))))
+
+(deftest object-transport-request-body-shapes
+  (is (= {"operation" "get-stream" "binding" "example/blocks" "key" "k1"}
+         (#'object-transport/request-body
+          {:operation :get-stream :binding :example/blocks :key "k1"})))
+  (let [body (#'object-transport/request-body
+              {:operation :put-block
+               :binding :example/blocks
+               :digest "sha256:abc"
+               :bytes (byte-array [1 2 3])})]
+    (is (= "put-block" (get body "operation")))
+    (is (string? (get body "bytes_base64")))
+    (is (seq (get body "bytes_base64")))))
