@@ -79,11 +79,16 @@
    - `{:pending true}` → pending task (host later `value/task-fulfill!`)
    - `{:chunks [...]}` → ready task over concatenated chunks (ADR 0123)
    - `{:chunk-queue [...]}` → ready task with true multi-chunk stream (ADR 0125;
-     each stream-read! yields one producer chunk, no pre-join)"
+     each stream-read! yields one producer chunk, no pre-join)
+   - `{:open-stream true}` → ready task with open progressive stream (ADR 0126;
+     host `stream-enqueue!` / `stream-close!`)"
   [reply]
   (cond
     (and (map? reply) (true? (:pending reply)))
     (value/make-pending-bytes-task)
+
+    (and (map? reply) (true? (:open-stream reply)))
+    (value/make-ready-open-chunk-queue-task)
 
     (and (map? reply) (sequential? (:chunk-queue reply)) (seq (:chunk-queue reply)))
     (value/make-ready-bytes-task-from-chunk-queue

@@ -181,12 +181,16 @@
 
 (defn- as-bytes-task!
   "Transport returns host `:bytes`, `{:bytes ...}`, `{:pending true}`,
-  `{:chunks [...]}` (join-before-ready, ADR 0123), or
-  `{:chunk-queue [...]}` (true multi-chunk yield, ADR 0125)."
+  `{:chunks [...]}` (join-before-ready, ADR 0123),
+  `{:chunk-queue [...]}` (true multi-chunk yield, ADR 0125), or
+  `{:open-stream true}` (progressive live push, ADR 0126)."
   [reply]
   (cond
     (and (map? reply) (true? (:pending reply)))
     (value/make-pending-bytes-task)
+
+    (and (map? reply) (true? (:open-stream reply)))
+    (value/make-ready-open-chunk-queue-task)
 
     (and (map? reply) (sequential? (:chunk-queue reply)) (seq (:chunk-queue reply)))
     (let [chunks (mapv #(value/bounded-bytes! % max-pull-bytes) (:chunk-queue reply))
