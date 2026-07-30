@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: latest
+      - run: clojure -M:test
+
+  # This repo's own suite passing is not enough: it is a library, and a change
+  # can be green here while breaking its consumer. That happened on 2026-07-30
+  # in a sibling (kotoba-wasm f4d7afb: green there, compiler conformance
+  # 47/52), which is why every kotoba-lang library CI carries this job.
+  #
+  # provider is an extra-dep of the compiler's :native-conformance alias, so T1.4 pure-native is the run that exercises it.
+  consumer-conformance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: dep
+      - name: Check out the consumer
+        run: git clone --depth 1 https://github.com/kotoba-lang/compiler compiler
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: DeLaGuardo/setup-clojure@13.4
+        with:
+          cli: latest
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Compiler pure-native conformance against this checkout
+        working-directory: compiler
+        run: |
+          clojure -Sdeps "{:aliases {:dep {:override-deps {io.github.kotoba-lang/provider {:local/root \"../dep\"}}}}}" \
+            -M:dep:native-conformance
