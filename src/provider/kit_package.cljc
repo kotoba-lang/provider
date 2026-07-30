@@ -9,17 +9,19 @@
      package**, not a Wasm Component.
   3. **Signed Wasm provider receipt** (T8.3 remainder, API first slice) —
      host-injected sign over content-address of Wasm **bytes** + kit resource
-     binding. Does **not** emit AOT Wasm; does **not** flip readiness
-     `:signed-wasm` to ready until a real Component package + full gate exist.
+     binding. Does **not** emit compiler AOT Components by itself.
   4. **Real non-fixture Wasm package bytes** (T8.3 packaging, ADR 0159) —
      classpath `wasm-packages/*` registry + loaders. Real module digests remove
      the fixture blocker; production claim still requires readiness
      `:signed-wasm :ready`.
   5. **Host-grant digest binding** (T8.3, ADR 0160) — bind host grant keys to
-     kit-edn + wasm digests + publisher key-id from signed receipts. Does **not**
-     flip readiness `:signed-wasm`.
+     kit-edn + wasm digests + publisher key-id from signed receipts.
+  6. **Pure-allowlist publisher policy** (T8.3, ADR 0161) — pure-allowlist kits
+     may set readiness `:signed-wasm :ready` when real non-fixture wasm +
+     grant-binding path exist. Ops kits (http/secret/…) stay pending until
+     real AOT Components land.
 
-  See ADR 0152–0160."
+  See ADR 0152–0161."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
@@ -615,10 +617,49 @@
   [table kit-name]
   (first (filter #(= kit-name (:name %)) (:kits table))))
 
+(defn pure-allowlist-kit?
+  "True when readiness row is a pure-allowlist packaging surface (not ops)."
+  [row]
+  (= :pure-allowlist (:id row)))
+
+(defn pure-allowlist-publisher-policy-satisfied?
+  "ADR 0161 publisher policy for pure-allowlist kits.
+
+  A pure-allowlist kit may advertise readiness `:signed-wasm :ready` when:
+  1. `:id` is `:pure-allowlist` (ops kits never satisfy this path)
+  2. base dimensions are ready: schema, dual-runtime, deny-fixtures, quota,
+     package, host-parity
+  3. audit is `:ready` or `:n/a` (pure compute may have no host audit surface)
+  4. registry package-entry is non-fixture and (if bytes given) digest-matches
+
+  This does **not** claim compiler AOT Component packaging for ops/network.
+  Ops kits (http/secret/…) must keep `:signed-wasm :pending` until real AOT
+  Components land."
+  ([readiness-row] (pure-allowlist-publisher-policy-satisfied? readiness-row nil nil))
+  ([readiness-row package-entry] (pure-allowlist-publisher-policy-satisfied? readiness-row package-entry nil))
+  ([readiness-row package-entry wasm-bytes]
+   (let [s (:scores readiness-row)
+         base-ok? (and (pure-allowlist-kit? readiness-row)
+                       (= :ready (:schema s))
+                       (= :ready (:dual-runtime s))
+                       (= :ready (:deny-fixtures s))
+                       (= :ready (:quota s))
+                       (= :ready (:package s))
+                       (= :ready (:host-parity s))
+                       (or (= :ready (:audit s)) (= :n/a (:audit s))))
+         entry-ok? (if package-entry
+                     (and (false? (boolean (:fixture? package-entry)))
+                          (string? (:sha256 package-entry))
+                          (or (nil? wasm-bytes)
+                              (verify-wasm-package-digest package-entry wasm-bytes)))
+                     true)]
+     (boolean (and base-ok? entry-ok?)))))
+
 (defn production-signed-allowed?
   "True only when readiness scores clear the ADR 0153 signed **Wasm** gate.
   A verified signed kit EDN receipt and/or signed Wasm fixture receipt alone
-  are insufficient."
+  are insufficient. Pure-allowlist kits clear via ADR 0161 publisher policy
+  (readiness `:signed-wasm :ready`); ops kits remain gated until AOT Components."
   [row]
   (let [s (:scores row)]
     (boolean

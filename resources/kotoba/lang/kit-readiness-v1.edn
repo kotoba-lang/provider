@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. signed-wasm remains pending everywhere — pure allowlist real wasm modules ship (ADR 0159–0160) and grant-binding digests exist, but production signed claim requires readiness :signed-wasm :ready; fixtures and unsigned packages never claim production."
+ "T8.2 readiness + T8.3 packaging. T8.3 pure-allowlist publisher policy (ADR 0161): pure-allowlist kits may set :signed-wasm :ready when real non-fixture wasm + grant-binding path exist. Ops kits (http/secret/…) keep :signed-wasm :pending. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -122,9 +122,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-math-sin#1" "wasm-packages/math-sin-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-math-sin#1" "wasm-packages/math-sin-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :math-cos
    :id :pure-allowlist
@@ -137,9 +137,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-math-cos#1" "wasm-packages/math-cos-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-math-cos#1" "wasm-packages/math-cos-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :hash-sha256
    :id :pure-allowlist
@@ -152,9 +152,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-hash-sha256#1" "wasm-packages/hash-sha256-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-hash-sha256#1" "wasm-packages/hash-sha256-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :data-cbor
    :id :pure-allowlist
@@ -167,9 +167,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-data-cbor#1" "wasm-packages/data-cbor-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-data-cbor#1" "wasm-packages/data-cbor-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :data-json
    :id :pure-allowlist
@@ -182,9 +182,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-data-json#1" "wasm-packages/data-json-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-data-json#1" "wasm-packages/data-json-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :clock-monotonic
    :id :pure-allowlist
@@ -197,9 +197,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-clock-monotonic#1" "wasm-packages/clock-monotonic-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-clock-monotonic#1" "wasm-packages/clock-monotonic-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :random-bytes
    :id :pure-allowlist
@@ -212,9 +212,9 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-random-bytes#1" "wasm-packages/random-bytes-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}
+            :signed-wasm :ready}
+   :evidence ["capability-random-bytes#1" "wasm-packages/random-bytes-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}
 
   {:name :time-now-days
    :id :pure-allowlist
@@ -227,6 +227,6 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["capability-time-now-days#1" "wasm-packages/time-now-days-v1.wasm" "ADR 0159" "ADR 0160"]
-   :note "Pure allowlist: real wasm module bytes; grant-binding available; signed production claim pending."}]}
+            :signed-wasm :ready}
+   :evidence ["capability-time-now-days#1" "wasm-packages/time-now-days-v1.wasm" "ADR 0159" "ADR 0160" "ADR 0161 publisher-policy"]
+   :note "Pure allowlist: real wasm + grant-binding; :signed-wasm ready under ADR 0161 publisher policy (not ops AOT Component)."}]}

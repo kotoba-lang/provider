@@ -340,9 +340,9 @@
     (is (thrown-with-msg? clojure.lang.ExceptionInfo #"digest mismatch"
           (kit/real-wasm-provider-receipt entry kit/empty-wasm-module-bytes)))))
 
-(deftest package-manifest-real-wasm-still-blocks-signed-wasm-score
-  "Real non-fixture wasm removes :wasm-artifact-is-fixture but readiness
-   :signed-wasm stays pending — production claim remains false (ADR 0159)."
+(deftest package-manifest-real-wasm-production-claim-under-publisher-policy
+  "ADR 0161: pure-allowlist real wasm + signed receipts + readiness
+   :signed-wasm :ready → production-signed-claim; fixture blocker stays clear."
   (let [table (kit/readiness-table
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
         row (kit/readiness-for table :hash-sha256)
@@ -367,19 +367,20 @@
             :readiness-row row})
         rr (kit/readiness-receipt row kit-signed wasm-signed)]
     (is (some? row))
-    (is (= :pending (get-in row [:scores :signed-wasm])))
+    (is (= :ready (get-in row [:scores :signed-wasm])))
+    (is (true? (kit/pure-allowlist-publisher-policy-satisfied? row entry bytes)))
     (is (true? (get-in m [:layers :kit-edn :signed?])))
     (is (true? (get-in m [:layers :wasm :signed?])))
     (is (false? (get-in m [:layers :wasm :fixture?])))
     (is (= :wasm-module (get-in m [:layers :wasm :artifact-kind])))
-    (is (false? (:production-signed-claim? m)))
-    (is (some #{:signed-wasm-not-ready} (:blockers m)))
+    (is (true? (:production-signed-claim? m)))
+    (is (empty? (:blockers m)))
     (is (not-any? #{:wasm-artifact-is-fixture} (:blockers m))
         "real wasm must clear fixture blocker")
     (is (not-any? #{:kit-edn-receipt-unsigned :wasm-receipt-unsigned} (:blockers m)))
     (is (false? (:wasm-fixture? rr)))
-    (is (false? (:production-signed-claim? rr)))
-    (is (seq (:package-blockers rr)))))
+    (is (true? (:production-signed-claim? rr)))
+    (is (empty? (:package-blockers rr)))))
 
 (deftest readiness-covers-hash-sha256-pilot
   (let [table (kit/readiness-table
@@ -399,9 +400,26 @@
                (map #(bit-and % 0xff) (take 4 bytes)))
             (str (:name entry) " wasm magic"))))))
 
+(deftest pure-allowlist-publisher-policy
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        row (kit/readiness-for readiness :math-sin)
+        secret (kit/readiness-for readiness :secret)
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :math-sin)
+        bytes (kit/load-wasm-package-bytes (:resource entry))]
+    (is (true? (kit/pure-allowlist-kit? row)))
+    (is (false? (kit/pure-allowlist-kit? secret)))
+    (is (true? (kit/pure-allowlist-publisher-policy-satisfied? row entry bytes)))
+    (is (false? (kit/pure-allowlist-publisher-policy-satisfied? secret)))
+    (is (= :ready (get-in row [:scores :signed-wasm])))
+    (is (= :pending (get-in secret [:scores :signed-wasm])))
+    (is (true? (kit/production-signed-allowed? row)))
+    (is (false? (kit/production-signed-allowed? secret)))))
+
 (deftest grant-binding-host-admissible-pure-allowlist
   "Signed real wasm + kit receipts → host-admissible grant binding;
-   production still blocked by readiness :signed-wasm."
+   ADR 0161: pure-allowlist production-admissible when readiness signed-wasm ready."
   (let [readiness (kit/readiness-table
                    (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
         row (kit/readiness-for readiness :math-sin)
@@ -434,14 +452,15 @@
              :wasm-bytes bytes})
         v (kit/verify-grant-binding gb kit-signed wasm-signed)]
     (is (true? (:host-admissible? gb)))
-    (is (false? (:production-admissible? gb)))
+    (is (true? (:production-admissible? gb)))
     (is (empty? (:host-blockers gb)))
-    (is (some #{:signed-wasm-not-ready} (:production-blockers gb)))
+    (is (empty? (:production-blockers gb)))
+    (is (true? (:production-signed-claim? m)))
     (is (string? (:grant-key gb)))
     (is (str/starts-with? (:grant-key gb) "kotoba.kit-package.grant-binding/v1\n"))
     (is (true? (:ok? v)))
     (is (true? (:host-admissible? v)))
-    (is (false? (:production-admissible? v)))))
+    (is (true? (:production-admissible? v)))))
 
 (deftest grant-binding-rejects-fixture
   (let [readiness (kit/readiness-table
