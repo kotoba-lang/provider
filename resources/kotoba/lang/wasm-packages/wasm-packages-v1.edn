@@ -254,4 +254,36 @@
    :exports {"process_spawn_bounds_ok" {:params [:i32 :i64 :i64] :result :i32}}
    :fixture? false
    :signed-content-addressed-package :pending}
+
+  {:name :scoped-fs-path
+   :resource "kotoba/lang/wasm-packages/scoped-fs-path-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "652d26c8c1db3b318d3ceddbdf43e3b41f3c6d72dae449106b8f27de542169a5"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/scoped-fs-path-v1.wasm"
+            :capability-id "fs/scoped"
+            :provider-status :reference-partial
+            :note "ADR 0169 pure path policy; host root-scoped store stays authority"}
+   :exports {"fs_path_ok" {:params [:i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :scoped-fs-path-component
+   :resource "kotoba/lang/wasm-packages/scoped-fs-path-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "c13ea49386153b00e7a51889e3c63eda07cb1c379d2515cc690635d13ae4ab50"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/scoped-fs-path-v1.component.wasm"
+            :capability-id "fs/scoped"
+            :provider-status :reference-partial
+            :note "ADR 0169 Component embeds pure path policy"}
+   :exports {"fs_path_ok" {:params [:i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
 ]}

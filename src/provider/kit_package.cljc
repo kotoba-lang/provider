@@ -669,9 +669,8 @@
      (boolean (and base-ok? entry-ok?)))))
 
 (def ops-network-kit-names
-  "Readiness kit names on the ops packaging surface (not pure-allowlist).
-  Originally http/secret (ADR 0164); ADR 0167 adds entropy (and later process/fs/git)."
-  #{:http :secret :entropy :process})
+  "Readiness kit names on the ops packaging surface (not pure-allowlist). ADR 0164–0169: http/secret/entropy/process/scoped-fs."
+  #{:http :secret :entropy :process :scoped-fs})
 
 (defn ops-network-kit?
   "True when readiness row is an ops/network packaging surface (http/secret).

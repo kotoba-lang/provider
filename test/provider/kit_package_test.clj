@@ -411,7 +411,7 @@
         pure (filterv #(not (contains? #{:ops-network :ops} (:class %)))
                       (:packages table))]
     (is (= 8 (count pure)))
-    (is (<= 14 (count (:packages table))))
+    (is (<= 16 (count (:packages table))))
     (doseq [entry pure]
       (let [bytes (kit/load-wasm-package-bytes (:resource entry))]
         (is (false? (:fixture? entry)) (str (:name entry)))
@@ -823,5 +823,45 @@
     (is (true? (kit/ops-signed-wasm-ready-allowed? process comp comp-bytes)))
     (is (= :ready (get-in process [:scores :signed-wasm])))
     (is (true? (kit/production-signed-allowed? process)))
+    (is (true? (:host-admissible? gb)))
+    (is (true? (:production-admissible? gb)))))
+
+(deftest ops-scoped-fs-component-signed-wasm-ready
+  "ADR 0169: scoped-fs pure path Component flips signed-wasm."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        fs (kit/readiness-for readiness :scoped-fs)
+        pkg-table (kit/load-wasm-packages-table)
+        mod (kit/wasm-package-for pkg-table :scoped-fs-path)
+        comp (kit/wasm-package-for pkg-table :scoped-fs-path-component)
+        mod-bytes (kit/load-wasm-package-bytes (:resource mod))
+        comp-bytes (kit/load-wasm-package-bytes (:resource comp))
+        path "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-scoped-fs-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :scoped-fs path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt comp comp-bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :scoped-fs
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row fs
+             :package-entry comp
+             :wasm-bytes comp-bytes})]
+    (is (true? (kit/ops-network-kit? fs)))
+    (is (= :ops (:class mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (true? (kit/verify-wasm-package-digest mod mod-bytes)))
+    (is (true? (kit/verify-wasm-package-digest comp comp-bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? fs mod mod-bytes)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? fs mod mod-bytes)))
+    (is (true? (kit/ops-signed-wasm-ready-allowed? fs comp comp-bytes)))
+    (is (= :ready (get-in fs [:scores :signed-wasm])))
+    (is (true? (kit/production-signed-allowed? fs)))
     (is (true? (:host-admissible? gb)))
     (is (true? (:production-admissible? gb)))))
