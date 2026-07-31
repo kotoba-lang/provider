@@ -1023,6 +1023,30 @@
     (is (contains? (:imports mod) "kotoba:typed"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_set_ok.kotoba")))))
 
+(deftest http-headers-name-set-true-uniqueness-package-registered
+  "T8.3 ADR 0223: true header-name uniqueness via [:set :string] (set-in-record)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-headers-name-set)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= :kotoba.typed (get-in mod [:source :typed-host])))
+    (is (= "5b61d1783818a825762d5373914b395747eaa136c4dd62733122003db89b0d74"
+           (:sha256 mod) (sha mod-bytes)))
+    (doseq [e ["http_headers_names_begin" "http_headers_names_add"
+               "http_headers_names_pair" "http_headers_names_code"
+               "http_headers_names_count" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (contains? (:imports mod) "kotoba:typed"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_name_set.kotoba")))))
+
 (deftest http-typed-string-headers-set-ok-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
