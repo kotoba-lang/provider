@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0162 core forwarder + ADR 0165 thin Component + ADR 0171 compiler-AOT pure bounds (http-post-bounds-v1.wasm from kotoba-compiler; :limits url/headers/body/timeout). Host http-post still I/O authority. Full request/result EDN codec AOT still open (wasm-aot :partial). Readiness :signed-wasm :ready under ADR 0164+0165."}}
+                 :notes "ADR 0162/0165 forwarder+Component; 0171 pure bounds; 0182 typed-string https URL policy. Host http-post I/O authority. Full request/result EDN codec AOT open (wasm-aot :partial)."}}

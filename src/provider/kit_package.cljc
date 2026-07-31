@@ -63,7 +63,9 @@
   18. **Compiler-AOT pure multi-step path walk** (T8.3, ADR 0181) —
      `fs_path_begin`/`next`/`end` host-walk protocol (mirrors secret 0179).
 
-  See ADR 0152–0181."
+  22. **Compiler-AOT http typed-string URL** (T8.3, ADR 0182) — https scheme + url-bytes single-call.
+
+  See ADR 0152–0182."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
