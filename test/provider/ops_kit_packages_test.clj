@@ -1071,6 +1071,32 @@
     (is (contains? (:imports mod) "kotoba:typed"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_append_set.kotoba")))))
 
+
+(deftest http-edn-set-package-true-set-multi-export-registered
+  "T8.3 ADR 0228: pure multi-export EDN kit body + true set uniqueness."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-edn-set-package)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= :kotoba.typed (get-in mod [:source :typed-host])))
+    (is (= "f6dd4b1b07addeef66dd40e3ea7488aeca3d2727f6ce38fbe83b2d535360c44b"
+           (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["http_headers_edn_set_begin" "http_headers_edn_set_append"
+               "http_headers_edn_set_edn" "http_headers_edn_set_code"
+               "http_headers_edn_set_count" "http_request_edn_set"
+               "http_result_ok_edn" "http_result_err_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_set_package.kotoba")))))
+
 (deftest http-headers-names-add-component-true-set-registered
   "T8.3 ADR 0225: Component twin true-set name list (element-bound equality)."
   (let [table (edn/read-string

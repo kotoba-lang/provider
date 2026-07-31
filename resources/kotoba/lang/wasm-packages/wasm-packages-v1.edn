@@ -1051,6 +1051,37 @@
    :signed-content-addressed-package :pending}
 
   ;; T8.3 ADR 0190: typed-string response surface (status + headers-n + body)
+  ;; T8.3 ADR 0228: pure multi-export EDN kit body + true set uniqueness
+  {:name :http-edn-set-package
+   :resource "kotoba/lang/wasm-packages/http-edn-set-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "f6dd4b1b07addeef66dd40e3ea7488aeca3d2727f6ce38fbe83b2d535360c44b"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-set-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_set_package.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "8952a0685a4b21397b18cec27979a4f551780188"
+            :note "ADR 0228 pure multi-export EDN kit body (set-append + request + results); true-set uniqueness; main → -9002; W4/wasm-aot open"}
+   :exports {"http_headers_edn_set_begin" {:params [] :result :externref}
+             "http_headers_edn_set_append" {:params [:externref :externref :externref] :result :externref}
+             "http_headers_edn_set_edn" {:params [:externref] :result :externref}
+             "http_headers_edn_set_code" {:params [:externref] :result :i64}
+             "http_headers_edn_set_count" {:params [:externref] :result :i64}
+             "http_request_edn_set" {:params [:externref :externref :externref :i64] :result :externref}
+             "http_result_ok_edn" {:params [:i64 :externref :externref] :result :externref}
+             "http_result_err_edn" {:params [:externref :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + set surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :http-response-ok
    :resource "kotoba/lang/wasm-packages/http-response-ok-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
