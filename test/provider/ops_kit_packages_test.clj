@@ -402,3 +402,55 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [0 -3 -3 -3 -3 -3 -3 -3 -3 0] (edn/read-string out)))))
+
+(deftest compiler-aot-fs-path-gate-packages
+  "ADR 0177: pure scoped-fs path state-machine gates."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        mod (get by-name :fs-path-gate)
+        comp (get by-name :fs-path-gate-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+    (is (some? mod))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (doseq [e ["fs_path_first_ok" "fs_path_step" "fs_path_finish"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/fs_path_gate.kotoba")))))
+
+(deftest compiler-aot-fs-path-gate-live
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/fs-path-gate-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "fsgate" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const first=instance.exports.fs_path_first_ok;"
+                "const step=instance.exports.fs_path_step;"
+                "const finish=instance.exports.fs_path_finish;"
+                "const N=x=>Number(x);"
+                "const walk=s=>{const bytes=[...Buffer.from(s)];"
+                "const f=N(first(BigInt(bytes[0]))); if(f!==0) return f;"
+                "let st=4n; for(const c of bytes){st=step(st,BigInt(c)); if(N(st)<0) return N(st);} return N(finish(st));};"
+                "console.log(JSON.stringify(["
+                "N(first(47n)),N(first(126n)),N(first(97n)),"
+                "walk('a'),walk('a/b'),walk('a\\0b'),walk('a\\\\b'),"
+                "walk('.'),walk('..'),walk('a/../b'),walk('a/b/c')"
+                "]));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        pb (ProcessBuilder. ["node" "-e" script])
+        p (.start pb)
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str err out))
+    (is (= [-5 -6 0 0 0 -3 -4 -7 -7 -7 0] (edn/read-string out)))))

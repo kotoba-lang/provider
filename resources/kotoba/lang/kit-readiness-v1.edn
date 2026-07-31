@@ -73,8 +73,9 @@
    :evidence ["scoped-fs-v1.edn" "provider#24+#25+#28 os-store"
               "wasm-packages/scoped-fs-path-v1.wasm + .component.wasm (ADR 0169)"
               "wasm-packages/fs-path-len-v1.wasm + .component.wasm (ADR 0174)"
-              "wasm-packages/fs-value-len-v1.wasm + .component.wasm (ADR 0175)"]
-   :note "ADR 0169 hand path-policy + ADR 0174/0175 path+value length compiler-AOT; path scan hand WAT; wasm-aot partial"}
+              "wasm-packages/fs-value-len-v1.wasm + .component.wasm (ADR 0175)"
+              "wasm-packages/fs-path-gate-v1.wasm + .component.wasm (ADR 0177)"]
+   :note "ADR 0169 hand path-policy + ADR 0174/0175 length + 0177 path gates; one-shot hand WAT; wasm-aot partial"}
 
   {:name :git
    :id 22

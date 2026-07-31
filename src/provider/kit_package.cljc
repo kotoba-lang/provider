@@ -51,7 +51,9 @@
   16. **Compiler-AOT secret char-class gate** (T8.3, ADR 0176) — pure
      `secret_name_char_ok(c)` for forbidden code points; host walks name.
 
-  See ADR 0152–0176."
+  17. **Compiler-AOT scoped-fs path gates** (T8.3, ADR 0177) — first/step/finish pure state machine.
+
+  See ADR 0152–0177."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
