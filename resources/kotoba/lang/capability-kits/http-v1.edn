@@ -28,5 +28,5 @@
                  :wasm-aot :partial
                  :native-aot :pending
                  :jit :pending
-                 :signed-content-addressed-package :pending
-                 :notes "ADR 0162: real non-fixture http-post-v1.wasm (host-import forwarder) digest-matched in wasm-packages-v1.edn. Not a production AOT Component; readiness :signed-wasm stays pending."}}
+                 :signed-content-addressed-package :ready
+                 :notes "ADR 0162 core module + ADR 0165 thin Component (http-post-v1.component.wasm). Component enables ops-signed-wasm-ready-allowed?; kit body still host-forwarder (wasm-aot :partial). Readiness :signed-wasm :ready under ADR 0164+0165 inventory."}}

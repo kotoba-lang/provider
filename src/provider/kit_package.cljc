@@ -25,7 +25,11 @@
      kits with real non-fixture wasm; readiness `:signed-wasm :ready` only
      when full AOT Component (`:artifact-kind :wasm-component`) lands.
 
-  See ADR 0152–0164."
+  9. **Ops http Component pilot** (T8.3, ADR 0165) — thin :wasm-component
+     for http-post enables `ops-signed-wasm-ready-allowed?`; readiness http
+     may set `:signed-wasm :ready` while `:wasm-aot` stays `:partial`.
+
+  See ADR 0152–0165."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

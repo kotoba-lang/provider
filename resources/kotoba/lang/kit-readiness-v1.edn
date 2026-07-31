@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. T8.3 pure-allowlist publisher policy (ADR 0161): pure-allowlist kits may set :signed-wasm :ready when real non-fixture wasm + grant-binding path exist. Ops real-bytes pilots (ADR 0162 http-post; ADR 0163 secret-get) + ops publisher policy (ADR 0164): packaging bar may clear; readiness :signed-wasm stays :pending until full AOT Component (:wasm-component). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (ADR 0161). Ops packaging bar (ADR 0164). Real-bytes http/secret (0162–0163). ADR 0165: http thin Component → :signed-wasm :ready. Secret stays pending until Component. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -17,10 +17,11 @@
             :audit :partial
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
+            :signed-wasm :ready}
    :evidence ["http-v1.edn" "provider.http + http_transport dual-runtime tests"
-              "wasm-packages/http-post-v1.wasm (ADR 0162 ops real-bytes pilot)"]
-   :note "ADR 0164 packaging policy satisfied for real-bytes pilot; signed-wasm flip blocked until :wasm-component AOT"}
+              "wasm-packages/http-post-v1.wasm (ADR 0162)"
+              "wasm-packages/http-post-v1.component.wasm (ADR 0165 Component)"]
+   :note "ADR 0165: thin Component enables signed-wasm ready; kit body still host-forwarder (wasm-aot partial)"}
 
   {:name :secret
    :id 21
