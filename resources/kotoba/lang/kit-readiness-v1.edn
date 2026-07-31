@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (ADR 0161). Ops packaging bar (ADR 0164). Real-bytes http/secret (0162–0163). ADR 0165: http thin Component → :signed-wasm :ready. Secret stays pending until Component. Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (ADR 0161). Ops packaging bar (ADR 0164). Real-bytes http/secret (0162–0163). ADR 0165/0166: http + secret Components → :signed-wasm :ready. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -33,10 +33,11 @@
             :audit :partial
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
+            :signed-wasm :ready}
    :evidence ["secret-v1.edn" "provider#26+#27" "murakumo/com-cloudflare named-fetch cutover"
-              "wasm-packages/secret-get-v1.wasm (ADR 0163 ops real-bytes pilot)"]
-   :note "ADR 0164 packaging policy satisfied for name-policy pilot; signed-wasm flip blocked until :wasm-component AOT"}
+              "wasm-packages/secret-get-v1.wasm (ADR 0163)"
+              "wasm-packages/secret-get-v1.component.wasm (ADR 0166 Component)"]
+   :note "ADR 0166: Component embeds pure name-policy; signed-wasm ready; host-injected fetch still authority boundary (wasm-aot partial)"}
 
   {:name :process
    :id 20
