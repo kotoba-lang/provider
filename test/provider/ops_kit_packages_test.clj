@@ -25,7 +25,7 @@
         (is (= id (:id cap)))
         (is (= :implemented (:reference q)))
         ;; Component pilots (secret 0166, entropy 0167): wasm-aot partial + signed ready.
-        (let [component-pilot? (contains? #{:secret :entropy :process :scoped-fs} name)]
+        (let [component-pilot? (contains? #{:secret :entropy :process :scoped-fs :git} name)]
           (is (contains? (if component-pilot? #{:partial} #{:pending})
                          (:wasm-aot q))
               (str name " wasm-aot honesty"))
@@ -83,3 +83,11 @@
     (is (= :implemented (get-in fs [:qualification :reference])))
     (is (= :partial (get-in fs [:qualification :wasm-aot])))
     (is (= :ready (get-in fs [:qualification :signed-content-addressed-package])))))
+
+(deftest git-kit-still-honest-about-aot
+  (let [git (load-kit "kotoba/lang/capability-kits/git-v1.edn")]
+    (is (= :implemented (get-in git [:qualification :reference])))
+    (is (= :partial (get-in git [:qualification :wasm-aot]))
+        "ops Component pilot may mark wasm-aot partial (not full compiler AOT)")
+    (is (= :ready (get-in git [:qualification :signed-content-addressed-package]))
+        "ADR 0170 content-addressed Component package path ready")))
