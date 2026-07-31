@@ -305,3 +305,57 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [-1 0 0 -2] (edn/read-string out)))))
+
+(deftest compiler-aot-value-length-packages
+  "ADR 0175: secret/fs value-length pure bounds."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        check (fn [mod-name comp-name export]
+                (let [mod (get by-name mod-name)
+                      comp (get by-name comp-name)
+                      mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+                      comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+                  (is (some? mod) (str mod-name))
+                  (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+                  (is (= (:sha256 mod) (sha mod-bytes)))
+                  (is (= (:sha256 comp) (sha comp-bytes)))
+                  (is (contains? (:exports mod) export))))]
+    (check :secret-value-len :secret-value-len-component "secret_value_len_ok")
+    (check :fs-value-len :fs-value-len-component "fs_value_len_ok")))
+
+(deftest compiler-aot-value-length-live
+  (let [run (fn [resource export cases]
+              (let [bytes (-> (io/resource resource) io/input-stream .readAllBytes)
+                    tmp (java.io.File/createTempFile "vlen" ".wasm")
+                    _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                                 (into-array java.nio.file.OpenOption []))
+                    args-js (clojure.string/join ","
+                              (map (fn [args]
+                                     (str "Number(f("
+                                          (clojure.string/join "," (map #(str % "n") args))
+                                          "))"))
+                                   cases))
+                    script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                                "WebAssembly.instantiate(b).then(({instance})=>{"
+                                "const f=instance.exports." export ";"
+                                "console.log(JSON.stringify([" args-js "]));"
+                                "}).catch(e=>{console.error(e); process.exit(1);});")
+                    pb (ProcessBuilder. ["node" "-e" script])
+                    p (.start pb)
+                    out (slurp (.getInputStream p))
+                    err (slurp (.getErrorStream p))
+                    code (.waitFor p)]
+                (.delete tmp)
+                (is (zero? code) (str err out))
+                (edn/read-string out)))]
+    (is (= [0 0 -2 -1]
+           (run "kotoba/lang/wasm-packages/secret-value-len-v1.wasm"
+                "secret_value_len_ok" [[0] [8192] [8193] [-1]])))
+    (is (= [0 0 -2 -1]
+           (run "kotoba/lang/wasm-packages/fs-value-len-v1.wasm"
+                "fs_value_len_ok" [[0] [65536] [65537] [-1]])))))
