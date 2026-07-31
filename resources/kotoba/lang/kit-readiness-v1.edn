@@ -44,7 +44,7 @@
               "wasm-packages/http-result-ok-edn-v1.component.wasm (ADR 0218 result ok arm reject-path)"
               "wasm-packages/http-request-edn0-v1.component.wasm (ADR 0219 0-header request EDN reject-path)"
               "wasm-packages/http-request-edn-reject-v1.component.wasm (ADR 0220 multi-header request EDN reject-path)
-              "wasm-packages/http-edn-reject-package-v1.component.wasm (ADR 0221/0222/0226/0227 multi-export reject kit + element-bound append + names-add)"
+              "wasm-packages/http-edn-reject-package-v1.component.wasm (ADR 0221/0222/0226/0227/0230 multi-export reject kit multi-ns + element-bound + names-add)"
               "wasm-packages/http-headers-name-set-v1.wasm (ADR 0223 true set uniqueness via [:set :string])"
               "wasm-packages/http-headers-names-add-v1.component.wasm (ADR 0225 Component twin true-set name list)"
               "wasm-packages/http-headers-edn-append-set-v1.wasm (ADR 0224 pure EDN append + true set)",

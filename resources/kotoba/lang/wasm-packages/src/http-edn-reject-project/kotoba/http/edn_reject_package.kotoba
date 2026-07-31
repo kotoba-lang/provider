@@ -1,18 +1,21 @@
 (ns kotoba.http.edn-reject-package
+  (:require [kotoba.http.edn-headers :as h]
+            [kotoba.http.edn-request :as r]
+            [kotoba.http.edn-result :as res])
   (:export [headers_edn_empty headers_edn_append headers_names_add
             http_request_edn http_result_ok_edn http_result_err_edn]))
 
-;; T8.3 multi-export reject-path EDN kit (ADR 0226/0227/0230).
-;; Multi-ns project body: src/http-edn-reject-project/ (Component re-emit).
-;; T8.3 multi-export reject-path EDN kit (ADR 0226/0227): empty + append
-;; (map-element-bound name field) + names-add (true-set name list) +
-;; request + result arms.
-;; Canonical :http-edn-reject-package (kotoba-component ≥ 7e017bbc).
-;; Bodies are admission skeletons; WAT owns scans/shape/decimal/element
-;; equality. W4 recursive nested EDN open; wasm-aot stays partial.
+;; T8.3 multi-ns multi-export reject-path EDN kit body (ADR 0230).
+;; Root re-states admission skeletons so Canonical role classification matches
+;; single-file package; deps supply the multi-file graph (Progress gm follow-up).
+;; Private monomorph helpers from deps are allowed (kotoba-component ≥ 2b68f2a).
+;; W4 recursive nested EDN open; wasm-aot stays partial.
 
 (defn headers_edn_empty [] :string
-  "[]")
+  ;; Keep require live so monomorph retains dep modules.
+  (if (= (string-byte-length (h/headers_edn_empty)) 0)
+    ""
+    "[]"))
 
 (defn headers_edn_append
   [acc :string name :string value :string]
@@ -47,9 +50,11 @@
 (defn http_result_ok_edn
   [status :i64 headers :string body :string]
   :string
-  (if (or (< status 0) (> status 999))
+  (if (< status 0)
     ""
-    (string-concat headers (string-concat body "ok"))))
+    (if (> status 999)
+      ""
+      (string-concat headers (string-concat body "ok")))))
 
 (defn http_result_err_edn
   [code :string retryable :i64]

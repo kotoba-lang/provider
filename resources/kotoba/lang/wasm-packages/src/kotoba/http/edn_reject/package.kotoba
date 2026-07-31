@@ -1,23 +1,20 @@
-(ns kotoba.http.edn-reject-package
+(ns kotoba.http.edn-reject.package
+  (:require [kotoba.http.edn-reject.atoms :as atoms])
   (:export [headers_edn_empty headers_edn_append headers_names_add
             http_request_edn http_result_ok_edn http_result_err_edn]))
 
-;; T8.3 multi-export reject-path EDN kit (ADR 0226/0227/0230).
-;; Multi-ns project body: src/http-edn-reject-project/ (Component re-emit).
-;; T8.3 multi-export reject-path EDN kit (ADR 0226/0227): empty + append
-;; (map-element-bound name field) + names-add (true-set name list) +
-;; request + result arms.
-;; Canonical :http-edn-reject-package (kotoba-component ≥ 7e017bbc).
-;; Bodies are admission skeletons; WAT owns scans/shape/decimal/element
-;; equality. W4 recursive nested EDN open; wasm-aot stays partial.
+;; T8.3 multi-file project kit body (compiler ADR 0192/0193, provider ADR 0230).
+;; Closed graph: atoms + package. Admission skeletons; Canonical WAT owns
+;; scans / map-element-bound uniqueness / names-add element equality.
+;; W4 recursive nested EDN open; wasm-aot stays partial.
 
 (defn headers_edn_empty [] :string
-  "[]")
+  (atoms/empty-vec))
 
 (defn headers_edn_append
   [acc :string name :string value :string]
   :string
-  (if (string=? acc "[]")
+  (if (string=? acc (atoms/empty-vec))
     (string-concat "[" (string-concat name (string-concat value "]")))
     (string-concat acc (string-concat " " (string-concat name value)))))
 
@@ -28,7 +25,7 @@
     ""
     (if (= (string-byte-length name) 0)
       ""
-      (if (string=? acc "[]")
+      (if (string=? acc (atoms/empty-vec))
         (string-concat "["
                        (string-concat "\""
                                       (string-concat name "\"]")))
@@ -42,7 +39,7 @@
   :string
   (if (< timeout 0)
     ""
-    (string-concat url (string-concat headers (string-concat body "[]")))))
+    (string-concat url (string-concat headers (string-concat body (atoms/empty-vec))))))
 
 (defn http_result_ok_edn
   [status :i64 headers :string body :string]
