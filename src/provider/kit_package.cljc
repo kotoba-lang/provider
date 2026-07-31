@@ -58,7 +58,9 @@
 
   19. **Compiler-AOT secret multi-step walk** (T8.3, ADR 0179) — pure begin/next/end composing len+char.
 
-  See ADR 0152–0179."
+  20. **Compiler-AOT scoped-fs typed-string path** (T8.3, ADR 0180) — single-call fs_path_ok via kotoba:typed.
+
+  See ADR 0152–0180."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
