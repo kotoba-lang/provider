@@ -310,6 +310,85 @@
   ;; Ops secret pilot (ADR 0163 module + ADR 0166 Component).
   ;; Implements provider.secret/validate-name in Wasm; fetch stays host-injected.
   ;; Keep module pilot for digest/reference; Component entry is signed-wasm gate.
+  ;; T8.3 compiler-AOT length half of secret/scoped-fs limits (ADR 0173).
+  ;; Char/path scan remains hand WAT; pure i64 length only (wasm32-kotoba-v1 direct).
+  {:name :secret-name-len
+   :resource "kotoba/lang/wasm-packages/secret-name-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "0eccb38017b3e2eee66527bc1f7b76320f86f6e805d554c0e8f786a5edea3115"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure length half of secret-v1 :limits (ADR 0173); char scan stays hand WAT secret_name_ok"}
+   :exports {"secret_name_len_ok" {:params [:i64] :result :i64}
+             "secret_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :secret-name-len-component
+   :resource "kotoba/lang/wasm-packages/secret-name-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "6fedc058c3f89a801dd5ff2d3ae37f993164216e3c881deff32c51ed50d91626"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0173 Component embeds compiler-AOT secret length bounds core"}
+   :exports {"secret_name_len_ok" {:params [:s64] :result :s64}
+             "secret_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-len
+   :resource "kotoba/lang/wasm-packages/fs-path-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "8155e8bcb21cb7b5e826309897d3e8dc6a82728dde0683b8ddecc984c08a2f69"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_len.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure length half of scoped-fs-v1 :limits (ADR 0173); escape scan stays hand WAT fs_path_ok"}
+   :exports {"fs_path_len_ok" {:params [:i64] :result :i64}
+             "fs_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-len-component
+   :resource "kotoba/lang/wasm-packages/fs-path-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "b473f58d8555a479ec4123d1cdc9ace1c9f19b485fed53c24fdf43c20af380a5"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_len.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0173 Component embeds compiler-AOT fs path/value length bounds core"}
+   :exports {"fs_path_len_ok" {:params [:s64] :result :s64}
+             "fs_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :secret-get
    :resource "kotoba/lang/wasm-packages/secret-get-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"

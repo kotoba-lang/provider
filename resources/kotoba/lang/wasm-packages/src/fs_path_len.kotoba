@@ -1,0 +1,22 @@
+(ns kotoba.fs.bounds
+  (:export [fs_path_len_ok fs_value_len_ok]))
+
+;; Pure length half of scoped-fs-v1 :limits {:path-bytes 1024 :value-bytes 65536}.
+;; Escape/absolute/home/dotdot scan remains hand WAT fs_path_ok (ptr,len).
+(defn fs_path_len_ok
+  [path-len :i64]
+  :i64
+  (if (<= path-len 0)
+    -1
+    (if (> path-len 1024)
+      -2
+      0)))
+
+(defn fs_value_len_ok
+  [value-len :i64]
+  :i64
+  (if (< value-len 0)
+    -1
+    (if (> value-len 65536)
+      -2
+      0)))

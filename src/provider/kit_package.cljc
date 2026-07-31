@@ -36,10 +36,11 @@
      `:limits` checker emitted by kotoba-compiler (`http-post-bounds-v1`);
      full request/result EDN codec AOT still open (`:wasm-aot :partial`).
   13. **Compiler-AOT numeric bounds re-emit** (T8.3, ADR 0172) — process/
-     entropy/git pure bounds via kotoba-compiler (hand WAT remain as reference);
-     secret/scoped-fs memory-scan policies still hand-WAT.
+     entropy/git pure bounds via kotoba-compiler (hand WAT remain as reference).
+  14. **Compiler-AOT length half secret/scoped-fs** (T8.3, ADR 0173) — pure
+     i64 name/path/value length checkers; char/escape scan still hand-WAT.
 
-  See ADR 0152–0172."
+  See ADR 0152–0173."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
