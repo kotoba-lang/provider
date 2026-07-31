@@ -1339,6 +1339,35 @@
     (is (contains? (:exports mod) "http_header_edn_trust"))
     (is (contains? (:exports comp) "http-header-edn-trust"))))
 
+(deftest http-edn-trust-package-component-registered
+  "T8.3 ADR 0213: multi-export string-expression-package EDN trust path."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-edn-trust-package)
+        comp (get by-name :http-edn-trust-package-component)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :kotoba-component/string-expression-package
+           (get-in comp [:source :component-lowering])))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
+    (doseq [e ["headers_edn_empty" "http_header_edn_trust" "headers_edn_one"
+               "http_request_edn_trust" "http_result_ok_edn_trust"
+               "http_result_err_edn_trust"]]
+      (is (contains? (:exports mod) e)))
+    (doseq [e ["headers-edn-empty" "http-header-edn-trust" "headers-edn-one"
+               "http-request-edn-trust" "http-result-ok-edn-trust"
+               "http-result-err-edn-trust"]]
+      (is (contains? (:exports comp) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_trust_package.kotoba")))))
+
 (deftest http-typed-string-request-pack-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]

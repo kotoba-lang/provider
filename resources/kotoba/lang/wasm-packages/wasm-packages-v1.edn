@@ -1275,6 +1275,55 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0213: multi-export EDN trust package (string-expression-package)
+  {:name :http-edn-trust-package
+   :resource "kotoba/lang/wasm-packages/http-edn-trust-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "3182e7a5b577b0f13fcf94dce2adb6bc58644031a17b59b901050cddaffdea9b"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-trust-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_trust_package.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0213 wasm32 multi-export trust-path EDN (empty/one header, request, result ok/err); host pre-validates; reject path stays http-request-edn"}
+   :exports {"headers_edn_empty" {:params [] :result :externref}
+             "http_header_edn_trust" {:params [:externref :externref] :result :externref}
+             "headers_edn_one" {:params [:externref :externref] :result :externref}
+             "http_request_edn_trust" {:params [:externref :externref :externref :externref] :result :externref}
+             "http_result_ok_edn_trust" {:params [:externref :externref :externref] :result :externref}
+             "http_result_err_edn_trust" {:params [:externref :externref] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-edn-trust-package-component
+   :resource "kotoba/lang/wasm-packages/http-edn-trust-package-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "f2ea2037e6bc2091f9cf1189ca5d5c304e2ced14725cc6b4f5d876fa9da827f8"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-trust-package-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_trust_package.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/string-expression-package
+            :kotoba-component-sha "90b5c8b31d4b8dd761606d9a92c8cd874edbe6ed"
+            :note "ADR 0213 multi-export pure Component string-expression-package; 6 exports share memory; no kotoba:typed; not reject-path uniqueness/W4 set"}
+   :exports {"headers-edn-empty" {:params [] :result :string}
+             "http-header-edn-trust" {:params [:string :string] :result :string}
+             "headers-edn-one" {:params [:string :string] :result :string}
+             "http-request-edn-trust" {:params [:string :string :string :string] :result :string}
+             "http-result-ok-edn-trust" {:params [:string :string :string] :result :string}
+             "http-result-err-edn-trust" {:params [:string :string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
