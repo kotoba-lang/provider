@@ -1441,7 +1441,47 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  {:name :http-memory-scan
+  
+  ;; T8.3 ADR 0217: result error arm reject-path on edn_quoted
+  {:name :http-result-err-edn
+   :resource "kotoba/lang/wasm-packages/http-result-err-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "bf7c69a3bf3bbd16ac811b01b4f2d60887f4109c6cdc4ce84892c1f9cb6184e5"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-err-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_result_err_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0217 wasm32 result_err_edn quote/backslash + retryable gate; request/result multi-export still open"}
+   :exports {"http_result_err_edn" {:params [:externref :i64] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-result-err-edn-component
+   :resource "kotoba/lang/wasm-packages/http-result-err-edn-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "d7b42482254fef6087dd5ff6135589acf63f6ea623b8a0d969a79852d8a5685f"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-err-edn-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_result_err_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/http-result-err-edn
+            :kotoba-component-sha "b2aa65c1372e4cba42fb7179444a8afd97980243"
+            :note "ADR 0217 reject-path result_err_edn Component (code scan + retryable 0|1); not full multi-export request-edn"}
+   :exports {"http-result-err-edn" {:params [:string :i64] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+{:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
