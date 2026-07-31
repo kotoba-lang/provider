@@ -851,6 +851,29 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0191: typed-string error arm + result variant tag
+  {:name :http-error-result-ok
+   :resource "kotoba/lang/wasm-packages/http-error-result-ok-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "ee4d2730b703763d3d3927008979b77a3193324fe10bb84c3511e9da21a05e35"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-error-result-ok-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_error_result_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "compiler-AOT typed-string error arm + result tag (ADR 0191); not nested EDN pack"}
+   :exports {"http_error_ok" {:params [:externref :externref :i64] :result :i64}
+             "http_result_arm_ok" {:params [:i64] :result :i64}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 
 
   {:name :entropy-draw
