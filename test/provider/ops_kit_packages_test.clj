@@ -1142,6 +1142,27 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_set_fold.kotoba")))))
 
+
+(deftest http-request-edn-set-record-package-registered
+  "T8.3 ADR 0234: full request EDN from kit-shaped set-record + headers fold."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-request-edn-set-record)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "c39f9973bb846d87a99c3e819d120993c2350a0aaf83cd6efbc7a99ee03433de" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["http_req_begin" "http_req_add_header" "http_req_code"
+               "http_req_count" "http_req_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_set_record.kotoba")))))
+
 (deftest http-headers-names-add-component-true-set-registered
   "T8.3 ADR 0225: Component twin true-set name list (element-bound equality)."
   (let [table (edn/read-string
