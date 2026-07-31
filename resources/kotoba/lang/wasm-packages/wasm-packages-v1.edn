@@ -1176,7 +1176,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "a7cfc22c61e686acd295ae54f04fa949624c825915792672606b38e3f59d08da"
+   :sha256 "eed5f689be8425d1a7b8fdef627ee8dfd46a6fdf5b04c0cb279c732fd3eb075d"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-request-edn-v1.wasm"
@@ -1184,15 +1184,19 @@
             :capability-id "http/post"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0209 fixed-depth nested EDN encode (header map + 0-header request); not recursive W4 ADT / multi-header set / Component re-emit"}
+            :note "ADR 0209/0210 fixed-depth nested EDN: header, multi-header append, request, result ok/err arms; not recursive W4 ADT / Component re-emit"}
    :exports {"edn_quoted" {:params [:externref] :result :externref}
              "http_header_edn" {:params [:externref :externref] :result :externref}
+             "headers_edn_empty" {:params [] :result :externref}
+             "headers_edn_append" {:params [:externref :externref :externref] :result :externref}
              "http_request_edn0" {:params [:externref :externref :i64] :result :externref}
+             "http_request_edn" {:params [:externref :externref :externref :i64] :result :externref}
+             "http_result_ok_edn" {:params [:i64 :externref :externref] :result :externref}
+             "http_result_err_edn" {:params [:externref :i64] :result :externref}
              "main" {:params [] :result :i64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; T8.3 ADR 0194: pure memory-scan one-shot request+result (hand WAT)
   {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"

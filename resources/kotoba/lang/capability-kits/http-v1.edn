@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0162/0165; 0171 bounds; 0182–0193 typed packing; 0194–0198 pure memory-scan; 0199–0204 pure Component re-emit of all policy packages + request/result packing walks (no kotoba:typed). ADR 0209 fixed-depth nested EDN encode (header + request0). Host I/O authority. Multi-header set / result EDN + recursive W4 ADT codec still open — wasm-aot stays :partial until that gate."}}
+                 :notes "ADR 0162/0165; 0171 bounds; 0182–0193 typed packing; 0194–0198 pure memory-scan; 0199–0204 pure Component re-emit of all policy packages + request/result packing walks (no kotoba:typed). ADR 0209/0210 fixed-depth nested EDN encode (header, multi-header append, request, result ok/err). Host I/O authority. Recursive W4 ADT / set uniqueness / Component twin still open — wasm-aot stays :partial until that gate."}}

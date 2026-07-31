@@ -1,17 +1,16 @@
 {:format :kotoba.provenance/v1,
  :source-sha256
- "19cfe84303078d9849e370e7ac2e5466e21ca534c7bf0ea51b9398b917c252fd",
+ "52216ea99ef408d7976d4f868f6cde49760ad9f74e63e39209a7574c7da1a819",
  :builder :kotoba-compiler/v1,
- :note
- "T8.3 ADR 0209 fixed-depth nested EDN encode (header + request0)",
+ :note "T8.3 ADR 0210 multi-header append + result EDN arms",
  :language :kotoba.language/safe-v1,
  :compiler "kotoba-compiler/1",
  :outputs
  {:primary
   {:format :wasm,
    :sha256
-   "a7cfc22c61e686acd295ae54f04fa949624c825915792672606b38e3f59d08da",
-   :size 2858}},
+   "eed5f689be8425d1a7b8fdef627ee8dfd46a6fdf5b04c0cb279c732fd3eb075d",
+   :size 3930}},
  :sha256
- "a7cfc22c61e686acd295ae54f04fa949624c825915792672606b38e3f59d08da",
+ "eed5f689be8425d1a7b8fdef627ee8dfd46a6fdf5b04c0cb279c732fd3eb075d",
  :target :wasm32-kotoba-v1}
