@@ -42,7 +42,8 @@
     (is (= :ready (get-in secret [:scores :signed-wasm])))
     (is (true? (kit/production-signed-allowed? http)))
     (is (true? (kit/production-signed-allowed? secret)))
-    (is (false? (kit/production-signed-allowed? process)))
+    (is (true? (kit/production-signed-allowed? process))
+        "ADR 0168 process signed-wasm ready")
     (let [path "kotoba/lang/capability-kits/http-v1.edn"
           text (slurp (io/resource path))
           pkg (kit/kit-package-receipt :http path text)
@@ -650,7 +651,8 @@
     (is (true? (kit/ops-network-kit? http)))
     (is (true? (kit/ops-network-kit? secret)))
     (is (false? (kit/ops-network-kit? math)))
-    (is (false? (kit/ops-network-kit? process)))
+    (is (true? (kit/ops-network-kit? process))
+        "ADR 0168 process is ops kit")
     (is (true? (kit/ops-network-publisher-policy-satisfied? http http-entry http-bytes)))
     (is (true? (kit/ops-network-publisher-policy-satisfied? secret secret-entry secret-bytes)))
     (is (false? (kit/ops-network-publisher-policy-satisfied? math math-entry)))
@@ -781,5 +783,45 @@
     (is (true? (kit/ops-signed-wasm-ready-allowed? entropy comp comp-bytes)))
     (is (= :ready (get-in entropy [:scores :signed-wasm])))
     (is (true? (kit/production-signed-allowed? entropy)))
+    (is (true? (:host-admissible? gb)))
+    (is (true? (:production-admissible? gb)))))
+
+(deftest ops-process-component-signed-wasm-ready
+  "ADR 0168: process pure spawn-bounds Component flips signed-wasm."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        process (kit/readiness-for readiness :process)
+        pkg-table (kit/load-wasm-packages-table)
+        mod (kit/wasm-package-for pkg-table :process-spawn)
+        comp (kit/wasm-package-for pkg-table :process-spawn-component)
+        mod-bytes (kit/load-wasm-package-bytes (:resource mod))
+        comp-bytes (kit/load-wasm-package-bytes (:resource comp))
+        path "kotoba/lang/capability-kits/process-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-process-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :process path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt comp comp-bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :process
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row process
+             :package-entry comp
+             :wasm-bytes comp-bytes})]
+    (is (true? (kit/ops-network-kit? process)))
+    (is (= :ops (:class mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (true? (kit/verify-wasm-package-digest mod mod-bytes)))
+    (is (true? (kit/verify-wasm-package-digest comp comp-bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? process mod mod-bytes)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? process mod mod-bytes)))
+    (is (true? (kit/ops-signed-wasm-ready-allowed? process comp comp-bytes)))
+    (is (= :ready (get-in process [:scores :signed-wasm])))
+    (is (true? (kit/production-signed-allowed? process)))
     (is (true? (:host-admissible? gb)))
     (is (true? (:production-admissible? gb)))))

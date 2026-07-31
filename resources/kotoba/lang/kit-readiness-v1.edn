@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy. Real-bytes+Components: http (0165), secret (0166), entropy (0167). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -49,8 +49,10 @@
             :audit :partial
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"]}
+            :signed-wasm :ready}
+   :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
+              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"]
+   :note "ADR 0168: Component embeds spawn bounds policy; signed-wasm ready; OS spawn stays host-injected"}
 
   {:name :scoped-fs
    :id 19

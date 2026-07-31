@@ -31,8 +31,10 @@
 
     10. **Ops entropy Component pilot** (T8.3, ADR 0167) — pure draw-size
      policy module + Component; ops kit set includes `:entropy`.
+  11. **Ops process Component pilot** (T8.3, ADR 0168) — pure spawn bounds
+     policy module + Component; ops kit set includes `:process`.
 
-  See ADR 0152–0167."
+  See ADR 0152–0168."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
@@ -669,7 +671,7 @@
 (def ops-network-kit-names
   "Readiness kit names on the ops packaging surface (not pure-allowlist).
   Originally http/secret (ADR 0164); ADR 0167 adds entropy (and later process/fs/git)."
-  #{:http :secret :entropy})
+  #{:http :secret :entropy :process})
 
 (defn ops-network-kit?
   "True when readiness row is an ops/network packaging surface (http/secret).
