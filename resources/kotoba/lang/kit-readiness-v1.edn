@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body pilot: http bounds (0171). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body: http bounds (0171); process/entropy/git numeric bounds re-emit (0172). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -52,8 +52,9 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
-              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"]
-   :note "ADR 0168: Component embeds spawn bounds policy; signed-wasm ready; OS spawn stays host-injected"}
+              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"
+              "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
+   :note "ADR 0168 Component + ADR 0172 compiler-AOT spawn bounds; OS spawn host-injected; wasm-aot partial"}
 
   {:name :scoped-fs
    :id 19
@@ -82,8 +83,9 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["git-v1.edn" "provider#29+#31+#32"
-              "wasm-packages/git-run-v1.wasm + .component.wasm (ADR 0170)"]
-   :note "ADR 0170: Component embeds run bounds policy; signed-wasm ready; git binary host-injected"}
+              "wasm-packages/git-run-v1.wasm + .component.wasm (ADR 0170)"
+              "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
+   :note "ADR 0170 Component + ADR 0172 compiler-AOT run bounds; git binary host-injected; wasm-aot partial"}
 
   {:name :entropy
    :id 23
@@ -97,10 +99,11 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["entropy-v1.edn" "provider#33" "audit N/A for pure CSPRNG draw"
-              "wasm-packages/entropy-draw-v1.wasm + .component.wasm (ADR 0167)"]}
-   :note "ADR 0167: Component embeds draw-size policy; signed-wasm ready; host CSPRNG still authority boundary"
+              "wasm-packages/entropy-draw-v1.wasm + .component.wasm (ADR 0167)"
+              "wasm-packages/entropy-draw-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
+   :note "ADR 0167 Component + ADR 0172 compiler-AOT draw bounds; CSPRNG host-injected; wasm-aot partial"}
 
-{:name :object
+  {:name :object
    :id 14
    :resource "kotoba/lang/capability-kits/stream-object-v1.edn"
    :scores {:schema :ready

@@ -31,4 +31,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0170: pure run bounds policy module+Component; git binary host-injected; wasm-aot partial."}}
+                 :notes "ADR 0170 hand pure run bounds Component + ADR 0172 compiler-AOT git-run-bounds-v1 (kotoba-compiler). Git binary host-injected. Full request/result EDN codec AOT open (wasm-aot :partial)."}}

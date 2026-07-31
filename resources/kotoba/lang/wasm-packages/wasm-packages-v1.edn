@@ -196,6 +196,117 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+
+  ;; T8.3 compiler-AOT re-emit of hand pure bounds (ADR 0172): process/entropy/git
+  ;; numeric limits via kotoba-compiler; host I/O remains authority.
+  {:name :process-spawn-bounds
+   :resource "kotoba/lang/wasm-packages/process-spawn-bounds-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "5af966082d3c9ed731de5f575d9707824fb737edecb1c745a8438eb5f11064e0"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-spawn-bounds-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/process_spawn_bounds.kotoba"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure spawn bounds for process-v1 :limits (ADR 0172); host os-spawn still required"}
+   :exports {"process_spawn_bounds_ok" {:params [:i64 :i64 :i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :process-spawn-bounds-component
+   :resource "kotoba/lang/wasm-packages/process-spawn-bounds-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "13571d6457a4b72e493e56ec6313ece0f463594627f34036150ccb037615639d"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-spawn-bounds-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/process_spawn_bounds.kotoba"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0172 Component embeds compiler-AOT process bounds core"}
+   :exports {"process_spawn_bounds_ok" {:params [:s64 :s64 :s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :entropy-draw-bounds
+   :resource "kotoba/lang/wasm-packages/entropy-draw-bounds-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "752edcab5b90819b8da1d0cf7d5bf01700d7c895031538177f4f3289abf1608f"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-draw-bounds-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/entropy_draw_bounds.kotoba"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure draw-size bounds for entropy-v1 :limits (ADR 0172); host CSPRNG still required"}
+   :exports {"entropy_draw_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :entropy-draw-bounds-component
+   :resource "kotoba/lang/wasm-packages/entropy-draw-bounds-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "cfc845699a2f9618cc373ef776b2c131dd7a9569369d4348cbc20ac625366557"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-draw-bounds-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/entropy_draw_bounds.kotoba"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0172 Component embeds compiler-AOT entropy draw bounds core"}
+   :exports {"entropy_draw_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :git-run-bounds
+   :resource "kotoba/lang/wasm-packages/git-run-bounds-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "30f9d6c6bd7ba6357e5cfa0d9e52945415b36eaf2f8e97a581a38f025017955a"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/git-run-bounds-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/git_run_bounds.kotoba"
+            :capability-id "git/run"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure run bounds for git-v1 :limits (ADR 0172); host git binary still required"}
+   :exports {"git_run_bounds_ok" {:params [:i64 :i64 :i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :git-run-bounds-component
+   :resource "kotoba/lang/wasm-packages/git-run-bounds-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "f79c4b178c5cffa8452a131e0867f60599f3836674a602b2c83ecb5b047c232c"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/git-run-bounds-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/git_run_bounds.kotoba"
+            :capability-id "git/run"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0172 Component embeds compiler-AOT git run bounds core"}
+   :exports {"git_run_bounds_ok" {:params [:s64 :s64 :s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   ;; Ops secret pilot (ADR 0163 module + ADR 0166 Component).
   ;; Implements provider.secret/validate-name in Wasm; fetch stays host-injected.
   ;; Keep module pilot for digest/reference; Component entry is signed-wasm gate.
