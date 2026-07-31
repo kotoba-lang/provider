@@ -1066,7 +1066,7 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string request packing walk (ADR 0193); composes 0182/0186; not memory-scan one-shot"}
+            :note "compiler-AOT typed-string request packing walk (ADR 0193); pure Component twin via ADR 0203; not memory-scan one-shot"}
    :exports {"http_request_begin" {:params [] :result :i64}
              "http_request_url" {:params [:i64 :externref] :result :i64}
              "http_request_headers" {:params [:i64 :i64] :result :i64}
@@ -1074,6 +1074,32 @@
              "http_request_end" {:params [:i64 :i64] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
+  ;; T8.3 ADR 0203: pure Canonical Component re-emit of request packing walk
+  {:name :http-request-pack-component
+   :resource "kotoba/lang/wasm-packages/http-request-pack-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "3ad08e52f3f5c9e3b2865704f279d462fd38c4cb58aa2461ddc9d8a23a4f11f2"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-request-pack-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_request_pack.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0203 pure Component via --target component (begin/url/headers/body/end nested live main); live main → -13467; not result pack / nested EDN"}
+   :exports {"http-request-begin" {:params [] :result :s64}
+             "http-request-url" {:params [:s64 :string] :result :s64}
+             "http-request-headers" {:params [:s64 :s64] :result :s64}
+             "http-request-body" {:params [:s64 :string] :result :s64}
+             "http-request-end" {:params [:s64 :s64] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
