@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0162/0165; 0171 bounds; 0182 URL; 0185 walk; 0186 request_ok; 0187 header name; 0188 header value/pair; 0189 header set packing; 0190 response_ok. Host I/O authority. Full EDN codec AOT open (error/result variant; wasm-aot :partial)."}}
+                 :notes "ADR 0162/0165; 0171 bounds; 0182 URL; 0185 walk; 0186 request_ok; 0187–0189 headers; 0190 response_ok; 0191 error/result tag. Host I/O authority. Nested EDN pack + pure one-shot open (wasm-aot :partial)."}}

@@ -28,8 +28,9 @@
               "wasm-packages/http-header-value-ok-v1.wasm (ADR 0188 typed header value/pair)"
               "wasm-packages/http-headers-set-ok-v1.wasm (ADR 0189 typed header set packing walk)"
               "wasm-packages/http-response-ok-v1.wasm (ADR 0190 typed response_ok / status)"
+              "wasm-packages/http-error-result-ok-v1.wasm (ADR 0191 typed error arm + result tag)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165+0171+0182+0185+0186+0187+0188+0189+0190 response surface; full EDN codec AOT open (error/result variant; wasm-aot partial)."}
+   :note "ADR 0165+0171+0182+0185+0186+0187–0191 error/result tag; nested EDN pack + pure one-shot open (wasm-aot partial)."}
 
   {:name :secret
    :id 21
