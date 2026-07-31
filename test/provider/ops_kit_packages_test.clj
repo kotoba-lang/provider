@@ -863,3 +863,49 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [0 -1 -2 -3 -4 -5] (edn/read-string out)))))
+
+(deftest http-typed-string-request-ok-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-post-request-ok)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= :kotoba.typed (get-in mod [:source :typed-host])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (contains? (:exports mod) "http_post_request_ok"))
+    (is (contains? (:exports mod) "main"))
+    (is (contains? (:imports mod) "kotoba:typed"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_post_request_ok.kotoba")))))
+
+(deftest http-typed-string-request-ok-live-browser-host-optional
+  (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
+                 (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
+                   (when (.exists cand) (.getAbsolutePath cand)))
+                 (let [cand (io/file "/Users/junkawasaki/github/com-junkawasaki/orgs/kotoba-lang/compiler/runtime/browser-host.mjs")]
+                   (when (.exists cand) (.getAbsolutePath cand))))
+        wasm (.getAbsolutePath
+              (io/file "resources/kotoba/lang/wasm-packages/http-post-request-ok-v1.wasm"))]
+    (if-not (and host (.exists (io/file host)) (.exists (io/file wasm)))
+      (is true "skip typed live when browser-host unavailable")
+      (let [script (str "import { readFileSync } from 'fs';"
+                        "import { instantiateKotoba } from "
+                        (pr-str (str "file://" host))
+                        ";"
+                        "const h=await instantiateKotoba(readFileSync(" (pr-str wasm) "));"
+                        "const v=h.instance.exports.main();"
+                        "if(v!==-13406n){console.error('got',v); process.exit(2);}"
+                        "console.log(JSON.stringify([-13406]));")
+            pb (doto (ProcessBuilder. ["node" "--input-type=module" "-e" script])
+                 (.redirectErrorStream true))
+            p (.start pb)
+            out (slurp (.getInputStream p))
+            code (.waitFor p)]
+        (is (zero? code) (str "browser-host live failed: " out))
+        (is (= [-13406] (edn/read-string out)))))))

@@ -23,8 +23,9 @@
               "wasm-packages/http-post-v1.component.wasm (ADR 0165 Component)"
               "wasm-packages/http-post-bounds-v1.wasm + .component.wasm (ADR 0171 compiler-AOT bounds)"
               "wasm-packages/http-url-ok-v1.wasm (ADR 0182 typed-string URL)"
+              "wasm-packages/http-post-request-ok-v1.wasm (ADR 0186 typed request_ok)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165/0171/0182/0185; codec AOT open (wasm-aot partial)"}
+   :note "ADR 0165 Component + 0171 bounds + 0182 URL + 0185 walk + 0186 request_ok; full EDN codec AOT open (wasm-aot partial)."}
 
   {:name :secret
    :id 21

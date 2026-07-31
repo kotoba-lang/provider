@@ -73,7 +73,9 @@
   20. **Compiler-AOT pure multi-step http bounds walk** (T8.3, ADR 0185) —
      begin/url/headers/body/end phased host protocol.
 
-  See ADR 0152–0185."
+  26. **Compiler-AOT http typed request_ok** (T8.3, ADR 0186) — url+headers+body+timeout single-call.
+
+  See ADR 0152–0186."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
