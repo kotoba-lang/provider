@@ -48,7 +48,10 @@
 
   16. **Compiler-AOT value-length bounds** (T8.3, ADR 0175) — secret/fs value ceilings.
 
-  See ADR 0152–0175."
+  16. **Compiler-AOT secret char-class gate** (T8.3, ADR 0176) — pure
+     `secret_name_char_ok(c)` for forbidden code points; host walks name.
+
+  See ADR 0152–0176."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

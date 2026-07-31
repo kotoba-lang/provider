@@ -359,3 +359,46 @@
     (is (= [0 0 -2 -1]
            (run "kotoba/lang/wasm-packages/fs-value-len-v1.wasm"
                 "fs_value_len_ok" [[0] [65536] [65537] [-1]])))))
+
+(deftest secret-compiler-aot-char-class-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :secret-name-char)
+        comp (get by-name :secret-name-char-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (false? (:fixture? mod)))
+    (is (= :ops-network (:class mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "secret_name_char_ok"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_name_char.kotoba")))))
+
+(deftest secret-compiler-aot-char-class-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/secret-name-char-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "secret-char" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                    "WebAssembly.instantiate(b).then(({instance})=>{"
+                    "const f=instance.exports.secret_name_char_ok;"
+                    "const codes=[65,0,9,10,32,42,47,63,92,97];"
+                    "const out=codes.map(c=>Number(f(BigInt(c))));"
+                    "console.log(JSON.stringify(out));"
+                    "}).catch(e=>{console.error(e); process.exit(1);});")
+        p (.start (ProcessBuilder. ["node" "-e" script]))
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [0 -3 -3 -3 -3 -3 -3 -3 -3 0] (edn/read-string out)))))
