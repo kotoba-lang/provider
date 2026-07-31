@@ -1600,7 +1600,50 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-{:name :http-memory-scan
+  ;; T8.3 ADR 0221: multi-export reject-path EDN kit body
+  {:name :http-edn-reject-package
+   :resource "kotoba/lang/wasm-packages/http-edn-reject-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "62e53c3d35f6f553a078c53c91a92ae51009d6e096dfabfa9fa1b4086e6bf828"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-reject-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_reject_package.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0221 wasm32 multi-export reject EDN (empty+append+request); true set/W4 still open"}
+   :exports {"headers_edn_empty" {:params [] :result :externref}
+             "headers_edn_append" {:params [:externref :externref :externref] :result :externref}
+             "http_request_edn" {:params [:externref :externref :externref :i64] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-edn-reject-package-component
+   :resource "kotoba/lang/wasm-packages/http-edn-reject-package-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "21f7a192706e5f7970611ec94d624208f7d7c01e0bea5d4fcf2ded2d91943647"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-reject-package-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_reject_package.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/http-edn-reject-package
+            :kotoba-component-sha "93e1c7a41aa8cf77cda602c7ed850fad98e9bb6e"
+            :note "ADR 0221 multi-export reject-path EDN Component kit body; true set/W4 open; wasm-aot still partial"}
+   :exports {"headers-edn-empty" {:params [] :result :string}
+             "headers-edn-append" {:params [:string :string :string] :result :string}
+             "http-request-edn" {:params [:string :string :string :i64] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module

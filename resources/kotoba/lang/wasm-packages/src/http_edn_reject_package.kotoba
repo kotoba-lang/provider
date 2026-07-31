@@ -1,0 +1,29 @@
+(ns kotoba.http.edn-reject-package
+  (:export [headers_edn_empty headers_edn_append http_request_edn]))
+
+;; T8.3 multi-export reject-path EDN kit body (ADR 0221). Shared Canonical
+;; lowering :http-edn-reject-package. Bodies are admission skeletons; WAT owns
+;; dual scan, uniqueness, headers shape, timeout decimal. True set/W4 open.
+
+(defn headers_edn_empty [] :string
+  "[]")
+
+(defn headers_edn_append
+  [acc :string name :string value :string]
+  :string
+  (if (string=? acc "[]")
+    (string-concat "[" (string-concat name (string-concat value "]")))
+    (string-concat acc (string-concat " " (string-concat name value)))))
+
+(defn http_request_edn
+  [url :string headers :string body :string timeout :i64]
+  :string
+  (if (< timeout 0)
+    ""
+    (string-concat "{:url \""
+                   (string-concat url
+                                  (string-concat "\" :headers "
+                                                 (string-concat headers
+                                                                (string-concat " :body \""
+                                                                               (string-concat body
+                                                                                              "\" :timeout-ms 0}"))))))))
