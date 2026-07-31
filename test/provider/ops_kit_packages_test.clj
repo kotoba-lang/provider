@@ -1163,6 +1163,27 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_set_record.kotoba")))))
 
+
+(deftest http-result-edn-set-record-package-registered
+  "T8.3 ADR 0235: result-variant EDN kit-shaped set-record ok+err."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-result-edn-set-record)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "954b1bff61758ee93762d06b4455b19f3204fd3e69f1859ee33b7c06f988c7c0" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["http_res_ok_begin" "http_res_ok_add_header" "http_res_ok_code"
+               "http_res_ok_count" "http_res_ok_edn" "http_res_err_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_result_edn_set_record.kotoba")))))
+
 (deftest http-headers-names-add-component-true-set-registered
   "T8.3 ADR 0225: Component twin true-set name list (element-bound equality)."
   (let [table (edn/read-string

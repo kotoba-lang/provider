@@ -1189,6 +1189,35 @@
    :signed-content-addressed-package :pending}
 
 
+  ;; T8.3 ADR 0235: result-variant EDN kit-shaped set-record
+  {:name :http-result-edn-set-record
+   :resource "kotoba/lang/wasm-packages/http-result-edn-set-record-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "954b1bff61758ee93762d06b4455b19f3204fd3e69f1859ee33b7c06f988c7c0"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-edn-set-record-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_result_edn_set_record.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "4b006d05"
+            :note "ADR 0235 result ok set-of-headers fold + err fixed-depth; main → -9002; W4/wasm-aot open"}
+   :exports {"http_res_ok_begin" {:params [:i64 :externref] :result :externref}
+             "http_res_ok_add_header" {:params [:externref :externref :externref] :result :externref}
+             "http_res_ok_code" {:params [:externref] :result :i64}
+             "http_res_ok_count" {:params [:externref] :result :i64}
+             "http_res_ok_edn" {:params [:externref] :result :externref}
+             "http_res_err_edn" {:params [:externref :externref :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + set + record + set-nth"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :http-response-ok
    :resource "kotoba/lang/wasm-packages/http-response-ok-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
