@@ -2,9 +2,10 @@
   (:export [headers_edn_empty headers_edn_append headers_names_add
             http_request_edn http_result_ok_edn http_result_err_edn]))
 
-;; T8.3 multi-export reject-path EDN kit (ADR 0226): empty + append +
-;; names-add (true-set name list) + request + result arms.
-;; Canonical :http-edn-reject-package (kotoba-component ≥ d931faca).
+;; T8.3 multi-export reject-path EDN kit (ADR 0226/0227): empty + append
+;; (map-element-bound name field) + names-add (true-set name list) +
+;; request + result arms.
+;; Canonical :http-edn-reject-package (kotoba-component ≥ 7e017bbc).
 ;; Bodies are admission skeletons; WAT owns scans/shape/decimal/element
 ;; equality. W4 recursive nested EDN open; wasm-aot stays partial.
 
