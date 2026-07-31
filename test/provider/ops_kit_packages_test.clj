@@ -1483,7 +1483,7 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_header_edn.kotoba")))))
 
 (deftest http-headers-edn-append-component-registered
-  "T8.3 ADR 0216: multi-header append + name uniqueness reject path."
+  "T8.3 ADR 0216/0227: multi-header append + map-element-bound name uniqueness."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1501,6 +1501,8 @@
            (get-in comp [:source :component-lowering])))
     (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
+    (is (= "ed8d6a1f39dca9d090a2fecb8c912776d2fb3ee03109967c9c1b0d9cb20b5833"
+           (:sha256 comp)))
     (is (contains? (:exports mod) "headers_edn_append"))
     (is (contains? (:exports comp) "headers-edn-append"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_append.kotoba")))))
@@ -1599,7 +1601,7 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_only.kotoba")))))
 
 (deftest http-edn-reject-package-component-registered
-  "T8.3 ADR 0221/0226: multi-export reject-path EDN kit + names-add true-set."
+  "T8.3 ADR 0221/0226/0227: multi-export reject kit + element-bound append + names-add."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1617,7 +1619,7 @@
            (get-in comp [:source :component-lowering])))
     (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
-    (is (= "0befd905a103d11a630c194dbf5251e2b41db745ed53f2eba6265d35cc1e3ded"
+    (is (= "e1de58c7630cd944d0882fbcc157028228c7081591baea4bdabfd6b2f62727ed"
            (:sha256 comp)))
     (doseq [e ["headers_edn_empty" "headers_edn_append" "headers_names_add" "http_request_edn"
                "http_result_ok_edn" "http_result_err_edn"]]

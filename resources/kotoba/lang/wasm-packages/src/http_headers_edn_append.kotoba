@@ -1,10 +1,12 @@
 (ns kotoba.http.headers-edn-append
   (:export [headers_edn_append]))
 
-;; T8.3 multi-header append + name uniqueness (ADR 0216). Composition on
-;; http_header_edn / edn_quoted. Body is admission skeleton; Canonical WAT
-;; owns dual scan, :name marker uniqueness (not true set/W4), and vector splice.
-;; Full multi-export request/result still open.
+;; T8.3 multi-header append + name uniqueness (ADR 0216 → 0227).
+;; Body is admission skeleton; Canonical WAT owns dual scan,
+;; map-element-bound name field uniqueness (`{` after [ / space,
+;; then {:name "…"}), and vector splice. Not free substring :name
+;; scan. Complements headers-names-add name-list plane (ADR 0225).
+;; W4 recursive nested EDN open; wasm-aot stays partial.
 
 (defn headers_edn_append
   [acc :string name :string value :string]

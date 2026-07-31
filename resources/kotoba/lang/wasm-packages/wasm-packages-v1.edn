@@ -1502,7 +1502,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-component
    :media-type "application/wasm"
-   :sha256 "c139ff32b2e7a82b43561e6c9f0e04be5788394abab993c23598eab91895ee54"
+   :sha256 "ed8d6a1f39dca9d090a2fecb8c912776d2fb3ee03109967c9c1b0d9cb20b5833"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-headers-edn-append-v1.component.wasm"
@@ -1511,8 +1511,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :component-lowering :kotoba-component/headers-edn-append
-            :kotoba-component-sha "db026a325e03004b80bdd6bd872378ab2011df71"
-            :note "ADR 0216 reject-path headers_edn_append Component (append + :name uniqueness scan); not full multi-export request-edn"}
+            :kotoba-component-sha "7e017bbc0224313672922215820b32adcd96d20e"
+            :note "ADR 0227 headers_edn_append Component map-element-bound name field uniqueness (not free substring :name scan); W4/wasm-aot still open"}
    :exports {"headers-edn-append" {:params [:string :string :string] :result :string}}
    :fixture? false
    :signed-content-addressed-package :pending}
@@ -1705,7 +1705,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-component
    :media-type "application/wasm"
-   :sha256 "0befd905a103d11a630c194dbf5251e2b41db745ed53f2eba6265d35cc1e3ded"
+   :sha256 "e1de58c7630cd944d0882fbcc157028228c7081591baea4bdabfd6b2f62727ed"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-edn-reject-package-v1.component.wasm"
@@ -1714,8 +1714,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :component-lowering :kotoba-component/http-edn-reject-package
-            :kotoba-component-sha "d931faca17cfaca782f54417680204e4ca698b6e"
-            :note "ADR 0226 multi-export reject-path EDN + headers-names-add true-set; W4/wasm-aot still open"}
+            :kotoba-component-sha "7e017bbc0224313672922215820b32adcd96d20e"
+            :note "ADR 0227 multi-export reject-path EDN + map-element-bound append + names-add true-set; W4/wasm-aot still open"}
    :exports {"headers-edn-empty" {:params [] :result :string}
              "headers-edn-append" {:params [:string :string :string] :result :string}
              "headers-names-add" {:params [:string :string] :result :string}
