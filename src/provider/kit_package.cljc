@@ -88,8 +88,10 @@
       name/value/pair tchar+CTL scans + Component embed.
   36. **Pure hand-WAT HTTP header set packing scan** (T8.3, ADR 0196) —
       n×(name,value) table memory-scan + Component embed.
+  37. **Pure hand-WAT HTTP full request memory-scan** (T8.3, ADR 0197) —
+      url+headers table+body/timeout one-shot + Component embed.
 
-  See ADR 0152–0196."
+  See ADR 0152–0197."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
