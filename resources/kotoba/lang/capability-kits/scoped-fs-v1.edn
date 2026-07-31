@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0169: pure path policy module+Component; host root-scoped store; wasm-aot partial."}}
+                 :notes "ADR 0169 hand path-policy Component; ADR 0174 compiler-AOT path-length half (fs-path-len-v1). Escape/dot/slash scan stays hand WAT; host root store authority unchanged; wasm-aot :partial."}}

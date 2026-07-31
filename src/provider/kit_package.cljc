@@ -43,7 +43,10 @@
      half of secret name policy (`secret-name-len-v1`); char-class scan
      remains hand WAT until pure memory/string free path.
 
-  See ADR 0152–0173."
+  15. **Compiler-AOT scoped-fs path-length** (T8.3, ADR 0174) — pure
+     path-length half (`fs-path-len-v1`); escape/dot/slash scan remains hand WAT.
+
+  See ADR 0152–0174."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

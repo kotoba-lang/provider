@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body: http bounds (0171); process/entropy/git numeric bounds re-emit (0172); secret name-len (0173). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body: http bounds (0171); process/entropy/git numeric bounds re-emit (0172); secret name-len (0173); scoped-fs path-len (0174). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -69,8 +69,9 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["scoped-fs-v1.edn" "provider#24+#25+#28 os-store"
-              "wasm-packages/scoped-fs-path-v1.wasm + .component.wasm (ADR 0169)"]
-   :note "ADR 0169: Component embeds path policy; signed-wasm ready; host root-scoped store stays authority"}
+              "wasm-packages/scoped-fs-path-v1.wasm + .component.wasm (ADR 0169)"
+              "wasm-packages/fs-path-len-v1.wasm + .component.wasm (ADR 0174 compiler-AOT length)"]
+   :note "ADR 0169 hand path-policy + ADR 0174 compiler-AOT path-length; path scan hand WAT; wasm-aot partial"}
 
   {:name :git
    :id 22
