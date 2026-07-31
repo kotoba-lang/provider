@@ -1095,6 +1095,45 @@
    :signed-content-addressed-package :pending}
 
 
+
+  ;; T8.3 ADR 0198: pure memory-scan full result one-shot (hand WAT)
+  {:name :http-result-full-scan
+   :resource "kotoba/lang/wasm-packages/http-result-full-scan-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "51a6cee2664917fd6de152112e9836ab0207fe6fd880480e37d34e3e976c7e77"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-full-scan-v1.wasm"
+            :source-wat "resources/kotoba/lang/wasm-packages/src/http_result_full_scan.wat"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0198 pure full result memory-scan; ok arm status+headers table+body or error code scan"}
+   :exports {"http_result_full_scan" {:params [:i32 :i32 :i32 :i32 :i32 :i32 :i32 :i32 :i32] :result :i32}
+             "memory" {:kind :memory}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-result-full-scan-component
+   :resource "kotoba/lang/wasm-packages/http-result-full-scan-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "a2e5cce9b921f74db50ad270bf00c6b4cb0cbca5f13f75910d81808b8c4b047e"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-full-scan-v1.component.wasm"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0198 Component embed of pure full result scan"}
+   :exports {"http_result_full_scan" {:params [:i32 :i32 :i32 :i32 :i32 :i32 :i32 :i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
