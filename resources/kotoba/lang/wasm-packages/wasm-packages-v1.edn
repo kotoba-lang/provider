@@ -1520,7 +1520,47 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  {:name :http-memory-scan
+  
+  ;; T8.3 ADR 0219: 0-header request EDN reject-path
+  {:name :http-request-edn0
+   :resource "kotoba/lang/wasm-packages/http-request-edn0-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "c5deef890ad6b724051fde3361e9f5d00c74665bdb8a1b6265bb311372305414"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-request-edn0-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_request_edn0.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0219 wasm32 request_edn0 dual-scan + timeout>=0 decimal; multi-header still open"}
+   :exports {"http_request_edn0" {:params [:externref :externref :i64] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-request-edn0-component
+   :resource "kotoba/lang/wasm-packages/http-request-edn0-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "c249a6239a1598eefd503ae0fbdc29cb93fdfcfc62f063ce2435385e73161be1"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-request-edn0-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_request_edn0.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/http-request-edn0
+            :kotoba-component-sha "1325aa15b5efa2f6c02b17d758292aed94ed8fa1"
+            :note "ADR 0219 reject-path request_edn0 Component (0-header request); multi-header request-edn still open"}
+   :exports {"http-request-edn0" {:params [:string :string :i64] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+{:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module

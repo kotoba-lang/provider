@@ -42,6 +42,7 @@
               "wasm-packages/http-headers-edn-append-v1.component.wasm (ADR 0216 multi-header append + uniqueness)"
               "wasm-packages/http-result-err-edn-v1.component.wasm (ADR 0217 result error arm reject-path)"
               "wasm-packages/http-result-ok-edn-v1.component.wasm (ADR 0218 result ok arm reject-path)"
+              "wasm-packages/http-request-edn0-v1.component.wasm (ADR 0219 0-header request EDN reject-path)"
               "wasm-packages/http-url-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-post-request-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-response-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
