@@ -419,6 +419,29 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0178: typed-string single-call secret_name_ok (kotoba:typed host).
+  ;; Not a pure Component; live proof via browser-host main → -130.
+  {:name :secret-name-ok
+   :resource "kotoba/lang/wasm-packages/secret-name-ok-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "56762378d749f600edadcf793af40c31e936b4cfcb01d1878a2bfb17203cfacc"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-ok-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_ok.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "compiler-AOT typed-string single-call secret_name_ok (ADR 0178); requires kotoba:typed host; not pure Component"}
+   :exports {"secret_name_ok" {:params [:externref] :result :i64}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string+code-point surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   ;; T8.3 ADR 0177: pure scoped-fs path state-machine gates (host walks)
   {:name :fs-path-gate
    :resource "kotoba/lang/wasm-packages/fs-path-gate-v1.wasm"

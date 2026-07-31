@@ -53,7 +53,10 @@
 
   17. **Compiler-AOT scoped-fs path gates** (T8.3, ADR 0177) — first/step/finish pure state machine.
 
-  See ADR 0152–0177."
+  17. **Compiler-AOT typed-string secret_name_ok** (T8.3, ADR 0178) —
+     single-call name policy via kotoba:typed host; not pure Component.
+
+  See ADR 0152–0178."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
