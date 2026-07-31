@@ -1,0 +1,91 @@
+(ns kotoba.http.request-edn
+  (:export [edn_quoted http_header_edn http_request_edn0 main]))
+
+;; T8.3 nested EDN encode — fixed-depth first slice (ADR 0209).
+;; Produces readable EDN for HTTP header pairs and a 0-header post-request
+;; without recursive guest ADT values (W4 still owns general recursive schema).
+;; Host pre-validates name/value via name_ok / value_ok; encoder rejects
+;; `"` and `\` in atoms (no escape table). max-params ≤5; pure strings.
+
+(defn has-dq?
+  [s :string i :i64 n :i64]
+  :bool
+  (if (>= i n)
+    false
+    (if (string=? (string-substring s i (+ i 1)) "\"")
+      true
+      (has-dq? s (+ i 1) n))))
+
+(defn has-bs?
+  [s :string i :i64 n :i64]
+  :bool
+  (if (>= i n)
+    false
+    (if (string=? (string-substring s i (+ i 1)) "\\")
+      true
+      (has-bs? s (+ i 1) n))))
+
+(defn digit-char [d :i64] :string
+  (string-substring "0123456789" d (+ d 1)))
+
+(defn nat-str [n :i64] :string
+  (if (< n 10)
+    (digit-char n)
+    (string-concat (nat-str (quot n 10))
+                   (digit-char (- n (* (quot n 10) 10))))))
+
+(defn i64-str [n :i64] :string
+  (if (< n 0)
+    (string-concat "-" (nat-str (- 0 n)))
+    (nat-str n)))
+
+(defn edn_quoted
+  [s :string]
+  :string
+  ;; Empty string → "". Unsafe (quote/backslash) → "" (len 0 reject signal).
+  (let [n (string-byte-length s)]
+    (if (or (has-dq? s 0 n) (has-bs? s 0 n))
+      ""
+      (string-concat "\"" (string-concat s "\"")))))
+
+(defn http_header_edn
+  [name :string value :string]
+  :string
+  ;; {:name "…" :value "…"}. Empty result = reject (unsafe atom).
+  (let [qn (edn_quoted name)
+        qv (edn_quoted value)]
+    (if (or (= (string-byte-length qn) 0)
+            (= (string-byte-length qv) 0))
+      ""
+      (string-concat "{:name "
+                     (string-concat qn
+                                    (string-concat " :value "
+                                                   (string-concat qv "}")))))))
+
+(defn http_request_edn0
+  [url :string body :string timeout-ms :i64]
+  :string
+  ;; Fixed-depth request with empty headers:
+  ;; {:url "…" :headers [] :body "…" :timeout-ms N}
+  (let [qu (edn_quoted url)
+        qb (edn_quoted body)]
+    (if (or (= (string-byte-length qu) 0)
+            (= (string-byte-length qb) 0)
+            (< timeout-ms 0))
+      ""
+      (string-concat "{:url "
+                     (string-concat qu
+                                    (string-concat " :headers [] :body "
+                                                   (string-concat qb
+                                                                  (string-concat " :timeout-ms "
+                                                                                 (string-concat (i64-str timeout-ms) "}")))))))))
+
+;; Live main: lengths of encoded shapes + reject paths → packed i64.
+;; a=header ok len, b=header reject (0), c=request0 len, d=bad-timeout (0)
+(defn main []
+  :i64
+  (let [a (string-byte-length (http_header_edn "X-Ok" "yes"))
+        b (string-byte-length (http_header_edn "X-Ok" "a\"b"))
+        c (string-byte-length (http_request_edn0 "https://x" "{}" 1000))
+        d (string-byte-length (http_request_edn0 "https://x" "{}" -1))]
+    (+ (* a 1000000) (* b 10000) (* c 100) d)))
