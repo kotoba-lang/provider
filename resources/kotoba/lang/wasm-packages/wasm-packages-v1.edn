@@ -974,6 +974,49 @@
 
 
 
+
+  ;; T8.3 ADR 0195: pure memory-scan header name/value/pair (hand WAT)
+  {:name :http-header-memory-scan
+   :resource "kotoba/lang/wasm-packages/http-header-memory-scan-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "090955635bc891b73d1dad3dd9ea8acccda6704684408e9194539bbac0026214"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-header-memory-scan-v1.wasm"
+            :source-wat "resources/kotoba/lang/wasm-packages/src/http_header_memory_scan.wat"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0195 pure header name/value/pair memory-scan; complements typed 0187-0188; no kotoba:typed"}
+   :exports {"http_header_name_scan" {:params [:i32 :i32] :result :i32}
+             "http_header_value_scan" {:params [:i32 :i32] :result :i32}
+             "http_header_pair_scan" {:params [:i32 :i32 :i32 :i32] :result :i32}
+             "memory" {:kind :memory}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-header-memory-scan-component
+   :resource "kotoba/lang/wasm-packages/http-header-memory-scan-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "d1ea2def28ef1a4a110f347a81e46694166b08e54d989fbe84939d682233e1cc"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-header-memory-scan-v1.component.wasm"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0195 Component embed of pure header memory-scan"}
+   :exports {"http_header_name_scan" {:params [:i32 :i32] :result :i32}
+             "http_header_value_scan" {:params [:i32 :i32] :result :i32}
+             "http_header_pair_scan" {:params [:i32 :i32 :i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
