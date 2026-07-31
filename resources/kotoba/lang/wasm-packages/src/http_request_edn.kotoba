@@ -1,13 +1,14 @@
 (ns kotoba.http.request-edn
   (:export [edn_quoted http_header_edn
-            headers_edn_empty headers_edn_append
+            headers_edn_empty headers_edn_append headers_edn_has_name
             http_request_edn0 http_request_edn
             http_result_ok_edn http_result_err_edn
             main]))
 
 ;; T8.3 nested EDN encode -- fixed-depth (ADR 0209) + multi-header append +
-;; result arms (ADR 0210). No recursive guest ADT / set uniqueness (W4).
-;; Host sequences headers via headers_edn_append; rejects quote/backslash.
+;; result arms (ADR 0210) + name uniqueness scan (ADR 0211).
+;; No recursive guest ADT / real set type (W4). Uniqueness is substring scan for
+;; :name "…" markers in the host-sequenced vector. Rejects quote/backslash.
 ;; max-params <=5; pure strings; no kotoba:typed.
 
 (defn has-dq?
@@ -66,21 +67,64 @@
 (defn headers_edn_empty [] :string
   "[]")
 
+(defn has-prefix-at?
+  [s :string prefix :string i :i64]
+  :bool
+  (let [n (string-byte-length s)
+        p (string-byte-length prefix)]
+    (if (> (+ i p) n)
+      false
+      (if (string=? (string-substring s i (+ i p)) prefix)
+        true
+        false))))
+
+(defn contains-str?
+  [s :string needle :string i :i64]
+  :bool
+  (let [n (string-byte-length s)
+        p (string-byte-length needle)]
+    (if (or (= p 0) (> (+ i p) n))
+      false
+      (if (has-prefix-at? s needle i)
+        true
+        (contains-str? s needle (+ i 1))))))
+
+(defn name_marker
+  [name :string]
+  :string
+  ;; Marker unique to our header map encoding: :name "Name"
+  (let [qn (edn_quoted name)]
+    (if (= (string-byte-length qn) 0)
+      ""
+      (string-concat ":name " qn))))
+
+(defn headers_edn_has_name
+  [acc :string name :string]
+  :bool
+  ;; Substring scan for :name "…" — not a true set (W4). Case-sensitive.
+  (let [m (name_marker name)]
+    (if (= (string-byte-length m) 0)
+      false
+      (contains-str? acc m 0))))
+
 (defn headers_edn_append
   [acc :string name :string value :string]
   :string
   ;; Host-sequenced multi-header fold. acc is "[]" or "[{...} ...]".
+  ;; Duplicate name (headers_edn_has_name) => "".
   (let [h (http_header_edn name value)
         an (string-byte-length acc)
         hn (string-byte-length h)]
     (if (or (= hn 0) (= an 0))
       ""
-      (if (string=? acc "[]")
-        (string-concat "[" (string-concat h "]"))
-        (let [body (string-substring acc 0 (- an 1))]
-          (string-concat body
-                         (string-concat " "
-                                        (string-concat h "]"))))))))
+      (if (headers_edn_has_name acc name)
+        ""
+        (if (string=? acc "[]")
+          (string-concat "[" (string-concat h "]"))
+          (let [body (string-substring acc 0 (- an 1))]
+            (string-concat body
+                           (string-concat " "
+                                          (string-concat h "]")))))))))
 
 (defn headers_edn_shape_ok
   [headers :string]
@@ -153,7 +197,8 @@
 
 ;; Live main length fingerprint (i64):
 ;; a=header ok, b=header reject(0), c=request0, d=bad-timeout(0),
-;; e=2-header vector, f=result-ok, g=result-err, h=bad-retry(0)
+;; e=2-header vector, f=result-ok, g=result-err, h=bad-retry(0),
+;; i=duplicate-name append (0)
 (defn main []
   :i64
   (let [a (string-byte-length (http_header_edn "X-Ok" "yes"))
@@ -166,11 +211,16 @@
         e (string-byte-length h2)
         f (string-byte-length (http_result_ok_edn 200 (headers_edn_empty) "ok"))
         g (string-byte-length (http_result_err_edn "timeout" 1))
-        h (string-byte-length (http_result_err_edn "timeout" 2))]
-    (+ (* a 100000000)
-       (+ (* b 1000000)
-          (+ (* c 10000)
-             (+ (* d 1000)
-                (+ (* e 100)
-                   (+ (* f 10)
-                      (+ g h)))))))))
+        h (string-byte-length (http_result_err_edn "timeout" 2))
+        i (string-byte-length
+           (headers_edn_append
+            (headers_edn_append (headers_edn_empty) "A" "1")
+            "A" "2"))]
+    (+ (* a 1000000000)
+       (+ (* b 10000000)
+          (+ (* c 100000)
+             (+ (* d 10000)
+                (+ (* e 1000)
+                   (+ (* f 100)
+                      (+ (* g 10)
+                         (+ h i))))))))))

@@ -1293,6 +1293,7 @@
     (is (nil? (get-in mod [:source :typed-host])))
     (is (= (:sha256 mod) (sha mod-bytes)))
     (doseq [e ["edn_quoted" "http_header_edn" "headers_edn_empty" "headers_edn_append"
+               "headers_edn_has_name"
                "http_request_edn0" "http_request_edn"
                "http_result_ok_edn" "http_result_err_edn" "main"]]
       (is (contains? (:exports mod) e)))

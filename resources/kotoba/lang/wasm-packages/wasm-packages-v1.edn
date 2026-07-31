@@ -1176,7 +1176,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "eed5f689be8425d1a7b8fdef627ee8dfd46a6fdf5b04c0cb279c732fd3eb075d"
+   :sha256 "9bea4358ae1cc62b455f4980109e2e3eccfab225796e90e1953617413bdcb8d0"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-request-edn-v1.wasm"
@@ -1184,11 +1184,12 @@
             :capability-id "http/post"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0209/0210 fixed-depth nested EDN: header, multi-header append, request, result ok/err arms; not recursive W4 ADT / Component re-emit"}
+            :note "ADR 0209/0210/0211 nested EDN encode: header, multi-header append+name uniqueness scan, request, result ok/err; not true set type/W4 recursive ADT / Component re-emit"}
    :exports {"edn_quoted" {:params [:externref] :result :externref}
              "http_header_edn" {:params [:externref :externref] :result :externref}
              "headers_edn_empty" {:params [] :result :externref}
              "headers_edn_append" {:params [:externref :externref :externref] :result :externref}
+             "headers_edn_has_name" {:params [:externref :externref] :result :i32}
              "http_request_edn0" {:params [:externref :externref :i64] :result :externref}
              "http_request_edn" {:params [:externref :externref :externref :i64] :result :externref}
              "http_result_ok_edn" {:params [:i64 :externref :externref] :result :externref}
