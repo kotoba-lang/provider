@@ -31,6 +31,7 @@
               "wasm-packages/http-response-ok-v1.wasm (ADR 0190 typed response_ok / status)"
               "wasm-packages/http-error-result-ok-v1.wasm (ADR 0191 typed error arm + result tag)"
               "wasm-packages/http-result-pack-v1.wasm (ADR 0192 typed result packing walk)"
+              "wasm-packages/http-result-pack-v1.component.wasm (ADR 0204 pure Component re-emit)"
               "wasm-packages/http-request-pack-v1.wasm (ADR 0193 typed request packing walk)"
               "wasm-packages/http-request-pack-v1.component.wasm (ADR 0203 pure Component re-emit)"
               "wasm-packages/http-memory-scan-v1.wasm + .component.wasm (ADR 0194 pure memory-scan one-shot)"
