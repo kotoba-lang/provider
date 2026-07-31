@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body pilot: http bounds (0171). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body pilots: http bounds (0171), process bounds (0172). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -52,8 +52,9 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
-              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"]
-   :note "ADR 0168: Component embeds spawn bounds policy; signed-wasm ready; OS spawn stays host-injected"}
+              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"
+              "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
+   :note "ADR 0168 hand WAT + ADR 0172 compiler-AOT bounds; signed-wasm ready; OS spawn host-injected; wasm-aot partial"}
 
   {:name :scoped-fs
    :id 19

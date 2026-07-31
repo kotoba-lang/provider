@@ -35,8 +35,11 @@
   12. **Compiler-AOT kit body pilot** (T8.3, ADR 0171) — http-post pure
      `:limits` checker emitted by kotoba-compiler (`http-post-bounds-v1`);
      full request/result EDN codec AOT still open (`:wasm-aot :partial`).
+  13. **Compiler-AOT process bounds re-emit** (T8.3, ADR 0172) — process
+     pure spawn bounds via kotoba-compiler (`process-spawn-bounds-v1`);
+     hand WAT ADR 0168 retained for i32 ABI continuity.
 
-  See ADR 0152–0171."
+  See ADR 0152–0172."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

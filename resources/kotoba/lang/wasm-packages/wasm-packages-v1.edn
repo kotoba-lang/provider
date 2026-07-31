@@ -293,6 +293,44 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 compiler-AOT re-emit of process pure bounds (ADR 0172). Hand WAT
+  ;; ADR 0168 retained; this package is i64 ABI (kotoba-compiler native).
+  {:name :process-spawn-bounds
+   :resource "kotoba/lang/wasm-packages/process-spawn-bounds-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "5af966082d3c9ed731de5f575d9707824fb737edecb1c745a8438eb5f11064e0"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-spawn-bounds-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/process_spawn_bounds.kotoba"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure spawn bounds (ADR 0172); OS spawn stays host-injected"}
+   :exports {"process_spawn_bounds_ok" {:params [:i64 :i64 :i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :process-spawn-bounds-component
+   :resource "kotoba/lang/wasm-packages/process-spawn-bounds-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "13571d6457a4b72e493e56ec6313ece0f463594627f34036150ccb037615639d"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-spawn-bounds-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/process_spawn_bounds.kotoba"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0172 Component embeds compiler-AOT spawn bounds core"}
+   :exports {"process_spawn_bounds_ok" {:params [:s64 :s64 :s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :scoped-fs-path
    :resource "kotoba/lang/wasm-packages/scoped-fs-path-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
