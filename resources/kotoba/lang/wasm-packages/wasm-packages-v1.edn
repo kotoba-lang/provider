@@ -1170,6 +1170,28 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0209: fixed-depth nested EDN encode (header + 0-header request)
+  {:name :http-request-edn
+   :resource "kotoba/lang/wasm-packages/http-request-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "a7cfc22c61e686acd295ae54f04fa949624c825915792672606b38e3f59d08da"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-request-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_request_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0209 fixed-depth nested EDN encode (header map + 0-header request); not recursive W4 ADT / multi-header set / Component re-emit"}
+   :exports {"edn_quoted" {:params [:externref] :result :externref}
+             "http_header_edn" {:params [:externref :externref] :result :externref}
+             "http_request_edn0" {:params [:externref :externref :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   ;; T8.3 ADR 0194: pure memory-scan one-shot request+result (hand WAT)
   {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"

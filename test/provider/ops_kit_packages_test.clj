@@ -1276,6 +1276,26 @@
     (is (contains? (:imports mod) "kotoba:typed"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_pack.kotoba")))))
 
+
+(deftest http-request-edn-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-request-edn)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (nil? (get-in mod [:source :typed-host])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (doseq [e ["edn_quoted" "http_header_edn" "http_request_edn0" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn.kotoba")))))
+
 (deftest http-typed-string-request-pack-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]

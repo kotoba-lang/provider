@@ -33,6 +33,7 @@
               "wasm-packages/http-result-pack-v1.wasm (ADR 0192 typed result packing walk)"
               "wasm-packages/http-request-pack-v1.wasm (ADR 0193 typed request packing walk)"
               "wasm-packages/http-request-pack-v1.component.wasm (ADR 0203 pure Component re-emit)"
+              "wasm-packages/http-request-edn-v1.wasm (ADR 0209 fixed-depth nested EDN encode)"
               "wasm-packages/http-url-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-post-request-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-response-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
@@ -46,7 +47,7 @@
               "wasm-packages/http-request-full-scan-v1.wasm + .component.wasm (ADR 0197 pure full request scan)"
               "wasm-packages/http-result-full-scan-v1.wasm + .component.wasm (ADR 0198 pure full result scan)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165–0204: pure Component re-emit covers url/request/response/error + header name/value/set + request/result packing walks (0199–0204). Nested EDN codec / full multi-file kit body still open (W4 recursive values) — wasm-aot stays :partial."}
+   :note "ADR 0165–0204: pure Component re-emit covers url/request/response/error + header name/value/set + request/result packing walks (0199–0204). ADR 0209 fixed-depth nested EDN encode (header map + 0-header request) first slice — multi-header set / result variant / recursive W4 ADT + full multi-file kit body still open; wasm-aot stays :partial."}
 
   {:name :secret
    :id 21
