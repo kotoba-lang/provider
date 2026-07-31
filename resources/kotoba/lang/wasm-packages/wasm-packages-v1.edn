@@ -1402,6 +1402,45 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0216: multi-header append + name uniqueness on reject path
+  {:name :http-headers-edn-append
+   :resource "kotoba/lang/wasm-packages/http-headers-edn-append-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "38ae06445e20bf79e577807defd115ee69209cb66099fdb7ab1a7e48401ff6f3"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-edn-append-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_edn_append.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0216 wasm32 headers_edn_append dual-scan + uniqueness; request/result multi-export still open"}
+   :exports {"headers_edn_append" {:params [:externref :externref :externref] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-headers-edn-append-component
+   :resource "kotoba/lang/wasm-packages/http-headers-edn-append-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "c139ff32b2e7a82b43561e6c9f0e04be5788394abab993c23598eab91895ee54"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-edn-append-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_edn_append.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/headers-edn-append
+            :kotoba-component-sha "db026a325e03004b80bdd6bd872378ab2011df71"
+            :note "ADR 0216 reject-path headers_edn_append Component (append + :name uniqueness scan); not full multi-export request-edn"}
+   :exports {"headers-edn-append" {:params [:string :string :string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
