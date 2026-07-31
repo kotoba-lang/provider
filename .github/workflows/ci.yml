@@ -17,6 +17,20 @@ jobs:
       - uses: DeLaGuardo/setup-clojure@13.4
         with:
           cli: latest
+      # T8.3 added tests that execute a Component with wasmtime. Without it they
+      # ERROR rather than fail, which is how main looks right now -- they had
+      # only passed on machines that happened to have it on PATH.
+      # wasm-tools is version-pinned by kotoba.wasm.tools/version (1.243.0).
+      - name: Install pinned wasm-tools and wasmtime
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.wasm-bin"
+          curl -sSfL https://github.com/bytecodealliance/wasm-tools/releases/download/v1.243.0/wasm-tools-1.243.0-x86_64-linux.tar.gz \
+            | tar -xz -C "$HOME/.wasm-bin" --strip-components=1 --wildcards '*/wasm-tools'
+          curl -sSfL https://github.com/bytecodealliance/wasmtime/releases/download/v42.0.1/wasmtime-v42.0.1-x86_64-linux.tar.xz \
+            | tar -xJ -C "$HOME/.wasm-bin" --strip-components=1 --wildcards '*/wasmtime'
+          echo "$HOME/.wasm-bin" >> "$GITHUB_PATH"
+      - run: wasm-tools --version && wasmtime --version
       - run: clojure -M:test
 
   # This repo's own suite passing is not enough: it is a library, and a change
