@@ -1627,7 +1627,7 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_only.kotoba")))))
 
 (deftest http-edn-reject-package-component-registered
-  "T8.3 ADR 0221/0226/0227: multi-export reject kit + element-bound append + names-add."
+  "T8.3 ADR 0221/0226/0227/0230: multi-export reject kit multi-ns + element-bound + names-add."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1645,7 +1645,7 @@
            (get-in comp [:source :component-lowering])))
     (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
-    (is (= "e1de58c7630cd944d0882fbcc157028228c7081591baea4bdabfd6b2f62727ed"
+    (is (= "a11a96f6cc2d13d93c3089a0b88381888b5344db4ba91dcddb810d251630456b"
            (:sha256 comp)))
     (doseq [e ["headers_edn_empty" "headers_edn_append" "headers_names_add" "http_request_edn"
                "http_result_ok_edn" "http_result_err_edn"]]

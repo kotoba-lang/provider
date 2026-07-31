@@ -1017,7 +1017,7 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :component-lowering :kotoba-component/headers-names-add
-            :kotoba-component-sha "dfba9407b0eedafcc2abed25f556f162a0c08966"
+            :kotoba-component-sha "b11e945b23f9b2c1bdcf56f6d5f7bc23e04970bf"
             :note "ADR 0225 Component twin true-set name uniqueness on EDN string vector; element-bound equality; not substring :name scan; W4/wasm-aot still open"}
    :exports {"headers-names-add" {:params [:string :string] :result :string}}
    :fixture? false
@@ -1736,7 +1736,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-component
    :media-type "application/wasm"
-   :sha256 "e1de58c7630cd944d0882fbcc157028228c7081591baea4bdabfd6b2f62727ed"
+   :sha256 "a11a96f6cc2d13d93c3089a0b88381888b5344db4ba91dcddb810d251630456b"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-edn-reject-package-v1.component.wasm"
@@ -1744,9 +1744,11 @@
             :capability-id "http/post"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
+            :source-project "resources/kotoba/lang/wasm-packages/src/http-edn-reject-project"
+            :source-root "kotoba.http.edn-reject-package"
             :component-lowering :kotoba-component/http-edn-reject-package
-            :kotoba-component-sha "7e017bbc0224313672922215820b32adcd96d20e"
-            :note "ADR 0227 multi-export reject-path EDN + map-element-bound append + names-add true-set; W4/wasm-aot still open"}
+            :kotoba-component-sha "b11e945b23f9b2c1bdcf56f6d5f7bc23e04970bf"
+            :note "ADR 0230 multi-ns project reject-path EDN Component (--source-path); peel monomorph forwards; W4/wasm-aot open"}
    :exports {"headers-edn-empty" {:params [] :result :string}
              "headers-edn-append" {:params [:string :string :string] :result :string}
              "headers-names-add" {:params [:string :string] :result :string}
