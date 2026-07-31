@@ -2020,3 +2020,24 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [0 -2 0 -21 -1] (edn/read-string out)))))
+
+(deftest secret-reply-edn-package-registered
+  "T8.3 ADR 0232: fixed-depth secret reply value/error EDN encode."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :secret-reply-edn)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "5b7be77363b8bc41580297f2a857bd5d6dba0a1c4092e72ad0562ad9e8358181"
+           (:sha256 mod)))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (is (contains? (:exports mod) "secret_reply_value_edn"))
+    (is (contains? (:exports mod) "secret_reply_error_edn"))
+    (is (contains? (:exports mod) "main"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_reply_edn.kotoba")))))
+

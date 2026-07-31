@@ -1082,7 +1082,30 @@
    :signed-content-addressed-package :pending}
 
 
-  ;; T8.3 ADR 0231: pure kit-shaped request with set-of-header-records + name-set
+  
+  ;; T8.3 ADR 0232: fixed-depth secret reply EDN encode
+  {:name :secret-reply-edn
+   :resource "kotoba/lang/wasm-packages/secret-reply-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "5b7be77363b8bc41580297f2a857bd5d6dba0a1c4092e72ad0562ad9e8358181"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-reply-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_reply_edn.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :compiler-sha "20f2104601544095d2b0a14a7f5b5ce308128124"
+            :note "ADR 0232 fixed-depth secret reply value/error EDN; dual scan; main → -2302; W4/wasm-aot open"}
+   :exports {"secret_reply_value_edn" {:params [:externref] :result :externref}
+             "secret_reply_error_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+;; T8.3 ADR 0231: pure kit-shaped request with set-of-header-records + name-set
   {:name :http-request-set-record
    :resource "kotoba/lang/wasm-packages/http-request-set-record-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
