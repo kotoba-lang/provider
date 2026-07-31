@@ -419,6 +419,48 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0177: pure scoped-fs path state-machine gates (host walks)
+  {:name :fs-path-gate
+   :resource "kotoba/lang/wasm-packages/fs-path-gate-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "18ffca5ee98fefec649d8e7fd08ed9c83a657e6df75fee073d6146a853d7bffd"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-gate-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_gate.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure path first/step/finish gates (ADR 0177); host walks; hand WAT one-shot retained"}
+   :exports {"fs_path_first_ok" {:params [:i64] :result :i64}
+             "fs_path_step" {:params [:i64 :i64] :result :i64}
+             "fs_path_finish" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-gate-component
+   :resource "kotoba/lang/wasm-packages/fs-path-gate-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "89b7f12c33683d2a9e720e8ee4cae7d832be41a2b832fca2f21ab6ec27f6b0c4"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-gate-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_gate.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0177 Component embeds compiler-AOT path state-machine gates"}
+   :exports {"fs_path_first_ok" {:params [:s64] :result :s64}
+             "fs_path_step" {:params [:s64 :s64] :result :s64}
+             "fs_path_finish" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"

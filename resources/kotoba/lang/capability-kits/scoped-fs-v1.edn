@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0169 hand path-scan; ADR 0174 path-len + ADR 0175 value-len compiler-AOT. Host store authority. Escape scan hand WAT; codec AOT open (wasm-aot :partial)."}}
+                 :notes "ADR 0169 hand path-scan; ADR 0174 path-len + 0175 value-len + 0177 path gates (first/step/finish) compiler-AOT. Host store authority. One-shot hand WAT retained; codec AOT open (wasm-aot :partial)."}}
