@@ -570,6 +570,8 @@
     (is (= :pending (get-in http [:scores :signed-wasm])))
     (is (false? (kit/pure-allowlist-kit? http)))
     (is (false? (kit/pure-allowlist-publisher-policy-satisfied? http entry bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? http entry bytes)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? http entry bytes)))
     (is (false? (kit/production-signed-allowed? http)))
     (is (true? (:host-admissible? gb)))
     (is (false? (:production-admissible? gb)))))
@@ -617,6 +619,42 @@
     (is (= :pending (get-in secret [:scores :signed-wasm])))
     (is (false? (kit/pure-allowlist-kit? secret)))
     (is (false? (kit/pure-allowlist-publisher-policy-satisfied? secret entry bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? secret entry bytes)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? secret entry bytes)))
     (is (false? (kit/production-signed-allowed? secret)))
     (is (true? (:host-admissible? gb)))
     (is (false? (:production-admissible? gb)))))
+
+(deftest ops-network-publisher-policy
+  "ADR 0164: packaging bar clears for http/secret real-bytes; signed-wasm flip stays closed."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        http (kit/readiness-for readiness :http)
+        secret (kit/readiness-for readiness :secret)
+        math (kit/readiness-for readiness :math-sin)
+        process (kit/readiness-for readiness :process)
+        pkg-table (kit/load-wasm-packages-table)
+        http-entry (kit/wasm-package-for pkg-table :http-post)
+        secret-entry (kit/wasm-package-for pkg-table :secret-get)
+        math-entry (kit/wasm-package-for pkg-table :math-sin)
+        http-bytes (kit/load-wasm-package-bytes (:resource http-entry))
+        secret-bytes (kit/load-wasm-package-bytes (:resource secret-entry))]
+    (is (true? (kit/ops-network-kit? http)))
+    (is (true? (kit/ops-network-kit? secret)))
+    (is (false? (kit/ops-network-kit? math)))
+    (is (false? (kit/ops-network-kit? process)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? http http-entry http-bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? secret secret-entry secret-bytes)))
+    (is (false? (kit/ops-network-publisher-policy-satisfied? math math-entry)))
+    (is (false? (kit/ops-network-publisher-policy-satisfied? http))) ; needs package-entry
+    (is (false? (kit/ops-signed-wasm-ready-allowed? http http-entry http-bytes))
+        "wasm-module pilot must not flip signed-wasm")
+    (is (false? (kit/ops-signed-wasm-ready-allowed? secret secret-entry secret-bytes)))
+    (is (= :pending (get-in http [:scores :signed-wasm])))
+    (is (= :pending (get-in secret [:scores :signed-wasm])))
+    (is (false? (kit/production-signed-allowed? http)))
+    (is (false? (kit/production-signed-allowed? secret)))
+    ;; Hypothetical Component would clear the flip gate without mutating readiness.
+    (let [component-entry (assoc http-entry :artifact-kind :wasm-component)]
+      (is (true? (kit/ops-signed-wasm-ready-allowed? http component-entry http-bytes))))))
+
