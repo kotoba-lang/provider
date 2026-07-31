@@ -1324,6 +1324,45 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0214: reject-path edn_quoted Component first slice
+  {:name :http-edn-quoted
+   :resource "kotoba/lang/wasm-packages/http-edn-quoted-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "b17e5228d6516a0af78424c0289ba1daab72f05f1ad8e9f7a59eb0c8edda9967"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-quoted-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_quoted.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0214 wasm32 edn_quoted reject-on-quote/backslash; full request-edn multi-export reject path still open"}
+   :exports {"edn_quoted" {:params [:externref] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-edn-quoted-component
+   :resource "kotoba/lang/wasm-packages/http-edn-quoted-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "6471d3de778544b6f3a819097f1e77141462c32f5ce3e06f770fc30ab509cfe8"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-edn-quoted-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_edn_quoted.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/edn-quoted
+            :kotoba-component-sha "026ed2f8ca01d2197c618806db4576d6a649df60"
+            :note "ADR 0214 reject-path edn_quoted Component (UTF-8 quote/backslash scan); not full multi-export request-edn"}
+   :exports {"edn-quoted" {:params [:string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
