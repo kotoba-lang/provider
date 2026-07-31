@@ -865,3 +865,43 @@
     (is (true? (kit/production-signed-allowed? fs)))
     (is (true? (:host-admissible? gb)))
     (is (true? (:production-admissible? gb)))))
+
+(deftest ops-git-component-signed-wasm-ready
+  "ADR 0170: git pure run-bounds Component flips signed-wasm."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        git (kit/readiness-for readiness :git)
+        pkg-table (kit/load-wasm-packages-table)
+        mod (kit/wasm-package-for pkg-table :git-run)
+        comp (kit/wasm-package-for pkg-table :git-run-component)
+        mod-bytes (kit/load-wasm-package-bytes (:resource mod))
+        comp-bytes (kit/load-wasm-package-bytes (:resource comp))
+        path "kotoba/lang/capability-kits/git-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-git-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :git path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt comp comp-bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :git
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row git
+             :package-entry comp
+             :wasm-bytes comp-bytes})]
+    (is (true? (kit/ops-network-kit? git)))
+    (is (= :ops (:class mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (true? (kit/verify-wasm-package-digest mod mod-bytes)))
+    (is (true? (kit/verify-wasm-package-digest comp comp-bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? git mod mod-bytes)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? git mod mod-bytes)))
+    (is (true? (kit/ops-signed-wasm-ready-allowed? git comp comp-bytes)))
+    (is (= :ready (get-in git [:scores :signed-wasm])))
+    (is (true? (kit/production-signed-allowed? git)))
+    (is (true? (:host-admissible? gb)))
+    (is (true? (:production-admissible? gb)))))

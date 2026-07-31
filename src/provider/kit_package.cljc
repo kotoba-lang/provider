@@ -34,7 +34,7 @@
   11. **Ops process Component pilot** (T8.3, ADR 0168) — pure spawn bounds
      policy module + Component; ops kit set includes `:process`.
 
-  See ADR 0152–0168."
+  See ADR 0152–0170."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
@@ -669,8 +669,8 @@
      (boolean (and base-ok? entry-ok?)))))
 
 (def ops-network-kit-names
-  "Readiness kit names on the ops packaging surface (not pure-allowlist). ADR 0164–0169: http/secret/entropy/process/scoped-fs."
-  #{:http :secret :entropy :process :scoped-fs})
+  "Readiness kit names on the ops packaging surface (not pure-allowlist). ADR 0164–0170: http/secret/entropy/process/scoped-fs/git."
+  #{:http :secret :entropy :process :scoped-fs :git})
 
 (defn ops-network-kit?
   "True when readiness row is an ops/network packaging surface (http/secret).
