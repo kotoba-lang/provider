@@ -60,6 +60,22 @@
     (doseq [n [:http :secret :process :scoped-fs :object :storage]]
       (is (contains? names n) (str n)))))
 
+(deftest readiness-lists-secret-and-fs-path-ok-components
+  "ADR 0206/0207/0208: inventory must list pure Component twins (not only typed modules)."
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        secret (kit/readiness-for table :secret)
+        fs (kit/readiness-for table :scoped-fs)
+        secret-ev (set (:evidence secret))
+        fs-ev (set (:evidence fs))]
+    (is (some #(re-find #"secret-name-ok-v1\.component\.wasm" %) secret-ev)
+        "secret readiness must list ADR 0206 Component")
+    (is (some #(re-find #"ADR 0206" %) secret-ev))
+    (is (some #(re-find #"fs-path-ok-v1\.component\.wasm" %) fs-ev)
+        "scoped-fs readiness must list ADR 0207 Component")
+    (is (some #(re-find #"ADR 0207" %) fs-ev))
+    (is (re-find #"0206|0207" (:kotoba.kit-readiness/summary table)))))
+
 (deftest signing-input-canonical
   (is (= "kotoba.kit-package.signed/v1\nsha256\nabc\npath/x.edn\n"
          (kit/signing-input {:digest "abc" :resource "path/x.edn"}))))
