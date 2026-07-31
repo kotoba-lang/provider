@@ -90,8 +90,10 @@
       n×(name,value) table memory-scan + Component embed.
   37. **Pure hand-WAT HTTP full request memory-scan** (T8.3, ADR 0197) —
       url+headers table+body/timeout one-shot + Component embed.
+  38. **Pure hand-WAT HTTP full result memory-scan** (T8.3, ADR 0198) —
+      ok arm status+headers table+body or error code scan + Component.
 
-  See ADR 0152–0197."
+  See ADR 0152–0198."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

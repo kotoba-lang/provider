@@ -1490,3 +1490,63 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [0 -3 -13 -4 -6] (edn/read-string out)))))
+
+(deftest http-pure-result-full-scan-package-registered
+  "ADR 0198: pure hand-WAT full result memory-scan + Component."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-result-full-scan)
+        comp (get by-name :http-result-full-scan-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :hand-wat/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "http_result_full_scan"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_result_full_scan.wat")))))
+
+(deftest http-pure-result-full-scan-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/http-result-full-scan-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "http-result-full" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const mem=new Uint8Array(instance.exports.memory.buffer);"
+                "const view=new DataView(instance.exports.memory.buffer);"
+                "const enc=new TextEncoder();"
+                "function put(s,off){const u=enc.encode(s); mem.set(u,off); return {off,len:u.length};}"
+                "function writeRec(tableOff,i,nptr,nlen,vptr,vlen){"
+                "  const base=tableOff+i*16;"
+                "  view.setUint32(base,nptr,true); view.setUint32(base+4,nlen,true);"
+                "  view.setUint32(base+8,vptr,true); view.setUint32(base+12,vlen,true);}"
+                "const scan=instance.exports.http_result_full_scan;"
+                "const nm=put('X-Ok',256); const vl=put('yes',280);"
+                "writeRec(0,0,nm.off,nm.len,vl.off,vl.len);"
+                "const a=scan(0,200,1,0,2, 0,0,0,0);"
+                "const b1=scan(0,42,0,0,0, 0,0,0,0);"
+                "const cd=put('http/transport',400);"
+                "const c=scan(1,0,0,0,0, cd.off,cd.len,6,0);"
+                "const d=scan(1,0,0,0,0, 0,0,0,0);"
+                "const e=scan(3,0,0,0,0, 0,0,0,0);"
+                "console.log(JSON.stringify([a,b1,c,d,e]));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        pb (ProcessBuilder. ["node" "-e" script])
+        p (.start pb)
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [0 -2 0 -21 -1] (edn/read-string out)))))
