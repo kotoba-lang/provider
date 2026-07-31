@@ -1506,6 +1506,30 @@
     (is (contains? (:exports comp) "http-request-edn0"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn0.kotoba")))))
 
+
+(deftest http-request-edn-reject-component-registered
+  "T8.3 ADR 0220: multi-header request EDN reject-path Component."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-request-edn-reject)
+        comp (get by-name :http-request-edn-reject-component)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :kotoba-component/http-request-edn
+           (get-in comp [:source :component-lowering])))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
+    (is (contains? (:exports mod) "http_request_edn"))
+    (is (contains? (:exports comp) "http-request-edn"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_only.kotoba")))))
+
 (deftest http-typed-string-request-pack-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
