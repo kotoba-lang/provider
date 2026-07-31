@@ -24,16 +24,16 @@
         (is (= 1 (:kotoba.capability-kit/version kit)))
         (is (= id (:id cap)))
         (is (= :implemented (:reference q)))
-        ;; ADR 0163/0166: secret wasm-aot partial; signed package ready via Component.
-        (is (contains? (if (= name :secret) #{:partial} #{:pending})
-                       (:wasm-aot q))
-            (str name " wasm-aot honesty"))
-        (is (contains? (if (= name :secret) #{:ready} #{:pending})
-                       (:signed-content-addressed-package q))
-            (str name " signed package honesty"))
+        ;; Component pilots (secret 0166, entropy 0167): wasm-aot partial + signed ready.
+        (let [component-pilot? (contains? #{:secret :entropy} name)]
+          (is (contains? (if component-pilot? #{:partial} #{:pending})
+                         (:wasm-aot q))
+              (str name " wasm-aot honesty"))
+          (is (contains? (if component-pilot? #{:ready} #{:pending})
+                         (:signed-content-addressed-package q))
+              (str name " signed package honesty")))
         (is (some? (:request kit)))
         (is (some? (:result kit)))))))
-
 (deftest provider-conformance-lists-ops-kits
   (let [conf (edn/read-string
               (slurp (io/resource "kotoba/lang/provider-conformance-v1.edn")))
@@ -61,3 +61,11 @@
         "ops Component pilot may mark wasm-aot partial (not full compiler AOT)")
     (is (= :ready (get-in secret [:qualification :signed-content-addressed-package]))
         "ADR 0166 content-addressed Component package path ready")))
+
+(deftest entropy-kit-still-honest-about-aot
+  (let [entropy (load-kit "kotoba/lang/capability-kits/entropy-v1.edn")]
+    (is (= :implemented (get-in entropy [:qualification :reference])))
+    (is (= :partial (get-in entropy [:qualification :wasm-aot]))
+        "ADR 0167 draw-size Component: wasm-aot partial (host CSPRNG remains authority)")
+    (is (= :ready (get-in entropy [:qualification :signed-content-addressed-package]))
+        "ADR 0167 content-addressed Component package path ready")))

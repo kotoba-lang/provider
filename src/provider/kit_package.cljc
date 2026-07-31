@@ -29,7 +29,10 @@
      for http-post enables `ops-signed-wasm-ready-allowed?`; readiness http
      may set `:signed-wasm :ready` while `:wasm-aot` stays `:partial`.
 
-  See ADR 0152–0165."
+    10. **Ops entropy Component pilot** (T8.3, ADR 0167) — pure draw-size
+     policy module + Component; ops kit set includes `:entropy`.
+
+  See ADR 0152–0167."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
@@ -664,8 +667,9 @@
      (boolean (and base-ok? entry-ok?)))))
 
 (def ops-network-kit-names
-  "Readiness kit names that are ops/network (not pure-allowlist)."
-  #{:http :secret})
+  "Readiness kit names on the ops packaging surface (not pure-allowlist).
+  Originally http/secret (ADR 0164); ADR 0167 adds entropy (and later process/fs/git)."
+  #{:http :secret :entropy})
 
 (defn ops-network-kit?
   "True when readiness row is an ops/network packaging surface (http/secret).
@@ -680,7 +684,7 @@
   1. readiness name is `:http` or `:secret` (not pure-allowlist)
   2. base dimensions ready: schema, dual-runtime, deny-fixtures, quota,
      package, host-parity
-  3. audit is `:ready` or `:partial` (ops host surfaces may be partial)
+  3. audit is `:ready`, `:partial`, or `:n/a` (entropy pure CSPRNG draw)
   4. registry package-entry is non-fixture, `:class :ops-network`, and
      (if bytes given) digest-matches
 
@@ -699,10 +703,10 @@
                        (= :ready (:quota s))
                        (= :ready (:package s))
                        (= :ready (:host-parity s))
-                       (or (= :ready (:audit s)) (= :partial (:audit s))))
+                       (or (= :ready (:audit s)) (= :partial (:audit s)) (= :n/a (:audit s))))
          entry-ok? (if package-entry
                      (and (false? (boolean (:fixture? package-entry)))
-                          (= :ops-network (:class package-entry))
+                          (contains? #{:ops-network :ops} (:class package-entry))
                           (string? (:sha256 package-entry))
                           (or (nil? wasm-bytes)
                               (verify-wasm-package-digest package-entry wasm-bytes)))

@@ -407,9 +407,10 @@
 
 (deftest pure-allowlist-wasm-packages-all-digest-match
   (let [table (kit/load-wasm-packages-table)
-        pure (filterv #(not= :ops-network (:class %)) (:packages table))]
+        pure (filterv #(not (contains? #{:ops-network :ops} (:class %)))
+                      (:packages table))]
     (is (= 8 (count pure)))
-    (is (<= 10 (count (:packages table))))
+    (is (<= 14 (count (:packages table))))
     (doseq [entry pure]
       (let [bytes (kit/load-wasm-package-bytes (:resource entry))]
         (is (false? (:fixture? entry)) (str (:name entry)))
@@ -741,3 +742,44 @@
     (is (true? (:production-admissible? gb)))
     (is (true? (:production-signed-claim? m)))
     (is (empty? (:blockers m)))))
+
+(deftest ops-entropy-component-signed-wasm-ready
+  "ADR 0167: entropy pure draw-size Component flips signed-wasm."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        entropy (kit/readiness-for readiness :entropy)
+        pkg-table (kit/load-wasm-packages-table)
+        mod (kit/wasm-package-for pkg-table :entropy-draw)
+        comp (kit/wasm-package-for pkg-table :entropy-draw-component)
+        mod-bytes (kit/load-wasm-package-bytes (:resource mod))
+        comp-bytes (kit/load-wasm-package-bytes (:resource comp))
+        path "kotoba/lang/capability-kits/entropy-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-entropy-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :entropy path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt comp comp-bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :entropy
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row entropy
+             :package-entry comp
+             :wasm-bytes comp-bytes})]
+    (is (true? (kit/ops-network-kit? entropy)))
+    (is (= :ops (:class mod)))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (true? (kit/verify-wasm-package-digest mod mod-bytes)))
+    (is (true? (kit/verify-wasm-package-digest comp comp-bytes)))
+    (is (true? (kit/ops-network-publisher-policy-satisfied? entropy mod mod-bytes)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? entropy mod mod-bytes)))
+    (is (true? (kit/ops-signed-wasm-ready-allowed? entropy comp comp-bytes)))
+    (is (= :ready (get-in entropy [:scores :signed-wasm])))
+    (is (true? (kit/production-signed-allowed? entropy)))
+    (is (true? (:host-admissible? gb)))
+    (is (true? (:production-admissible? gb)))))

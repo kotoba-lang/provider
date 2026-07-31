@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (ADR 0161). Ops packaging bar (ADR 0164). Real-bytes http/secret (0162–0163). ADR 0165/0166: http + secret Components → :signed-wasm :ready. Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy. Real-bytes+Components: http (0165), secret (0166), entropy (0167). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -88,10 +88,12 @@
             :audit :n/a
             :host-parity :ready
             :package :ready
-            :signed-wasm :pending}
-   :evidence ["entropy-v1.edn" "provider#33" "audit N/A for pure CSPRNG draw"]}
+            :signed-wasm :ready}
+   :evidence ["entropy-v1.edn" "provider#33" "audit N/A for pure CSPRNG draw"
+              "wasm-packages/entropy-draw-v1.wasm + .component.wasm (ADR 0167)"]}
+   :note "ADR 0167: Component embeds draw-size policy; signed-wasm ready; host CSPRNG still authority boundary"
 
-  {:name :object
+{:name :object
    :id 14
    :resource "kotoba/lang/capability-kits/stream-object-v1.edn"
    :scores {:schema :ready
