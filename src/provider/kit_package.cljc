@@ -70,7 +70,10 @@
 
   24. **Compiler-AOT git multi-step walk** (T8.3, ADR 0184) — begin/arg/end over arg lengths.
 
-  See ADR 0152–0184."
+  20. **Compiler-AOT pure multi-step http bounds walk** (T8.3, ADR 0185) —
+     begin/url/headers/body/end phased host protocol.
+
+  See ADR 0152–0185."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

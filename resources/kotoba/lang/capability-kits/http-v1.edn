@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0162/0165 forwarder+Component; 0171 pure bounds; 0182 typed-string https URL policy. Host http-post I/O authority. Full request/result EDN codec AOT open (wasm-aot :partial)."}}
+                 :notes "ADR 0162/0165 forwarder+Component; 0171 pure bounds; 0182 typed-string URL; 0185 multi-step bounds walk. Host http-post I/O. Codec AOT open (wasm-aot :partial)."}}
