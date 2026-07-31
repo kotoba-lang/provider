@@ -1481,7 +1481,46 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-{:name :http-memory-scan
+  ;; T8.3 ADR 0218: result ok arm reject-path on edn_quoted
+  {:name :http-result-ok-edn
+   :resource "kotoba/lang/wasm-packages/http-result-ok-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "df8b1c038692377754675bf31bd65cd4f05e60668ce7daf59c5309ce0b3d9a2b"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-ok-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_result_ok_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0218 wasm32 result_ok_edn status 0..999 + headers shape + body scan; request multi-export still open"}
+   :exports {"http_result_ok_edn" {:params [:i64 :externref :externref] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-result-ok-edn-component
+   :resource "kotoba/lang/wasm-packages/http-result-ok-edn-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "1d061693da0d1fc817df7357df63907009b5a7400fd59afd8f1bdc23eacf62f2"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-ok-edn-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_result_ok_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/http-result-ok-edn
+            :kotoba-component-sha "4344df77b6b9c14fc14af316c2da9cd1d78532ca"
+            :note "ADR 0218 reject-path result_ok_edn Component (status decimal + headers shape + body scan); not full multi-export request-edn"}
+   :exports {"http-result-ok-edn" {:params [:i64 :string :string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
