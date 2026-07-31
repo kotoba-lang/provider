@@ -1082,6 +1082,34 @@
    :signed-content-addressed-package :pending}
 
 
+  ;; T8.3 ADR 0231: pure kit-shaped request with set-of-header-records + name-set
+  {:name :http-request-set-record
+   :resource "kotoba/lang/wasm-packages/http-request-set-record-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "59a182cc61e8c227ac43cc0c46441ee3b6b18373be7f23c0cf711187325acc1b"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-request-set-record-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_request_set_record.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "20f2104601544095d2b0a14a7f5b5ce308128124"
+            :note "ADR 0231 pure kit-shaped :headers [:set [:ref header]] + name-set uniqueness; EDN skeleton headers-n; main → -9002; W4/wasm-aot open"}
+   :exports {"http_req_begin" {:params [:externref :externref :i64] :result :externref}
+             "http_req_add_header" {:params [:externref :externref :externref] :result :externref}
+             "http_req_code" {:params [:externref] :result :i64}
+             "http_req_count" {:params [:externref] :result :i64}
+             "http_req_edn" {:params [:externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + set + record surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :http-response-ok
    :resource "kotoba/lang/wasm-packages/http-response-ok-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
