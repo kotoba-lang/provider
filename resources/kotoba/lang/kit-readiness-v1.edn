@@ -34,6 +34,7 @@
               "wasm-packages/http-memory-scan-v1.wasm + .component.wasm (ADR 0194 pure memory-scan one-shot)"
               "wasm-packages/http-header-memory-scan-v1.wasm + .component.wasm (ADR 0195 pure header memory-scan)"
               "wasm-packages/http-headers-set-scan-v1.wasm + .component.wasm (ADR 0196 pure header set packing scan)"
+              "wasm-packages/http-request-full-scan-v1.wasm + .component.wasm (ADR 0197 pure full request scan)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
    :note "ADR 0165+0171+0182+0185+0186+0187–0194 0194–0195 pure memory-scan (+headers); typed Component world compiler-blocked (wasm-aot partial)."}
 
