@@ -1,9 +1,10 @@
 (ns kotoba.http.edn-reject-package
-  (:export [headers_edn_empty headers_edn_append http_request_edn]))
+  (:export [headers_edn_empty headers_edn_append http_request_edn
+            http_result_ok_edn http_result_err_edn]))
 
-;; T8.3 multi-export reject-path EDN kit body (ADR 0221). Shared Canonical
-;; lowering :http-edn-reject-package. Bodies are admission skeletons; WAT owns
-;; dual scan, uniqueness, headers shape, timeout decimal. True set/W4 open.
+;; T8.3 multi-export reject-path EDN kit body + result arms (ADR 0222).
+;; Canonical :http-edn-reject-package. Bodies are admission skeletons; WAT owns
+;; scans/shape/decimal. True set/W4 open; wasm-aot stays partial.
 
 (defn headers_edn_empty [] :string
   "[]")
@@ -20,10 +21,20 @@
   :string
   (if (< timeout 0)
     ""
-    (string-concat "{:url \""
-                   (string-concat url
-                                  (string-concat "\" :headers "
-                                                 (string-concat headers
-                                                                (string-concat " :body \""
-                                                                               (string-concat body
-                                                                                              "\" :timeout-ms 0}"))))))))
+    (string-concat url (string-concat headers (string-concat body "[]")))))
+
+(defn http_result_ok_edn
+  [status :i64 headers :string body :string]
+  :string
+  (if (or (< status 0) (> status 999))
+    ""
+    (string-concat headers (string-concat body "ok"))))
+
+(defn http_result_err_edn
+  [code :string retryable :i64]
+  :string
+  (if (= retryable 0)
+    (string-concat code "error")
+    (if (= retryable 1)
+      (string-concat code "error")
+      "")))
