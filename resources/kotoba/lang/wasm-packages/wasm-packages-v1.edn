@@ -191,4 +191,36 @@
             :note "ADR 0166 Component embeds pure name-policy core; enables ops-signed-wasm gate; host-injected fetch still authority boundary; not compiler-AOT kit body"}
    :exports {"secret_name_ok" {:params [:i32 :i32] :result :i32}}
    :fixture? false
-   :signed-content-addressed-package :pending}]}
+   :signed-content-addressed-package :pending}
+  {:name :entropy-draw
+   :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "899dc31c4526b30a04aeb43b26ae029376325c811e0df14231dc566e979ca7ad"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :note "ADR 0167 pure draw-size policy [1,64]; CSPRNG stays host-injected"}
+   :exports {"entropy-draw-ok" {:params [:i64] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :entropy-draw-component
+   :resource "kotoba/lang/wasm-packages/entropy-draw-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "4fb39eb357aaacfdd2990695ad8c6659e3af759e7dec37948c4aee5968b0ffae"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-draw-v1.component.wasm"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :note "ADR 0167 Component embeds pure draw-size policy"}
+   :exports {"entropy-draw-ok" {:params [:s64] :result :s32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+]}
