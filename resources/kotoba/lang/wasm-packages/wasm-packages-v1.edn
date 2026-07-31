@@ -381,6 +381,44 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 compiler-AOT char-class half of secret name policy (ADR 0176).
+  ;; Pure i64 code-point gate; host walks name. Full ptr/len scan still hand WAT.
+  {:name :secret-name-char
+   :resource "kotoba/lang/wasm-packages/secret-name-char-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "48b80b9339024d906e8f7db579c9b89167057d4eb6ce7b6124fc3477633e81b6"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-char-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_char.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure char-class gate (ADR 0176); host iterates name bytes"}
+   :exports {"secret_name_char_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :secret-name-char-component
+   :resource "kotoba/lang/wasm-packages/secret-name-char-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "526193963e895f8eef7559896e75881694ee95869330046663003a566f57ee3e"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-char-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_char.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0176 Component embeds compiler-AOT char-class gate core"}
+   :exports {"secret_name_char_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
