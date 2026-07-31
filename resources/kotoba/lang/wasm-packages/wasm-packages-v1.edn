@@ -1028,6 +1028,45 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0225: Component twin true-set name list (Canonical :headers-names-add)
+  {:name :http-headers-names-add
+   :resource "kotoba/lang/wasm-packages/http-headers-names-add-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "6b3767b18a03c7c62c81558658a5c96edb92b6aac658eebff5de7ef57fcbbdd2"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-names-add-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_names_add.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0225 admission skeleton wasm32; Canonical Component twin owns true-set membership"}
+   :exports {"headers_names_add" {:params [:externref :externref] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-headers-names-add-component
+   :resource "kotoba/lang/wasm-packages/http-headers-names-add-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "939b4bfdff19bd17290a8a6b6e4d123baf727a9306c45625af50756e167c24fd"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-names-add-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_names_add.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/headers-names-add
+            :kotoba-component-sha "dfba9407b0eedafcc2abed25f556f162a0c08966"
+            :note "ADR 0225 Component twin true-set name list (element equality; not :name marker scan); live Host/Accept/dup/prefix"}
+   :exports {"headers-names-add" {:params [:string :string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   ;; T8.3 ADR 0190: typed-string response surface (status + headers-n + body)
   {:name :http-response-ok
    :resource "kotoba/lang/wasm-packages/http-response-ok-v1.wasm"

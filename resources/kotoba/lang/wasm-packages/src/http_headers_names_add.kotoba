@@ -1,0 +1,25 @@
+(ns kotoba.http.headers-names-add
+  (:export [headers_names_add]))
+
+;; T8.3 ADR 0225: Component twin of true-set header-name uniqueness.
+;; Acc is EDN vector of quoted names. Body is admission skeleton; Canonical
+;; WAT (`:headers-names-add`, kotoba-component ≥ dfba940) owns dual scan,
+;; element-bound equality membership (not substring :name marker), and splice.
+;; Complements wasm32 http-headers-name-set (typed-set guest record, ADR 0223).
+;; Does not flip wasm-aot (W4 recursive EDN still open).
+
+(defn headers_names_add
+  [acc :string name :string]
+  :string
+  (if (= (string-byte-length acc) 0)
+    ""
+    (if (= (string-byte-length name) 0)
+      ""
+      (if (string=? acc "[]")
+        (string-concat "["
+                       (string-concat "\""
+                                      (string-concat name "\"]")))
+        (string-concat acc
+                       (string-concat " "
+                                      (string-concat "\""
+                                                     (string-concat name "\"]"))))))))

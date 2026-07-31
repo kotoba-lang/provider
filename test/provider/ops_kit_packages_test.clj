@@ -1071,6 +1071,33 @@
     (is (contains? (:imports mod) "kotoba:typed"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_append_set.kotoba")))))
 
+(deftest http-headers-names-add-component-package-registered
+  "T8.3 ADR 0225: Component twin true-set name list (Canonical :headers-names-add)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-headers-names-add)
+        comp (get by-name :http-headers-names-add-component)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :kotoba-component/headers-names-add
+           (get-in comp [:source :component-lowering])))
+    (is (= "6b3767b18a03c7c62c81558658a5c96edb92b6aac658eebff5de7ef57fcbbdd2"
+           (:sha256 mod) (sha mod-bytes)))
+    (is (= "939b4bfdff19bd17290a8a6b6e4d123baf727a9306c45625af50756e167c24fd"
+           (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "headers_names_add"))
+    (is (contains? (:exports comp) "headers-names-add"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_names_add.kotoba")))))
+
 (deftest http-typed-string-headers-set-ok-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
