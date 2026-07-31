@@ -642,10 +642,30 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string single-call fs_path_ok (ADR 0180); requires kotoba:typed host; not pure Component"}
+            :note "compiler-AOT typed-string single-call fs_path_ok (ADR 0180); pure Component twin via ADR 0207"}
    :exports {"fs_path_ok" {:params [:externref] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string+code-point surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-ok-component
+   :resource "kotoba/lang/wasm-packages/fs-path-ok-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "9a8fb1464de2a31e6c2e4de57ed8aa66a2915ae0c5e22d6e431f7c1126c33cf7"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-ok-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_ok.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0207 pure Component via --target component (path state machine); live main → -15470; not store I/O / codec AOT"}
+   :exports {"fs-path-ok" {:params [:string] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
