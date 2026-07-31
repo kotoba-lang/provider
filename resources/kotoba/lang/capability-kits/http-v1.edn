@@ -24,5 +24,9 @@
            [:body :string]]]]
    [:error [:record :kotoba.http/error
              [[:code :keyword] [:message :string] [:retryable :bool]]]]]]
- :qualification {:reference :implemented :wasm-aot :pending
-                 :native-aot :pending :jit :pending}}
+ :qualification {:reference :implemented
+                 :wasm-aot :partial
+                 :native-aot :pending
+                 :jit :pending
+                 :signed-content-addressed-package :pending
+                 :notes "ADR 0162: real non-fixture http-post-v1.wasm (host-import forwarder) digest-matched in wasm-packages-v1.edn. Not a production AOT Component; readiness :signed-wasm stays pending."}}

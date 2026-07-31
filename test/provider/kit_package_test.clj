@@ -389,9 +389,11 @@
     (is (contains? names :hash-sha256))))
 
 (deftest pure-allowlist-wasm-packages-all-digest-match
-  (let [table (kit/load-wasm-packages-table)]
-    (is (= 8 (count (:packages table))))
-    (doseq [entry (:packages table)]
+  (let [table (kit/load-wasm-packages-table)
+        pure (filterv #(not= :ops-network (:class %)) (:packages table))]
+    (is (= 8 (count pure)))
+    (is (<= 9 (count (:packages table))))
+    (doseq [entry pure]
       (let [bytes (kit/load-wasm-package-bytes (:resource entry))]
         (is (false? (:fixture? entry)) (str (:name entry)))
         (is (true? (kit/verify-wasm-package-digest entry bytes))
@@ -524,3 +526,50 @@
     (doseq [n [:math-sin :math-cos :hash-sha256 :data-cbor :data-json
                :clock-monotonic :random-bytes :time-now-days]]
       (is (contains? names n) (str n)))))
+
+(deftest ops-http-post-wasm-package-digest-match
+  "ADR 0162: ops/network real non-fixture http-post pilot."
+  (let [table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for table :http-post)
+        bytes (kit/load-wasm-package-bytes (:resource entry))]
+    (is (= :http-post (:name entry)))
+    (is (= :ops-network (:class entry)))
+    (is (false? (:fixture? entry)))
+    (is (true? (kit/verify-wasm-package-digest entry bytes)))
+    (is (= [0x00 0x61 0x73 0x6d]
+           (map #(bit-and % 0xff) (take 4 bytes))))
+    (let [rec (kit/real-wasm-provider-receipt entry bytes)]
+      (is (false? (:fixture? rec)))
+      (is (= :http-post (:name rec))))))
+
+(deftest ops-http-still-production-inadmissible-after-real-wasm
+  "ADR 0162 honesty: real bytes do not flip ops signed-wasm / production claim."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        http (kit/readiness-for readiness :http)
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :http-post)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        path "kotoba/lang/capability-kits/http-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-http-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :http path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt entry bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :http
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row http
+             :package-entry entry
+             :wasm-bytes bytes})]
+    (is (= :pending (get-in http [:scores :signed-wasm])))
+    (is (false? (kit/pure-allowlist-kit? http)))
+    (is (false? (kit/pure-allowlist-publisher-policy-satisfied? http entry bytes)))
+    (is (false? (kit/production-signed-allowed? http)))
+    (is (true? (:host-admissible? gb)))
+    (is (false? (:production-admissible? gb)))))
