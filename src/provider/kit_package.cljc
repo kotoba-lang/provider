@@ -28,13 +28,15 @@
   9. **Ops http Component pilot** (T8.3, ADR 0165) — thin :wasm-component
      for http-post enables `ops-signed-wasm-ready-allowed?`; readiness http
      may set `:signed-wasm :ready` while `:wasm-aot` stays `:partial`.
-
-    10. **Ops entropy Component pilot** (T8.3, ADR 0167) — pure draw-size
+  10. **Ops entropy Component pilot** (T8.3, ADR 0167) — pure draw-size
      policy module + Component; ops kit set includes `:entropy`.
   11. **Ops process Component pilot** (T8.3, ADR 0168) — pure spawn bounds
      policy module + Component; ops kit set includes `:process`.
+  12. **Compiler-AOT kit body pilot** (T8.3, ADR 0171) — http-post pure
+     `:limits` checker emitted by kotoba-compiler (`http-post-bounds-v1`);
+     full request/result EDN codec AOT still open (`:wasm-aot :partial`).
 
-  See ADR 0152–0170."
+  See ADR 0152–0171."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
