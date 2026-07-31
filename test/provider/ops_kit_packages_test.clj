@@ -1301,3 +1301,65 @@
     (is (zero? code) (str "node failed: " err out))
     ;; request ok, not-https, empty; response ok/bad; error ok/empty/bad-char; arm ok/bad
     (is (= [0 -3 -1 0 -1 0 -1 -3 0 -1] (edn/read-string out)))))
+
+(deftest http-pure-header-memory-scan-package-registered
+  "ADR 0195: pure hand-WAT header name/value/pair memory-scan + Component."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-header-memory-scan)
+        comp (get by-name :http-header-memory-scan-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :hand-wat/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (doseq [e ["http_header_name_scan" "http_header_value_scan" "http_header_pair_scan"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_header_memory_scan.wat")))))
+
+(deftest http-pure-header-memory-scan-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/http-header-memory-scan-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "http-hdr-scan" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const mem=new Uint8Array(instance.exports.memory.buffer);"
+                "const enc=new TextEncoder();"
+                "function put(s,off){const u=enc.encode(s); mem.set(u,off); return u.length;}"
+                "const name=instance.exports.http_header_name_scan;"
+                "const val=instance.exports.http_header_value_scan;"
+                "const pair=instance.exports.http_header_pair_scan;"
+                "const n1=put('Content-Type',0);"
+                "const a=name(0,n1);"
+                "const b1=name(0,0);"
+                "const bad=put('Bad Name',32);"
+                "const c=name(32,bad);"
+                "const v1=put('yes',64);"
+                "const d=val(64,v1);"
+                "const vbad=put('x'+String.fromCharCode(10)+'y',80);"
+                "const e=val(80,vbad);"
+                "const f=pair(0,n1,64,v1);"
+                "const g=pair(32,bad,64,v1);"
+                "const h=pair(0,n1,80,vbad);"
+                "console.log(JSON.stringify([a,b1,c,d,e,f,g,h]));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        pb (ProcessBuilder. ["node" "-e" script])
+        p (.start pb)
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [0 -1 -3 0 -3 0 -3 -6] (edn/read-string out)))))

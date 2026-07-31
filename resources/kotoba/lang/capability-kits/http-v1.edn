@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0162/0165; 0171 bounds; 0182 URL; 0185 walk; 0186 request_ok; 0187–0189 headers; 0190–0192 result; 0193 request packing; 0194 pure memory-scan one-shot. Host I/O authority. Typed Component world open (wasm-aot :partial)."}}
+                 :notes "ADR 0162/0165; 0171 bounds; 0182–0193 typed/pure packing; 0194 request/result memory-scan; 0195 header memory-scan. Host I/O authority. Typed Component world still compiler-blocked (wasm-aot :partial)."}}

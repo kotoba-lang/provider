@@ -84,8 +84,10 @@
   33. **Compiler-AOT http typed request packing walk** (T8.3, ADR 0193).
   34. **Pure hand-WAT HTTP memory-scan one-shot** (T8.3, ADR 0194) —
       request/response/error ptr-len scans + Component embed.
+  35. **Pure hand-WAT HTTP header memory-scan** (T8.3, ADR 0195) —
+      name/value/pair tchar+CTL scans + Component embed.
 
-  See ADR 0152–0194."
+  See ADR 0152–0195."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
