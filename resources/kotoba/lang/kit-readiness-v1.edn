@@ -96,8 +96,9 @@
             :signed-wasm :ready}
    :evidence ["git-v1.edn" "provider#29+#31+#32"
               "wasm-packages/git-run-v1.wasm + .component.wasm (ADR 0170)"
-              "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
-   :note "ADR 0170 Component + ADR 0172 compiler-AOT run bounds; git binary host-injected; wasm-aot partial"}
+              "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"
+              "wasm-packages/git-run-walk-v1.wasm + .component.wasm (ADR 0184)"]
+   :note "ADR 0170 Component + 0172 one-shot + 0184 multi-step walk; git binary host-injected; wasm-aot partial"}
 
   {:name :entropy
    :id 23

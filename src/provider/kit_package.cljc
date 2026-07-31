@@ -68,7 +68,9 @@
   19. **Compiler-AOT pure multi-step process spawn walk** (T8.3, ADR 0183) —
      begin/arg/end over argv lengths + max_out/timeout.
 
-  See ADR 0152–0183."
+  24. **Compiler-AOT git multi-step walk** (T8.3, ADR 0184) — begin/arg/end over arg lengths.
+
+  See ADR 0152–0184."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
