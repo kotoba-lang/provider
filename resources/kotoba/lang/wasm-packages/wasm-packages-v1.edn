@@ -874,6 +874,35 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0192: typed-string result packing walk (ok/error arms)
+  {:name :http-result-pack
+   :resource "kotoba/lang/wasm-packages/http-result-pack-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "4a41527c1424fd3446cefd6a47aab6f1c37f0e095ba6e109603ff11e3f1bbe0a"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-result-pack-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_result_pack.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "compiler-AOT typed-string result packing walk (ADR 0192); host sequences ok/error arm; not pure one-shot"}
+   :exports {"http_result_begin" {:params [:i64] :result :i64}
+             "http_result_status" {:params [:i64 :i64] :result :i64}
+             "http_result_headers" {:params [:i64 :i64] :result :i64}
+             "http_result_body" {:params [:i64 :externref] :result :i64}
+             "http_result_code" {:params [:i64 :externref] :result :i64}
+             "http_result_message" {:params [:i64 :externref] :result :i64}
+             "http_result_retryable" {:params [:i64 :i64] :result :i64}
+             "http_result_end" {:params [:i64] :result :i64}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 
 
   {:name :entropy-draw
