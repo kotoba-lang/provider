@@ -28,6 +28,7 @@
               "wasm-packages/http-header-name-ok-v1.component.wasm (ADR 0200 pure Component re-emit)"
               "wasm-packages/http-header-value-ok-v1.wasm (ADR 0188 typed header value/pair)"
               "wasm-packages/http-headers-set-ok-v1.wasm (ADR 0189 typed header set packing walk)"
+              "wasm-packages/http-headers-set-ok-v1.component.wasm (ADR 0202 pure Component re-emit)"
               "wasm-packages/http-response-ok-v1.wasm (ADR 0190 typed response_ok / status)"
               "wasm-packages/http-error-result-ok-v1.wasm (ADR 0191 typed error arm + result tag)"
               "wasm-packages/http-result-pack-v1.wasm (ADR 0192 typed result packing walk)"
