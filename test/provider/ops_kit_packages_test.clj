@@ -1177,7 +1177,8 @@
     (check :http-error-result-ok :http-error-result-ok-component)
     (check :http-header-name-ok :http-header-name-ok-component)
     (check :http-header-value-ok :http-header-value-ok-component)
-    (check :http-headers-set-ok :http-headers-set-ok-component)))
+    (check :http-headers-set-ok :http-headers-set-ok-component)
+    (check :http-request-pack :http-request-pack-component)))
 
 (deftest http-typed-packages-pure-component-live-main
   "ADR 0199–0202: wasmtime Component live vectors for main() on pure re-emits."
@@ -1197,7 +1198,8 @@
     (run "kotoba/lang/wasm-packages/http-error-result-ok-v1.component.wasm" "-13501")
     (run "kotoba/lang/wasm-packages/http-header-name-ok-v1.component.wasm" "-130")
     (run "kotoba/lang/wasm-packages/http-header-value-ok-v1.component.wasm" "-3036")
-    (run "kotoba/lang/wasm-packages/http-headers-set-ok-v1.component.wasm" "-3647")))
+    (run "kotoba/lang/wasm-packages/http-headers-set-ok-v1.component.wasm" "-3647")
+    (run "kotoba/lang/wasm-packages/http-request-pack-v1.component.wasm" "-13467")))
 
 (deftest http-typed-string-result-pack-package-registered
   (let [table (edn/read-string
