@@ -65,7 +65,10 @@
 
   22. **Compiler-AOT http typed-string URL** (T8.3, ADR 0182) — https scheme + url-bytes single-call.
 
-  See ADR 0152–0182."
+  19. **Compiler-AOT pure multi-step process spawn walk** (T8.3, ADR 0183) —
+     begin/arg/end over argv lengths + max_out/timeout.
+
+  See ADR 0152–0183."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

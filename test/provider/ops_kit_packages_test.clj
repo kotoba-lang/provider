@@ -697,3 +697,67 @@
             code (.waitFor p)]
         (is (zero? code) (str "browser-host live failed: " out))
         (is (= [-130] (edn/read-string out)))))))
+
+(deftest process-multistep-walk-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :process-spawn-walk)
+        comp (get by-name :process-spawn-walk-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (false? (:fixture? mod)))
+    (is (= :ops-network (:class mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "process_spawn_begin"))
+    (is (contains? (:exports mod) "process_spawn_arg"))
+    (is (contains? (:exports mod) "process_spawn_end"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_spawn_walk.kotoba")))))
+
+(deftest process-multistep-walk-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/process-spawn-walk-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "proc-walk" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const {process_spawn_begin,process_spawn_arg,process_spawn_end}=instance.exports;"
+                "const N=x=>Number(x);"
+                "function walk(argc,lens,mo,to){"
+                "  let st=N(process_spawn_begin(BigInt(argc)));"
+                "  if(st<0) return st;"
+                "  for(const L of lens){"
+                "    st=N(process_spawn_arg(BigInt(st), BigInt(L)));"
+                "    if(st<0) return st;"
+                "  }"
+                "  return N(process_spawn_end(BigInt(st), BigInt(mo), BigInt(to)));"
+                "}"
+                "const out=["
+                "  walk(3,[1,2,3],100,1000),"
+                "  walk(0,[],100,1000),"
+                "  walk(33,Array(33).fill(1),100,1000),"
+                "  walk(1,[5000],100,1000),"
+                "  walk(2,[1],100,1000),"
+                "  walk(1,[1,1],100,1000),"
+                "  walk(1,[1],100,0),"
+                "  walk(1,[1],0,1000)"
+                "];"
+                "console.log(JSON.stringify(out));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        p (.start (ProcessBuilder. ["node" "-e" script]))
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [0 -1 -2 -6 -7 -5 -4 -3] (edn/read-string out)))))
