@@ -123,6 +123,7 @@
   ;; Ops/network pilot (ADR 0162) — real non-fixture core module.
   ;; Thin host-import forwarder; network I/O remains in tender/actor-host.
   ;; Not a production AOT Component; do not flip :signed-wasm :ready.
+  ;; Keep module pilot for digest/reference; Component entry is signed-wasm gate.
   {:name :http-post
    :resource "kotoba/lang/wasm-packages/http-post-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
@@ -134,9 +135,26 @@
             :path "resources/kotoba/lang/wasm-packages/http-post-v1.wasm"
             :capability-id "http/post"
             :provider-status :reference-partial
-            :note "host-import forwarder pilot; full AOT Component open"}
+            :note "host-import forwarder core module (ADR 0162)"}
    :exports {"http_post" {:params [:i32 :i32 :i32 :i32 :i32 :i32] :result :i32}}
    :imports {"kotoba" {"http_post" {:params [:i32 :i32 :i32 :i32 :i32 :i32] :result :i32}}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-post-component
+   :resource "kotoba/lang/wasm-packages/http-post-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "ee30eda6b66dbee5ff138165070e54b2aa1c648379bac67ba9b73c7d479c3dfa"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-post-v1.component.wasm"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :note "ADR 0165 thin Component re-export of host http-post; enables ops-signed-wasm gate; not compiler-AOT kit body"}
+   :exports {"http-post" {:params [:u32 :u32 :u32 :u32 :u32 :u32] :result :s32}}
+   :imports {"http-post" {:params [:u32 :u32 :u32 :u32 :u32 :u32] :result :s32}}
    :fixture? false
    :signed-content-addressed-package :pending}
 

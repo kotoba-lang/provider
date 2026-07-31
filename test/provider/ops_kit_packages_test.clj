@@ -43,12 +43,12 @@
 (deftest http-kit-still-honest-about-aot
   (let [http (load-kit "kotoba/lang/capability-kits/http-v1.edn")]
     (is (= :implemented (get-in http [:qualification :reference])))
-    ;; ADR 0162: real non-fixture wasm bytes → :wasm-aot :partial, but signed
-    ;; content-addressed package + readiness :signed-wasm stay pending.
+    ;; ADR 0162/0165: Component enables signed package ready; wasm-aot stays partial
+    ;; (thin host re-export, not compiler-AOT kit body).
     (is (= :partial (get-in http [:qualification :wasm-aot]))
-        "ops real-bytes pilot may mark wasm-aot partial (not full AOT Component)")
-    (is (= :pending (get-in http [:qualification :signed-content-addressed-package]))
-        "must not claim signed package until publisher policy covers ops")))
+        "ops Component pilot may mark wasm-aot partial (not full compiler AOT)")
+    (is (= :ready (get-in http [:qualification :signed-content-addressed-package]))
+        "ADR 0165 content-addressed Component package path ready")))
 
 (deftest secret-kit-still-honest-about-aot
   (let [secret (load-kit "kotoba/lang/capability-kits/secret-v1.edn")]
