@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207 (http policy+packing walks + secret_name_ok + fs_path_ok). Nested EDN/full multi-file kit body residual (W4). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207. HTTP EDN reject path through ADR 0227 (element-bound uniqueness + multi-export). Residual: W4 recursive nested EDN ADT / multi-file project kit body. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -61,7 +61,7 @@
               "wasm-packages/http-request-full-scan-v1.wasm + .component.wasm (ADR 0197 pure full request scan)"
               "wasm-packages/http-result-full-scan-v1.wasm + .component.wasm (ADR 0198 pure full result scan)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165–0204: pure Component re-emit covers url/request/response/error + header name/value/set + request/result packing walks (0199–0204). ADR 0209/0210/0211 fixed-depth nested EDN encode (header, multi-header append+name uniqueness scan, request, result ok/err). ADR 0212 Component twin first slice (string-expression empty headers + trusted header concat). ADR 0213 multi-export EDN trust package (:string-expression-package, 6 exports). ADR 0214 reject-path edn_quoted Component first slice. ADR 0215 reject-path http_header_edn composition on edn_quoted. ADR 0216 headers_edn_append multi-header + uniqueness. Request/result multi-export / true set / W4 recursive ADT / multi-file kit body still open; wasm-aot stays :partial."}
+   :note "ADR 0165–0204 pure Component re-emit; 0209–0211 fixed-depth nested EDN; 0212–0213 EDN trust Component; 0214–0222 reject-path + multi-export kit body (empty+append+request+results); 0223–0224 pure true-set name uniqueness; 0225–0226 Component names-add true-set + multi-export fold; 0227 map-element-bound append uniqueness on Components. Residual: W4 recursive nested EDN ADT for kit :request/:result identity + multi-file project kit body — wasm-aot stays :partial until that gate."}
 
   {:name :secret
    :id 21
