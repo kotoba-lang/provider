@@ -25,4 +25,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0167: pure draw-size policy module+Component; CSPRNG host-injected; wasm-aot partial."}}
+                 :notes "ADR 0167 hand pure draw-size Component + ADR 0172 compiler-AOT entropy-draw-bounds-v1 (kotoba-compiler). CSPRNG host-injected. Full request/result EDN codec AOT open (wasm-aot :partial)."}}

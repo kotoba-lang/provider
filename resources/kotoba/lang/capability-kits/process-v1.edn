@@ -27,4 +27,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0168: pure spawn bounds policy module+Component; OS spawn host-injected; wasm-aot partial."}}
+                 :notes "ADR 0168 hand pure bounds Component + ADR 0172 compiler-AOT process-spawn-bounds-v1 (kotoba-compiler). OS spawn host-injected. Full request/result EDN codec AOT open (wasm-aot :partial)."}}

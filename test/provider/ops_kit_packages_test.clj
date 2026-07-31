@@ -153,3 +153,71 @@
       (.delete tmp)
       (is (zero? code) (str "node failed: " err out))
       (is (= [0 -1 -1 -2 -3 -4 -4] (edn/read-string out))))))
+
+(deftest compiler-aot-numeric-bounds-packages-registered
+  "ADR 0172: process/entropy/git compiler-AOT pure bounds packages."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        check (fn [mod-name comp-name export]
+                (let [mod (get by-name mod-name)
+                      comp (get by-name comp-name)
+                      mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+                      comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+                  (is (= :wasm-module (:artifact-kind mod)))
+                  (is (= :wasm-component (:artifact-kind comp)))
+                  (is (false? (:fixture? mod)))
+                  (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+                  (is (= (:sha256 mod) (sha mod-bytes)))
+                  (is (= (:sha256 comp) (sha comp-bytes)))
+                  (is (contains? (:exports mod) export))))]
+    (check :process-spawn-bounds :process-spawn-bounds-component "process_spawn_bounds_ok")
+    (check :entropy-draw-bounds :entropy-draw-bounds-component "entropy_draw_ok")
+    (check :git-run-bounds :git-run-bounds-component "git_run_bounds_ok")
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_spawn_bounds.kotoba")))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_draw_bounds.kotoba")))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_run_bounds.kotoba")))))
+
+(deftest compiler-aot-numeric-bounds-live-behavior
+  (let [run (fn [resource export cases]
+              (let [bytes (-> (io/resource resource) io/input-stream .readAllBytes)
+                    tmp (java.io.File/createTempFile "bounds" ".wasm")
+                    _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                                 (into-array java.nio.file.OpenOption []))
+                    args-js (clojure.string/join ","
+                              (map (fn [args]
+                                     (str "Number(f("
+                                          (clojure.string/join "," (map #(str % "n") args))
+                                          "))"))
+                                   cases))
+                    script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                                "WebAssembly.instantiate(b).then(({instance})=>{"
+                                "const f=instance.exports." export ";"
+                                "console.log(JSON.stringify([" args-js "]));"
+                                "}).catch(e=>{console.error(e); process.exit(1);});")
+                    pb (ProcessBuilder. ["node" "-e" script])
+                    p (.start pb)
+                    out (slurp (.getInputStream p))
+                    err (slurp (.getErrorStream p))
+                    code (.waitFor p)]
+                (.delete tmp)
+                (is (zero? code) (str resource " node failed: " err out))
+                (edn/read-string out)))]
+    (is (= [0 -1 -2 -3 -3 -4 -4]
+           (run "kotoba/lang/wasm-packages/process-spawn-bounds-v1.wasm"
+                "process_spawn_bounds_ok"
+                [[1 100 1000] [0 100 1000] [40 100 1000]
+                 [1 0 1000] [1 70000 1000] [1 100 0] [1 100 700000]])))
+    (is (= [0 0 0 -1 -1 -1]
+           (run "kotoba/lang/wasm-packages/entropy-draw-bounds-v1.wasm"
+                "entropy_draw_ok"
+                [[1] [32] [64] [0] [65] [-1]])))
+    (is (= [0 -1 -2 -3 -3 -4 -4]
+           (run "kotoba/lang/wasm-packages/git-run-bounds-v1.wasm"
+                "git_run_bounds_ok"
+                [[1 100 1000] [0 100 1000] [80 100 1000]
+                 [1 0 1000] [1 70000 1000] [1 100 0] [1 100 700000]])))))
