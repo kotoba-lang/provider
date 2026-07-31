@@ -23,7 +23,8 @@
   :os-spawn-cljs :landed}
  :qualification {:reference :implemented
                  :dual-runtime-os-transport :landed
-                 :wasm-aot :pending
+                 :wasm-aot :partial
                  :native-aot :pending
                  :jit :pending
-                 :signed-content-addressed-package :pending}}
+                 :signed-content-addressed-package :ready
+                 :notes "ADR 0168: pure spawn bounds policy module+Component; OS spawn host-injected; wasm-aot partial."}}

@@ -223,4 +223,35 @@
    :exports {"entropy-draw-ok" {:params [:s64] :result :s32}}
    :fixture? false
    :signed-content-addressed-package :pending}
+{:name :process-spawn
+   :resource "kotoba/lang/wasm-packages/process-spawn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "0cd4249920362e722d6f5f8ea4776dc32faaca3b57aa110ca54eb37785dd6cc9"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-spawn-v1.wasm"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :note "ADR 0168 pure spawn bounds policy; OS spawn stays host-injected"}
+   :exports {"process_spawn_bounds_ok" {:params [:i32 :i64 :i64] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :process-spawn-component
+   :resource "kotoba/lang/wasm-packages/process-spawn-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "bbf9231c9944fac704f62e6a1133967bd63c1b4882f02f3f59763827fbc1c297"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-spawn-v1.component.wasm"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :note "ADR 0168 Component embeds pure spawn bounds policy"}
+   :exports {"process_spawn_bounds_ok" {:params [:i32 :i64 :i64] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
 ]}

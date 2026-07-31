@@ -25,7 +25,7 @@
         (is (= id (:id cap)))
         (is (= :implemented (:reference q)))
         ;; Component pilots (secret 0166, entropy 0167): wasm-aot partial + signed ready.
-        (let [component-pilot? (contains? #{:secret :entropy} name)]
+        (let [component-pilot? (contains? #{:secret :entropy :process} name)]
           (is (contains? (if component-pilot? #{:partial} #{:pending})
                          (:wasm-aot q))
               (str name " wasm-aot honesty"))
@@ -69,3 +69,11 @@
         "ADR 0167 draw-size Component: wasm-aot partial (host CSPRNG remains authority)")
     (is (= :ready (get-in entropy [:qualification :signed-content-addressed-package]))
         "ADR 0167 content-addressed Component package path ready")))
+
+(deftest process-kit-still-honest-about-aot
+  (let [process (load-kit "kotoba/lang/capability-kits/process-v1.edn")]
+    (is (= :implemented (get-in process [:qualification :reference])))
+    (is (= :partial (get-in process [:qualification :wasm-aot]))
+        "ops Component pilot may mark wasm-aot partial (not full compiler AOT)")
+    (is (= :ready (get-in process [:qualification :signed-content-addressed-package]))
+        "ADR 0168 content-addressed Component package path ready")))
