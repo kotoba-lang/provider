@@ -810,3 +810,56 @@
     (.delete tmp)
     (is (zero? code) (str err out))
     (is (= [0 -1 -2 -6 -7 -5 -3 -4] (edn/read-string out)))))
+
+(deftest http-multistep-walk-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-post-walk)
+        comp (get by-name :http-post-walk-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (false? (:fixture? mod)))
+    (is (= :ops-network (:class mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (doseq [x ["http_post_begin" "http_post_url" "http_post_headers"
+                "http_post_body" "http_post_end"]]
+      (is (contains? (:exports mod) x)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_post_walk.kotoba")))))
+
+(deftest http-multistep-walk-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/http-post-walk-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "http-walk" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const e=instance.exports; const N=x=>Number(x);"
+                "function walk(u,h,b,t){"
+                "  let s=N(e.http_post_begin());"
+                "  s=N(e.http_post_url(BigInt(s),BigInt(u))); if(s<0) return s;"
+                "  s=N(e.http_post_headers(BigInt(s),BigInt(h))); if(s<0) return s;"
+                "  s=N(e.http_post_body(BigInt(s),BigInt(b))); if(s<0) return s;"
+                "  return N(e.http_post_end(BigInt(s),BigInt(t)));"
+                "}"
+                "const out=[walk(10,2,100,1000),walk(0,0,0,1000),walk(10,40,0,1000),"
+                "walk(10,0,70000,1000),walk(10,0,0,0),N(e.http_post_end(0n,1000n))];"
+                "console.log(JSON.stringify(out));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        p (.start (ProcessBuilder. ["node" "-e" script]))
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [0 -1 -2 -3 -4 -5] (edn/read-string out)))))
