@@ -1047,6 +1047,30 @@
     (is (contains? (:imports mod) "kotoba:typed"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_name_set.kotoba")))))
 
+(deftest http-headers-edn-append-set-true-uniqueness-package-registered
+  "T8.3 ADR 0224: pure reject-path EDN append with true set uniqueness."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-headers-edn-append-set)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= :kotoba.typed (get-in mod [:source :typed-host])))
+    (is (= "26f6d2aab0ba67127ba5442df699a4157bf6c3469d0e3a6fd7a18f253077562a"
+           (:sha256 mod) (sha mod-bytes)))
+    (doseq [e ["http_headers_edn_set_begin" "http_headers_edn_set_append"
+               "http_headers_edn_set_edn" "http_headers_edn_set_code"
+               "http_headers_edn_set_count" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (contains? (:imports mod) "kotoba:typed"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_append_set.kotoba")))))
+
 (deftest http-typed-string-headers-set-ok-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
