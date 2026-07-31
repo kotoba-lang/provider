@@ -2104,3 +2104,39 @@
     (is (contains? (:exports mod) "main"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_reply_edn.kotoba")))))
 
+(deftest secret-request-edn-package-registered
+  "T8.3 ADR 0236: fixed-depth secret get-request EDN."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :secret-request-edn)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "fde508bfc9ba3af0c60258d5fb6d4f749308187cbee936975e095d6b5f9fb747"
+           (:sha256 mod)))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (is (contains? (:exports mod) "secret_request_edn"))
+    (is (contains? (:exports mod) "main"))))
+
+(deftest secret-edn-package-registered
+  "T8.3 ADR 0237: multi-export secret request+reply EDN package."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :secret-edn-package)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "14c3a61df0ae6e75e5852d9eb0b1f891fcc76f467a2384fe8424f17c01dddae3"
+           (:sha256 mod)))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["secret_request_edn" "secret_reply_value_edn" "secret_reply_error_edn" "main"]]
+      (is (contains? (:exports mod) e)))))
+

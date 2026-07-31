@@ -1105,6 +1105,52 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0236: fixed-depth secret get-request EDN
+  {:name :secret-request-edn
+   :resource "kotoba/lang/wasm-packages/secret-request-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "fde508bfc9ba3af0c60258d5fb6d4f749308187cbee936975e095d6b5f9fb747"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-request-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_request_edn.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :compiler-sha "4b006d05d714be81a6148ceebab227510f368554"
+            :note "ADR 0236 fixed-depth secret request EDN; dual scan; main → -2306; W4/wasm-aot open"}
+   :exports {"secret_request_edn" {:params [:externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  ;; T8.3 ADR 0237: multi-export secret request+reply EDN package
+  {:name :secret-edn-package
+   :resource "kotoba/lang/wasm-packages/secret-edn-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "14c3a61df0ae6e75e5852d9eb0b1f891fcc76f467a2384fe8424f17c01dddae3"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-edn-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_edn_package.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :compiler-sha "4b006d05d714be81a6148ceebab227510f368554"
+            :note "ADR 0237 multi-export secret request+reply EDN; main → -2307; W4/wasm-aot open"}
+   :exports {"secret_request_edn" {:params [:externref] :result :externref}
+             "secret_reply_value_edn" {:params [:externref] :result :externref}
+             "secret_reply_error_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
+
 ;; T8.3 ADR 0231: pure kit-shaped request with set-of-header-records + name-set
   {:name :http-request-set-record
    :resource "kotoba/lang/wasm-packages/http-request-set-record-v1.wasm"
