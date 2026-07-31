@@ -1368,6 +1368,29 @@
       (is (contains? (:exports comp) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_trust_package.kotoba")))))
 
+(deftest http-edn-quoted-component-registered
+  "T8.3 ADR 0214: reject-path edn_quoted Component first slice."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-edn-quoted)
+        comp (get by-name :http-edn-quoted-component)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :kotoba-component/edn-quoted
+           (get-in comp [:source :component-lowering])))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
+    (is (contains? (:exports mod) "edn_quoted"))
+    (is (contains? (:exports comp) "edn-quoted"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_quoted.kotoba")))))
+
 (deftest http-typed-string-request-pack-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
