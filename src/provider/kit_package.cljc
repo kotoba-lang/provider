@@ -46,7 +46,9 @@
   15. **Compiler-AOT scoped-fs path-length** (T8.3, ADR 0174) — pure
      path-length half (`fs-path-len-v1`); escape/dot/slash scan remains hand WAT.
 
-  See ADR 0152–0174."
+  16. **Compiler-AOT value-length bounds** (T8.3, ADR 0175) — secret/fs value ceilings.
+
+  See ADR 0152–0175."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

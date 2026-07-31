@@ -38,8 +38,9 @@
    :evidence ["secret-v1.edn" "provider#26+#27" "murakumo/com-cloudflare named-fetch cutover"
               "wasm-packages/secret-get-v1.wasm (ADR 0163)"
               "wasm-packages/secret-get-v1.component.wasm (ADR 0166 Component)"
-              "wasm-packages/secret-name-len-v1.wasm + .component.wasm (ADR 0173 compiler-AOT length)"]
-   :note "ADR 0166 hand name-policy + ADR 0173 compiler-AOT name-length; char-class scan hand WAT; wasm-aot partial"}
+              "wasm-packages/secret-name-len-v1.wasm + .component.wasm (ADR 0173)"
+              "wasm-packages/secret-value-len-v1.wasm + .component.wasm (ADR 0175)"]
+   :note "ADR 0166 hand name-policy + ADR 0173/0175 compiler-AOT name+value length; char scan hand WAT; wasm-aot partial"}
 
   {:name :process
    :id 20
@@ -70,8 +71,9 @@
             :signed-wasm :ready}
    :evidence ["scoped-fs-v1.edn" "provider#24+#25+#28 os-store"
               "wasm-packages/scoped-fs-path-v1.wasm + .component.wasm (ADR 0169)"
-              "wasm-packages/fs-path-len-v1.wasm + .component.wasm (ADR 0174 compiler-AOT length)"]
-   :note "ADR 0169 hand path-policy + ADR 0174 compiler-AOT path-length; path scan hand WAT; wasm-aot partial"}
+              "wasm-packages/fs-path-len-v1.wasm + .component.wasm (ADR 0174)"
+              "wasm-packages/fs-value-len-v1.wasm + .component.wasm (ADR 0175)"]
+   :note "ADR 0169 hand path-policy + ADR 0174/0175 path+value length compiler-AOT; path scan hand WAT; wasm-aot partial"}
 
   {:name :git
    :id 22

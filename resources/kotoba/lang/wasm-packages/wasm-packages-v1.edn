@@ -514,6 +514,80 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0175: pure value-length bounds (secret-bytes / fs value-bytes)
+  {:name :secret-value-len
+   :resource "kotoba/lang/wasm-packages/secret-value-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "30e9eccbe140a2b92f01549d0203864c90611613020ca966456b0bde29ffd8ce"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-value-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_value_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure secret-bytes length (ADR 0175); companion to 0173 name-len"}
+   :exports {"secret_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :secret-value-len-component
+   :resource "kotoba/lang/wasm-packages/secret-value-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "f5a0ee237687bad24e06b3105ca683106d4aa856d87805c7d14789cdd56f8d4a"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-value-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_value_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0175 Component embeds compiler-AOT secret value-len core"}
+   :exports {"secret_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-value-len
+   :resource "kotoba/lang/wasm-packages/fs-value-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "e5cc5220e7982274fd80c9700a6a8121debd3ee051ad19702fdb8d32ddb942f7"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-value-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_value_len.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure value-bytes length (ADR 0175); companion to 0174 path-len"}
+   :exports {"fs_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-value-len-component
+   :resource "kotoba/lang/wasm-packages/fs-value-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "4f1444ce3ecb80fc2ed460bf713d67f93461fa0d737542ae549f50e8f0661786"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-value-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_value_len.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0175 Component embeds compiler-AOT fs value-len core"}
+   :exports {"fs_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :git-run
    :resource "kotoba/lang/wasm-packages/git-run-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
