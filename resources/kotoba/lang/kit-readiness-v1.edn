@@ -105,7 +105,8 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
-              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"
+              "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)",
+              "wasm-packages/process-edn-package-v1.wasm (ADR 0238/0239 process request/reply EDN)"
               "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172)"
               "wasm-packages/process-spawn-walk-v1.wasm + .component.wasm (ADR 0183 multi-step)"]
    :note "ADR 0168/0172 bounds + 0183 multi-step argv walk; OS spawn host-injected; wasm-aot partial"}

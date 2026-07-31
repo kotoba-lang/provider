@@ -1184,6 +1184,28 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_result_edn_set_record.kotoba")))))
 
+
+(deftest process-edn-package-registered
+  "T8.3 ADR 0238/0239: process kit fixed-depth EDN request+reply package."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :process-edn-package)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "4286ba80f7a7d8429695d56e0cd9b4ee3a24753549830907353983e73fdfbd53" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["process_req_begin" "process_req_arg" "process_req_code"
+               "process_req_argc" "process_req_edn"
+               "process_reply_ok_edn" "process_reply_error_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_edn_package.kotoba")))))
+
 (deftest http-headers-names-add-component-true-set-registered
   "T8.3 ADR 0225: Component twin true-set name list (element-bound equality)."
   (let [table (edn/read-string
