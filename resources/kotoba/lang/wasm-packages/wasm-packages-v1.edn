@@ -341,6 +341,46 @@
    :exports {"secret_name_ok" {:params [:i32 :i32] :result :i32}}
    :fixture? false
    :signed-content-addressed-package :pending}
+
+  ;; T8.3 compiler-AOT length half of secret name policy (ADR 0173).
+  ;; Char-class memory-scan remains hand WAT secret-get-v1 (typed-string
+  ;; path needs kotoba:typed host and does not Component-embed cleanly yet).
+  {:name :secret-name-len
+   :resource "kotoba/lang/wasm-packages/secret-name-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "1177b6393f7ec1f4d3d3c6afd278403fec08a954f67d2c45ea3bba809cc4330e"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure name-length bounds (ADR 0173); char-class scan stays hand WAT"}
+   :exports {"secret_name_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :secret-name-len-component
+   :resource "kotoba/lang/wasm-packages/secret-name-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "ecc29158db254a0e72f0d9469de5bfb39182de7a01ce4c9fa5fe0964a6adb99d"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0173 Component embeds compiler-AOT name-length bounds core"}
+   :exports {"secret_name_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"

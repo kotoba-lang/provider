@@ -39,7 +39,11 @@
      entropy/git pure bounds via kotoba-compiler (hand WAT remain as reference);
      secret/scoped-fs memory-scan policies still hand-WAT.
 
-  See ADR 0152–0172."
+    14. **Compiler-AOT secret name-length** (T8.3, ADR 0173) — pure length
+     half of secret name policy (`secret-name-len-v1`); char-class scan
+     remains hand WAT until pure memory/string free path.
+
+  See ADR 0152–0173."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
