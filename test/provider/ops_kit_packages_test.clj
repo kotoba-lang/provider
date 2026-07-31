@@ -263,3 +263,45 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [-1 0 0 -2] (edn/read-string out)))))
+
+(deftest scoped-fs-compiler-aot-path-len-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :fs-path-len)
+        comp (get by-name :fs-path-len-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (false? (:fixture? mod)))
+    (is (= :ops (:class mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "fs_path_len_ok"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/fs_path_len.kotoba")))))
+
+(deftest scoped-fs-compiler-aot-path-len-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/fs-path-len-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "fs-path-len" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                    "WebAssembly.instantiate(b).then(({instance})=>{"
+                    "const f=instance.exports.fs_path_len_ok;"
+                    "const out=[Number(f(0n)),Number(f(1n)),Number(f(1024n)),Number(f(1025n))];"
+                    "console.log(JSON.stringify(out));"
+                    "}).catch(e=>{console.error(e); process.exit(1);});")
+        p (.start (ProcessBuilder. ["node" "-e" script]))
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [-1 0 0 -2] (edn/read-string out)))))

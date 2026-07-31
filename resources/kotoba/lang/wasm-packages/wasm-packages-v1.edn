@@ -476,6 +476,44 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 compiler-AOT length half of scoped-fs path policy (ADR 0174).
+  ;; Escape/dot/slash scan remains hand WAT scoped-fs-path-v1.
+  {:name :fs-path-len
+   :resource "kotoba/lang/wasm-packages/fs-path-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "554e94321a9e827f435e06c05b1b32dcdc6dc6013bfe06757c938bfc72ee0ccd"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_len.kotoba"
+            :capability-id "fs/scoped"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure path-length bounds (ADR 0174); path scan stays hand WAT"}
+   :exports {"fs_path_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-len-component
+   :resource "kotoba/lang/wasm-packages/fs-path-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "3abb07bd68f5cfea4a369b157322db02f2a939e01e853900cf151e6b388ab78b"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_len.kotoba"
+            :capability-id "fs/scoped"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0174 Component embeds compiler-AOT path-length bounds core"}
+   :exports {"fs_path_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :git-run
    :resource "kotoba/lang/wasm-packages/git-run-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
