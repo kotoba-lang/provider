@@ -1292,7 +1292,9 @@
     (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
     (is (nil? (get-in mod [:source :typed-host])))
     (is (= (:sha256 mod) (sha mod-bytes)))
-    (doseq [e ["edn_quoted" "http_header_edn" "http_request_edn0" "main"]]
+    (doseq [e ["edn_quoted" "http_header_edn" "headers_edn_empty" "headers_edn_append"
+               "http_request_edn0" "http_request_edn"
+               "http_result_ok_edn" "http_result_err_edn" "main"]]
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn.kotoba")))))
 
