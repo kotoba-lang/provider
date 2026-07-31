@@ -91,3 +91,65 @@
         "ops Component pilot may mark wasm-aot partial (not full compiler AOT)")
     (is (= :ready (get-in git [:qualification :signed-content-addressed-package]))
         "ADR 0170 content-addressed Component package path ready")))
+
+(deftest http-compiler-aot-bounds-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-post-bounds)
+        comp (get by-name :http-post-bounds-component)
+        mod-bytes (-> (io/resource (:resource mod))
+                      io/input-stream
+                      .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp))
+                       io/input-stream
+                       .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (false? (:fixture? mod)))
+    (is (false? (:fixture? comp)))
+    (is (= :ops-network (:class mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= :kotoba-compiler/v1 (get-in comp [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "http_post_bounds_ok"))
+    ;; source.kotoba present on classpath
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_post_bounds.kotoba")))))
+
+(deftest http-compiler-aot-bounds-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/http-post-bounds-v1.wasm")
+                  io/input-stream
+                  .readAllBytes)
+        ;; Chicory if available, else skip with note — use java wasm via process node
+        ]
+    ;; Prefer Node WebAssembly for zero extra deps (matches pure i64 ABI).
+    (let [tmp (java.io.File/createTempFile "http-bounds" ".wasm")
+          _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                       (into-array java.nio.file.OpenOption []))
+          script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                      "WebAssembly.instantiate(b).then(({instance})=>{"
+                      "const f=instance.exports.http_post_bounds_ok;"
+                      "const out=["
+                      "Number(f(100n,1n,10n,1000n)),"
+                      "Number(f(0n,1n,10n,1000n)),"
+                      "Number(f(5000n,1n,10n,1000n)),"
+                      "Number(f(100n,40n,10n,1000n)),"
+                      "Number(f(100n,1n,70000n,1000n)),"
+                      "Number(f(100n,1n,10n,0n)),"
+                      "Number(f(100n,1n,10n,40000n))"
+                      "];"
+                      "console.log(JSON.stringify(out));"
+                      "}).catch(e=>{console.error(e); process.exit(1);});")
+          pb (ProcessBuilder. ["node" "-e" script])
+          p (.start pb)
+          out (slurp (.getInputStream p))
+          err (slurp (.getErrorStream p))
+          code (.waitFor p)]
+      (.delete tmp)
+      (is (zero? code) (str "node failed: " err out))
+      (is (= [0 -1 -1 -2 -3 -4 -4] (edn/read-string out))))))
