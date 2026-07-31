@@ -1133,6 +1133,34 @@
    :signed-content-addressed-package :pending}
 
 
+  ;; T8.3 ADR 0233: full headers EDN fold via typed-set-nth
+  {:name :http-headers-edn-set-fold
+   :resource "kotoba/lang/wasm-packages/http-headers-edn-set-fold-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "530f9936e91ae14f3973a3c873ebebd092bd3562c794627e9832635e27d36f7a"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-edn-set-fold-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_edn_set_fold.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "97c17f54269e6665629aafcf8160e1172fc6aa26"
+            :note "ADR 0233 full headers EDN via typed-set-nth fold; main → -9002; W4/wasm-aot open"}
+   :exports {"http_hdr_begin" {:params [] :result :externref}
+             "http_hdr_add" {:params [:externref :externref :externref] :result :externref}
+             "http_hdr_code" {:params [:externref] :result :i64}
+             "http_hdr_count" {:params [:externref] :result :i64}
+             "http_hdr_edn" {:params [:externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + set + record + set-nth surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :http-response-ok
    :resource "kotoba/lang/wasm-packages/http-response-ok-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
