@@ -25,8 +25,9 @@
               "wasm-packages/http-url-ok-v1.wasm (ADR 0182 typed-string URL)"
               "wasm-packages/http-post-request-ok-v1.wasm (ADR 0186 typed request_ok)"
               "wasm-packages/http-header-name-ok-v1.wasm (ADR 0187 typed header_name_ok)"
+              "wasm-packages/http-header-value-ok-v1.wasm (ADR 0188 typed header value/pair)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165 Component + 0171 bounds + 0182 URL + 0185 walk + 0186 request_ok + 0187 header_name_ok; full EDN codec AOT open (header value + response; wasm-aot partial)."}
+   :note "ADR 0165+0171+0182+0185+0186+0187+0188 header value/pair; full EDN codec AOT open (wasm-aot partial)."}
 
   {:name :secret
    :id 21
