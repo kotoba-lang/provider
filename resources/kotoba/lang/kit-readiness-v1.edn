@@ -83,9 +83,10 @@
               "wasm-packages/secret-value-len-v1.wasm + .component.wasm (ADR 0175)"
               "wasm-packages/secret-name-char-v1.wasm + .component.wasm (ADR 0176 compiler-AOT char-class)"
               "wasm-packages/secret-name-ok-v1.wasm (ADR 0178 typed-string single-call)"
-              "wasm-packages/secret-name-ok-v1.component.wasm (ADR 0206 pure Component re-emit; denylist charset)"
+              "wasm-packages/secret-name-ok-v1.component.wasm (ADR 0206 pure Component re-emit; denylist charset)
+              "wasm-packages/secret-reply-edn-v1.wasm (ADR 0232 fixed-depth reply value/error EDN)""
               "wasm-packages/secret-name-walk-v1.wasm + .component.wasm (ADR 0179 pure walk)"]
-   :note "ADR 0166 hand scan + pure gates 0173/0175/0176 + typed 0178 + walk 0179 + 0206 secret_name_ok pure Component; wasm-aot partial (reply codec W4)"}
+   :note "ADR 0166 hand scan + pure gates 0173/0175/0176 + typed 0178 + walk 0179 + 0206 secret_name_ok pure Component; wasm-aot partial (ADR 0232 fixed-depth reply EDN; W4 recursive / full kit body open)"}
 
   {:name :process
    :id 20
