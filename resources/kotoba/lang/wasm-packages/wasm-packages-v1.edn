@@ -1198,6 +1198,83 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+
+  ;; T8.3 ADR 0212: Component twin first slice — empty headers EDN literal
+  {:name :http-headers-edn-empty
+   :resource "kotoba/lang/wasm-packages/http-headers-edn-empty-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "e2977f0377b070772e61dd5187f4f38f1b740b3395e50bbf41dd9841500b9c7e"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-edn-empty-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_edn_empty.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0212 wasm32 empty headers EDN literal; Component twin via :http-headers-edn-empty-component"}
+   :exports {"headers_edn_empty" {:params [] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-headers-edn-empty-component
+   :resource "kotoba/lang/wasm-packages/http-headers-edn-empty-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "6254c10552ea1ba081e40e239e09d552f80c1288f04e48fb00da00fae6e541a0"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-edn-empty-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_edn_empty.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/string-expression
+            :note "ADR 0212 pure Component string-expression (literal []); no kotoba:typed; not multi-export request-edn"}
+   :exports {"headers-edn-empty" {:params [] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  ;; T8.3 ADR 0212: Component twin first slice — trusted header map EDN concat
+  {:name :http-header-edn-trust
+   :resource "kotoba/lang/wasm-packages/http-header-edn-trust-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "1f988a15348b421d0682fbb26fec176c3253d09f7ade9c2e409e2c576d914763"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-header-edn-trust-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_header_edn_trust.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0212 wasm32 trusted header EDN concat; host pre-validates atoms; reject path stays http-request-edn"}
+   :exports {"http_header_edn_trust" {:params [:externref :externref] :result :externref}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-header-edn-trust-component
+   :resource "kotoba/lang/wasm-packages/http-header-edn-trust-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "d07a2c08dde20b1c4bc7d95a3140759ce754ca494707548750e4d2b0772580df"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-header-edn-trust-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_header_edn_trust.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/string-expression
+            :note "ADR 0212 pure Component string-expression (nested concat); no kotoba:typed; host must pre-validate name/value"}
+   :exports {"http-header-edn-trust" {:params [:string :string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :http-memory-scan
    :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
