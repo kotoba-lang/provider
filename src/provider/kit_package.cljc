@@ -56,7 +56,9 @@
   17. **Compiler-AOT typed-string secret_name_ok** (T8.3, ADR 0178) —
      single-call name policy via kotoba:typed host; not pure Component.
 
-  See ADR 0152–0178."
+  19. **Compiler-AOT secret multi-step walk** (T8.3, ADR 0179) — pure begin/next/end composing len+char.
+
+  See ADR 0152–0179."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

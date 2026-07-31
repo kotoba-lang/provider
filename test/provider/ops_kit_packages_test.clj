@@ -500,3 +500,50 @@
             code (.waitFor p)]
         (is (zero? code) (str "browser-host live failed: " out))
         (is (= [-130] (edn/read-string out)))))))
+
+(deftest compiler-aot-secret-name-walk-packages
+  "ADR 0179: pure multi-step secret name walk."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        mod (get by-name :secret-name-walk)
+        comp (get by-name :secret-name-walk-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+    (is (some? mod))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (doseq [e ["secret_name_begin" "secret_name_next" "secret_name_end"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_name_walk.kotoba")))))
+
+(deftest compiler-aot-secret-name-walk-live
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/secret-name-walk-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "snwalk" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const begin=instance.exports.secret_name_begin;"
+                "const next=instance.exports.secret_name_next;"
+                "const end=instance.exports.secret_name_end;"
+                "const N=x=>Number(x);"
+                "const walk=s=>{let st=begin(BigInt(Buffer.byteLength(s))); if(N(st)<0) return N(st);"
+                "for(const c of Buffer.from(s)){st=next(st,BigInt(c)); if(N(st)<0) return N(st);} return N(end(st));};"
+                "console.log(JSON.stringify([walk(''),walk('api-key'),walk('x'.repeat(129)),walk('a/b'),walk('a*b')]));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        pb (ProcessBuilder. ["node" "-e" script])
+        p (.start pb)
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str err out))
+    (is (= [-1 0 -2 -3 -3] (edn/read-string out)))))
