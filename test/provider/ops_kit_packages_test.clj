@@ -40,5 +40,9 @@
 (deftest http-kit-still-honest-about-aot
   (let [http (load-kit "kotoba/lang/capability-kits/http-v1.edn")]
     (is (= :implemented (get-in http [:qualification :reference])))
-    (is (= :pending (get-in http [:qualification :wasm-aot]))
-        "network reference-impl must not claim wasm-aot without signed package")))
+    ;; ADR 0162: real non-fixture wasm bytes → :wasm-aot :partial, but signed
+    ;; content-addressed package + readiness :signed-wasm stay pending.
+    (is (= :partial (get-in http [:qualification :wasm-aot]))
+        "ops real-bytes pilot may mark wasm-aot partial (not full AOT Component)")
+    (is (= :pending (get-in http [:qualification :signed-content-addressed-package]))
+        "must not claim signed package until publisher policy covers ops")))
