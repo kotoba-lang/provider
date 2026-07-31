@@ -1599,7 +1599,7 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_only.kotoba")))))
 
 (deftest http-edn-reject-package-component-registered
-  "T8.3 ADR 0221: multi-export reject-path EDN kit body Component."
+  "T8.3 ADR 0221/0226: multi-export reject-path EDN kit + names-add true-set."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1617,11 +1617,13 @@
            (get-in comp [:source :component-lowering])))
     (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
-    (doseq [e ["headers_edn_empty" "headers_edn_append" "http_request_edn"
+    (is (= "0befd905a103d11a630c194dbf5251e2b41db745ed53f2eba6265d35cc1e3ded"
+           (:sha256 comp)))
+    (doseq [e ["headers_edn_empty" "headers_edn_append" "headers_names_add" "http_request_edn"
                "http_result_ok_edn" "http_result_err_edn"]]
       (is (contains? (:exports mod) e)))
-    (doseq [e ["headers-edn-empty" "headers-edn-append" "http-request-edn"
-               "http-result-ok-edn" "http-result-err-edn"]]
+    (doseq [e ["headers-edn-empty" "headers-edn-append" "headers-names-add"
+               "http-request-edn" "http-result-ok-edn" "http-result-err-edn"]]
       (is (contains? (:exports comp) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_reject_package.kotoba")))))
 
