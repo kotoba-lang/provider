@@ -859,11 +859,32 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string header value + pair (ADR 0188); complements name 0187"}
+            :note "compiler-AOT typed-string header value + pair (ADR 0188); pure Component twin via ADR 0201"}
    :exports {"http_header_value_ok" {:params [:externref] :result :i64}
              "http_header_pair_ok" {:params [:externref :externref] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-header-value-ok-component
+   :resource "kotoba/lang/wasm-packages/http-header-value-ok-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "85339f4fe5479163b490ff772edbbe92493d51a1462274ce26ff055e2cc7e634"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-header-value-ok-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_header_value_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0201 pure Component via --target component (value CTL + pair compose); live main → -3036; not set packing / nested EDN"}
+   :exports {"http-header-value-ok" {:params [:string] :result :s64}
+             "http-header-pair-ok" {:params [:string :string] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
