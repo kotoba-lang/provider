@@ -804,6 +804,30 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0189: typed-string header set packing walk
+  {:name :http-headers-set-ok
+   :resource "kotoba/lang/wasm-packages/http-headers-set-ok-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "cbaae9afac0aef4457340d857db55b4aeb7dadbb3018ee879472ca4bc3124b90"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-set-ok-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_set_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "compiler-AOT typed-string header set packing walk (ADR 0189); begin/pair/end composes 0187+0188; no uniqueness/W4 set value"}
+   :exports {"http_headers_begin" {:params [:i64] :result :i64}
+             "http_headers_pair" {:params [:i64 :externref :externref] :result :i64}
+             "http_headers_end" {:params [:i64] :result :i64}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 
 
   {:name :entropy-draw
