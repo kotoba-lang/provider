@@ -1,0 +1,7 @@
+package kotoba:application@1.0.0;
+
+world application {
+  export headers-edn-append: func(acc: string, name: string, value: string) -> string;
+  export headers-edn-empty: func() -> string;
+  export http-request-edn: func(url: string, headers: string, body: string, timeout: s64) -> string;
+}

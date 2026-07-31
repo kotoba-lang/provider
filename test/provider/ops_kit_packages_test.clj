@@ -1530,6 +1530,31 @@
     (is (contains? (:exports comp) "http-request-edn"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_only.kotoba")))))
 
+(deftest http-edn-reject-package-component-registered
+  "T8.3 ADR 0221: multi-export reject-path EDN kit body Component."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-edn-reject-package)
+        comp (get by-name :http-edn-reject-package-component)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :kotoba-component/http-edn-reject-package
+           (get-in comp [:source :component-lowering])))
+    (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
+    (doseq [e ["headers_edn_empty" "headers_edn_append" "http_request_edn"]]
+      (is (contains? (:exports mod) e)))
+    (doseq [e ["headers-edn-empty" "headers-edn-append" "http-request-edn"]]
+      (is (contains? (:exports comp) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_reject_package.kotoba")))))
+
 (deftest http-typed-string-request-pack-live-browser-host-optional
   (let [host (or (System/getenv "KOTOBA_BROWSER_HOST")
                  (let [cand (io/file ".." "compiler" "runtime" "browser-host.mjs")]
