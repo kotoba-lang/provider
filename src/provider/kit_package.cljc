@@ -81,8 +81,9 @@
   30. **Compiler-AOT http typed response_ok / status** (T8.3, ADR 0190).
   31. **Compiler-AOT http typed error arm + result tag** (T8.3, ADR 0191).
   32. **Compiler-AOT http typed result packing walk** (T8.3, ADR 0192).
+  33. **Compiler-AOT http typed request packing walk** (T8.3, ADR 0193).
 
-  See ADR 0152–0192."
+  See ADR 0152–0193."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

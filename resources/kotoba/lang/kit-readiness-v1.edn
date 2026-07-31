@@ -30,8 +30,9 @@
               "wasm-packages/http-response-ok-v1.wasm (ADR 0190 typed response_ok / status)"
               "wasm-packages/http-error-result-ok-v1.wasm (ADR 0191 typed error arm + result tag)"
               "wasm-packages/http-result-pack-v1.wasm (ADR 0192 typed result packing walk)"
+              "wasm-packages/http-request-pack-v1.wasm (ADR 0193 typed request packing walk)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165+0171+0182+0185+0186+0187–0192 result packing walk; pure one-shot + request packing open (wasm-aot partial)."}
+   :note "ADR 0165+0171+0182+0185+0186+0187–0193 request/result packing walks; pure memory-scan one-shot open (wasm-aot partial)."}
 
   {:name :secret
    :id 21

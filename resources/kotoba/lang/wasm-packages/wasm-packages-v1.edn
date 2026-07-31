@@ -903,6 +903,32 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0193: typed-string request packing walk
+  {:name :http-request-pack
+   :resource "kotoba/lang/wasm-packages/http-request-pack-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "f5f4c1535cb3f4823222c4d1f4b178c9a4be95b1764de41ca97596b454f95de6"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-request-pack-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_request_pack.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "compiler-AOT typed-string request packing walk (ADR 0193); composes 0182/0186; not memory-scan one-shot"}
+   :exports {"http_request_begin" {:params [] :result :i64}
+             "http_request_url" {:params [:i64 :externref] :result :i64}
+             "http_request_headers" {:params [:i64 :i64] :result :i64}
+             "http_request_body" {:params [:i64 :externref] :result :i64}
+             "http_request_end" {:params [:i64 :i64] :result :i64}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 
 
   {:name :entropy-draw
