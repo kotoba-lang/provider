@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body: http (0171); process/entropy/git (0172); secret name-len (0173); scoped-fs path-len (0174); secret/fs value-len (0175); secret char-class (0176); fs path gates (0177); typed-string secret_name_ok (0178); secret multi-step walk (0179); scoped-fs typed-string path (0180); http typed-string URL (0182). Fixtures never claim production; pure multi-step path walk (0181)."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183 (bounds, length/char gates, multi-step walks, typed-string secret/fs/http). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -59,8 +59,9 @@
             :signed-wasm :ready}
    :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
               "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)"
-              "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
-   :note "ADR 0168 Component + ADR 0172 compiler-AOT spawn bounds; OS spawn host-injected; wasm-aot partial"}
+              "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172)"
+              "wasm-packages/process-spawn-walk-v1.wasm + .component.wasm (ADR 0183 multi-step)"]
+   :note "ADR 0168/0172 bounds + 0183 multi-step argv walk; OS spawn host-injected; wasm-aot partial"}
 
   {:name :scoped-fs
    :id 19
