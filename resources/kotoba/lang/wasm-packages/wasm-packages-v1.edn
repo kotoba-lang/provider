@@ -483,6 +483,48 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0179: pure multi-step secret name walk (compose len+char)
+  {:name :secret-name-walk
+   :resource "kotoba/lang/wasm-packages/secret-name-walk-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "fcf47e3786734b9d98bc9626aa4b6a98cd8c30bc7e42c0961651adb7c4bbc79f"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-walk-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_walk.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure begin/next/end walk composing len+char (ADR 0179); pure i64 direct"}
+   :exports {"secret_name_begin" {:params [:i64] :result :i64}
+             "secret_name_next" {:params [:i64 :i64] :result :i64}
+             "secret_name_end" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :secret-name-walk-component
+   :resource "kotoba/lang/wasm-packages/secret-name-walk-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "657f198fb5ebaeadafb0091dda7b3cdd62c787605fbfcc3d054df78f25c37906"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-name-walk-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_name_walk.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0179 Component embeds pure multi-step secret name walk"}
+   :exports {"secret_name_begin" {:params [:s64] :result :s64}
+             "secret_name_next" {:params [:s64 :s64] :result :s64}
+             "secret_name_end" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
 
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
