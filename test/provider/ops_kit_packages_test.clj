@@ -2,6 +2,7 @@
   "W6 ops kit packages: EDN surface + honest qualification claims."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]))
 
 (def ops-kits
@@ -1139,6 +1140,58 @@
             code (.waitFor p)]
         (is (zero? code) (str "browser-host live failed: " out))
         (is (= [-13501] (edn/read-string out)))))))
+
+(deftest http-typed-packages-pure-component-reemit-registered
+  "ADR 0199: pure Canonical Components for url/request/response/error packages.
+  Twins of typed-host wasm modules; no kotoba:typed import."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        check
+        (fn [mod-name comp-name]
+          (let [mod (get by-name mod-name)
+                comp (get by-name comp-name)
+                mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+                comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+            (is (some? mod) (str mod-name))
+            (is (some? comp) (str comp-name))
+            (is (= :wasm-module (:artifact-kind mod)))
+            (is (= :wasm-component (:artifact-kind comp)))
+            (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+            (is (= :kotoba-compiler/v1 (get-in comp [:source :builder])))
+            (is (= :kotoba.typed (get-in mod [:source :typed-host])))
+            (is (nil? (get-in comp [:source :typed-host])))
+            (is (= :kotoba-component/canonical
+                   (get-in comp [:source :component-lowering])))
+            (is (contains? (:imports mod) "kotoba:typed"))
+            (is (nil? (:imports comp)))
+            (is (= (:sha256 mod) (sha mod-bytes)))
+            (is (= (:sha256 comp) (sha comp-bytes)))))]
+    (check :http-url-ok :http-url-ok-component)
+    (check :http-post-request-ok :http-post-request-ok-component)
+    (check :http-response-ok :http-response-ok-component)
+    (check :http-error-result-ok :http-error-result-ok-component)))
+
+(deftest http-typed-packages-pure-component-live-main
+  "ADR 0199: wasmtime Component live vectors for main() on pure re-emits."
+  (let [run (fn [resource expected]
+              (let [path (.getAbsolutePath
+                          (io/file "resources" resource))
+                    pb (ProcessBuilder. ["wasmtime" "run" "--invoke" "main()" path])
+                    p (.start pb)
+                    out (str/trim (slurp (.getInputStream p)))
+                    err (slurp (.getErrorStream p))
+                    code (.waitFor p)]
+                (is (zero? code) (str resource " wasmtime failed: " err out))
+                (is (= expected out) (str resource " main vector"))))]
+    (run "kotoba/lang/wasm-packages/http-url-ok-v1.component.wasm" "-130")
+    (run "kotoba/lang/wasm-packages/http-post-request-ok-v1.component.wasm" "-13406")
+    (run "kotoba/lang/wasm-packages/http-response-ok-v1.component.wasm" "-1012")
+    (run "kotoba/lang/wasm-packages/http-error-result-ok-v1.component.wasm" "-13501")))
 
 (deftest http-typed-string-result-pack-package-registered
   (let [table (edn/read-string

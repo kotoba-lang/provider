@@ -685,10 +685,31 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string https URL policy (ADR 0182); requires kotoba:typed; not pure Component"}
+            :note "compiler-AOT typed-string https URL policy (ADR 0182); requires kotoba:typed; pure Component twin via ADR 0199"}
    :exports {"http_url_ok" {:params [:externref] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  ;; T8.3 ADR 0199: pure Canonical Component re-emit (no kotoba:typed import)
+  {:name :http-url-ok-component
+   :resource "kotoba/lang/wasm-packages/http-url-ok-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "6e7bf6b247c99a59a358683cb291a3e8107f2b6fcb04222092e2cc676dab4f42"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-url-ok-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_url_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0199 pure Component via --target component (Canonical string ABI); not typed-host; not full EDN codec"}
+   :exports {"http-url-ok" {:params [:string] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
@@ -752,10 +773,30 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string request surface (ADR 0186); composes URL scheme+bounds; not full EDN codec"}
+            :note "compiler-AOT typed-string request surface (ADR 0186); composes URL scheme+bounds; pure Component twin via ADR 0199"}
    :exports {"http_post_request_ok" {:params [:externref :i64 :externref :i64] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-post-request-ok-component
+   :resource "kotoba/lang/wasm-packages/http-post-request-ok-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "9a72c646b13457abd7edb1204a557b0eb0533cd9e9c946a100d956627c5e5ef3"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-post-request-ok-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_post_request_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0199 pure Component via --target component (Canonical string ABI); live main → -13406; not full EDN codec"}
+   :exports {"http-post-request-ok" {:params [:string :s64 :string :s64] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
@@ -843,11 +884,32 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string response surface (ADR 0190); status [100,599] + headers-n + body len; not error/result variant"}
+            :note "compiler-AOT typed-string response surface (ADR 0190); pure Component twin via ADR 0199"}
    :exports {"http_status_ok" {:params [:i64] :result :i64}
              "http_response_ok" {:params [:i64 :i64 :externref] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-response-ok-component
+   :resource "kotoba/lang/wasm-packages/http-response-ok-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "d811486203f2495c1f2f04a9650739907fb000fe60fd7bfc22b7c35fe3b70d0e"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-response-ok-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_response_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0199 pure Component via --target component; live main → -1012; not error/result EDN pack"}
+   :exports {"http-status-ok" {:params [:s64] :result :s64}
+             "http-response-ok" {:params [:s64 :s64 :string] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
@@ -866,11 +928,32 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :note "compiler-AOT typed-string error arm + result tag (ADR 0191); not nested EDN pack"}
+            :note "compiler-AOT typed-string error arm + result tag (ADR 0191); pure Component twin via ADR 0199"}
    :exports {"http_error_ok" {:params [:externref :externref :i64] :result :i64}
              "http_result_arm_ok" {:params [:i64] :result :i64}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-error-result-ok-component
+   :resource "kotoba/lang/wasm-packages/http-error-result-ok-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "981b296a1d20734bd1e9dd89d3aa9601d81f9f9c6404ac447de38f905d5a27b7"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-error-result-ok-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_error_result_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/canonical
+            :note "ADR 0199 pure Component via --target component; live main → -13501; helper-mediated charset owned by Canonical lowering; not nested EDN pack"}
+   :exports {"http-error-ok" {:params [:string :string :s64] :result :s64}
+             "http-result-arm-ok" {:params [:s64] :result :s64}
+             "main" {:params [] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
 

@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0162/0165; 0171 bounds; 0182–0193 typed packing; 0194–0198 pure memory-scan (full request + full result). Host I/O authority. Typed Component world compiler-blocked (wasm-aot :partial)."}}
+                 :notes "ADR 0162/0165; 0171 bounds; 0182–0193 typed packing; 0194–0198 pure memory-scan; 0199 pure Component re-emit of url/request/response/error packages (Canonical, no kotoba:typed). Host I/O authority. Nested EDN codec + full kit body still open (wasm-aot :partial)."}}
