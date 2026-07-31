@@ -82,8 +82,10 @@
   31. **Compiler-AOT http typed error arm + result tag** (T8.3, ADR 0191).
   32. **Compiler-AOT http typed result packing walk** (T8.3, ADR 0192).
   33. **Compiler-AOT http typed request packing walk** (T8.3, ADR 0193).
+  34. **Pure hand-WAT HTTP memory-scan one-shot** (T8.3, ADR 0194) —
+      request/response/error ptr-len scans + Component embed.
 
-  See ADR 0152–0193."
+  See ADR 0152–0194."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

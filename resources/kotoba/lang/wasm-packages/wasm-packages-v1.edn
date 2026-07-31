@@ -929,6 +929,49 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0194: pure memory-scan one-shot request+result (hand WAT)
+  {:name :http-memory-scan
+   :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "b5be9da0ffe55b3a03d307582599694a42b07c4405e39d4df22bf0a7bea42790"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-memory-scan-v1.wasm"
+            :source-wat "resources/kotoba/lang/wasm-packages/src/http_memory_scan.wat"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0194 pure ptr/len memory-scan request+result; no kotoba:typed; complements typed walks 0192–0193"}
+   :exports {"http_request_scan" {:params [:i32 :i32 :i32 :i32 :i32] :result :i32}
+             "http_response_scan" {:params [:i32 :i32 :i32] :result :i32}
+             "http_error_scan" {:params [:i32 :i32 :i32 :i32] :result :i32}
+             "http_result_arm_ok" {:params [:i32] :result :i32}
+             "memory" {:kind :memory}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-memory-scan-component
+   :resource "kotoba/lang/wasm-packages/http-memory-scan-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "215206d4052390cd5920edaedec59bd36e34941239bccaa908d48ef306b09c55"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-memory-scan-v1.component.wasm"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0194 Component embed of pure memory-scan one-shot"}
+   :exports {"http_request_scan" {:params [:i32 :i32 :i32 :i32 :i32] :result :i32}
+             "http_response_scan" {:params [:i32 :i32 :i32] :result :i32}
+             "http_error_scan" {:params [:i32 :i32 :i32 :i32] :result :i32}
+             "http_result_arm_ok" {:params [:i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 
 
   {:name :entropy-draw
