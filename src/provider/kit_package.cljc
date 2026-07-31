@@ -86,8 +86,10 @@
       request/response/error ptr-len scans + Component embed.
   35. **Pure hand-WAT HTTP header memory-scan** (T8.3, ADR 0195) —
       name/value/pair tchar+CTL scans + Component embed.
+  36. **Pure hand-WAT HTTP header set packing scan** (T8.3, ADR 0196) —
+      n×(name,value) table memory-scan + Component embed.
 
-  See ADR 0152–0195."
+  See ADR 0152–0196."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

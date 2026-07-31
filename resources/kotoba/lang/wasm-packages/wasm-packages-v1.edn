@@ -1017,6 +1017,45 @@
    :signed-content-addressed-package :pending}
 
 
+
+  ;; T8.3 ADR 0196: pure memory-scan header set packing (hand WAT)
+  {:name :http-headers-set-scan
+   :resource "kotoba/lang/wasm-packages/http-headers-set-scan-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "e7bb56b37269815cf174f6f5c3fb4046f11081fa1ba463802213fff2cf3ab58a"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-set-scan-v1.wasm"
+            :source-wat "resources/kotoba/lang/wasm-packages/src/http_headers_set_scan.wat"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0196 pure header set packing memory-scan; table of n×(name_ptr,len,value_ptr,len); no uniqueness"}
+   :exports {"http_headers_set_scan" {:params [:i32 :i32] :result :i32}
+             "memory" {:kind :memory}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :http-headers-set-scan-component
+   :resource "kotoba/lang/wasm-packages/http-headers-set-scan-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "379c8a225f99111082a0d6d38ebb02c1b78da01227112fa8de84d6e16a7dcc85"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-set-scan-v1.component.wasm"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :hand-wat/v1
+            :note "ADR 0196 Component embed of pure header set packing scan"}
+   :exports {"http_headers_set_scan" {:params [:i32 :i32] :result :i32}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
