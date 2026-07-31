@@ -1606,7 +1606,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "62e53c3d35f6f553a078c53c91a92ae51009d6e096dfabfa9fa1b4086e6bf828"
+   :sha256 "9d4e5e5d338570ac4c16b4ed4a9d9bfd7b87c2099d314d0fe8657ffbb5833a79"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-edn-reject-package-v1.wasm"
@@ -1614,10 +1614,12 @@
             :capability-id "http/post"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0221 wasm32 multi-export reject EDN (empty+append+request); true set/W4 still open"}
+            :note "ADR 0221/0222 wasm32 multi-export reject EDN (empty+append+request+results); true set/W4 still open"}
    :exports {"headers_edn_empty" {:params [] :result :externref}
              "headers_edn_append" {:params [:externref :externref :externref] :result :externref}
-             "http_request_edn" {:params [:externref :externref :externref :i64] :result :externref}}
+             "http_request_edn" {:params [:externref :externref :externref :i64] :result :externref}
+             "http_result_ok_edn" {:params [:i64 :externref :externref] :result :externref}
+             "http_result_err_edn" {:params [:externref :i64] :result :externref}}
    :fixture? false
    :signed-content-addressed-package :pending}
 
@@ -1626,7 +1628,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-component
    :media-type "application/wasm"
-   :sha256 "21f7a192706e5f7970611ec94d624208f7d7c01e0bea5d4fcf2ded2d91943647"
+   :sha256 "574dcb557d99a10733ccc593b65e0b65376b6c86069cc7beade576f14deabb7b"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-edn-reject-package-v1.component.wasm"
@@ -1635,11 +1637,13 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :component-lowering :kotoba-component/http-edn-reject-package
-            :kotoba-component-sha "93e1c7a41aa8cf77cda602c7ed850fad98e9bb6e"
-            :note "ADR 0221 multi-export reject-path EDN Component kit body; true set/W4 open; wasm-aot still partial"}
+            :kotoba-component-sha "bee9c87ad8a00bb809a6c1e8c8714afd4f6dd6a3"
+            :note "ADR 0221/0222 multi-export reject-path EDN Component kit body + result arms; true set/W4 open; wasm-aot still partial"}
    :exports {"headers-edn-empty" {:params [] :result :string}
              "headers-edn-append" {:params [:string :string :string] :result :string}
-             "http-request-edn" {:params [:string :string :string :i64] :result :string}}
+             "http-request-edn" {:params [:string :string :string :i64] :result :string}
+             "http-result-ok-edn" {:params [:i64 :string :string] :result :string}
+             "http-result-err-edn" {:params [:string :i64] :result :string}}
    :fixture? false
    :signed-content-addressed-package :pending}
 

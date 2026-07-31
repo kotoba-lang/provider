@@ -1549,9 +1549,11 @@
            (get-in comp [:source :component-lowering])))
     (is (= (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (is (= (:sha256 comp) (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
-    (doseq [e ["headers_edn_empty" "headers_edn_append" "http_request_edn"]]
+    (doseq [e ["headers_edn_empty" "headers_edn_append" "http_request_edn"
+               "http_result_ok_edn" "http_result_err_edn"]]
       (is (contains? (:exports mod) e)))
-    (doseq [e ["headers-edn-empty" "headers-edn-append" "http-request-edn"]]
+    (doseq [e ["headers-edn-empty" "headers-edn-append" "http-request-edn"
+               "http-result-ok-edn" "http-result-err-edn"]]
       (is (contains? (:exports comp) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_reject_package.kotoba")))))
 
