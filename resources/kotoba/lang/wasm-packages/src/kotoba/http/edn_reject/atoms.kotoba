@@ -1,5 +1,0 @@
-(ns kotoba.http.edn-reject.atoms
-  (:export [empty-vec]))
-
-;; Shared EDN atom for multi-file reject kit body (T8.3 ADR 0230).
-(defn empty-vec [] :string "[]")
