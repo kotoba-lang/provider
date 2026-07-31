@@ -24,11 +24,13 @@
         (is (= 1 (:kotoba.capability-kit/version kit)))
         (is (= id (:id cap)))
         (is (= :implemented (:reference q)))
-        ;; ADR 0163: secret real-bytes pilot → :wasm-aot :partial; others pending.
+        ;; ADR 0163/0166: secret wasm-aot partial; signed package ready via Component.
         (is (contains? (if (= name :secret) #{:partial} #{:pending})
                        (:wasm-aot q))
             (str name " wasm-aot honesty"))
-        (is (= :pending (:signed-content-addressed-package q)))
+        (is (contains? (if (= name :secret) #{:ready} #{:pending})
+                       (:signed-content-addressed-package q))
+            (str name " signed package honesty"))
         (is (some? (:request kit)))
         (is (some? (:result kit)))))))
 
@@ -53,8 +55,9 @@
 (deftest secret-kit-still-honest-about-aot
   (let [secret (load-kit "kotoba/lang/capability-kits/secret-v1.edn")]
     (is (= :implemented (get-in secret [:qualification :reference])))
-    ;; ADR 0163: pure name-policy real bytes → :wasm-aot :partial; signed pending.
+    ;; ADR 0163/0166: Component enables signed package ready; wasm-aot stays partial
+    ;; (embedded name policy, not compiler-AOT kit body / host fetch).
     (is (= :partial (get-in secret [:qualification :wasm-aot]))
-        "secret real-bytes pilot may mark wasm-aot partial (not full AOT Component)")
-    (is (= :pending (get-in secret [:qualification :signed-content-addressed-package]))
-        "must not claim signed package until publisher policy covers ops")))
+        "ops Component pilot may mark wasm-aot partial (not full compiler AOT)")
+    (is (= :ready (get-in secret [:qualification :signed-content-addressed-package]))
+        "ADR 0166 content-addressed Component package path ready")))

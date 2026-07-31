@@ -26,7 +26,8 @@
     (is (= :secret (:kit-name rec)))
     (is (false? (:signed? (:package rec))))
     (is (false? (:production-signed-claim? rec)))
-    (is (= :pending (get-in rec [:qualification :signed-content-addressed-package])))))
+    ;; ADR 0166: inventory marks signed package path ready; unsigned receipt still not a claim.
+    (is (= :ready (get-in rec [:qualification :signed-content-addressed-package])))))
 
 (deftest readiness-table-http-secret-process
   (let [table (kit/readiness-table
@@ -36,11 +37,11 @@
         process (kit/readiness-for table :process)]
     (is (= 1 (:kotoba.kit-readiness/version table)))
     (is (= :ready (get-in http [:scores :package])))
-    ;; ADR 0165: http thin Component flips signed-wasm ready; secret stays pending.
+    ;; ADR 0165/0166: http + secret Components flip signed-wasm ready.
     (is (= :ready (get-in http [:scores :signed-wasm])))
-    (is (= :pending (get-in secret [:scores :signed-wasm])))
+    (is (= :ready (get-in secret [:scores :signed-wasm])))
     (is (true? (kit/production-signed-allowed? http)))
-    (is (false? (kit/production-signed-allowed? secret)))
+    (is (true? (kit/production-signed-allowed? secret)))
     (is (false? (kit/production-signed-allowed? process)))
     (let [path "kotoba/lang/capability-kits/http-v1.edn"
           text (slurp (io/resource path))
@@ -94,6 +95,8 @@
     (is (= :signing-input-mismatch (:reason bad2)))))
 
 (deftest readiness-still-blocks-production-claim-after-signed-kit
+  "Readiness gate may be ready (ADR 0166); kit EDN receipt alone still does not
+  produce a production signed Wasm claim (needs signed non-fixture wasm receipt)."
   (let [table (kit/readiness-table
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
         secret (kit/readiness-for table :secret)
@@ -104,8 +107,11 @@
                 (kit/kit-package-receipt :secret path text) sign)
         rr (kit/readiness-receipt secret signed)]
     (is (true? (:signed-kit-receipt? rr)))
-    (is (false? (:production-signed-claim-allowed? rr))
-        "signed kit EDN receipt must not imply production signed Wasm")))
+    (is (true? (:production-signed-claim-allowed? rr))
+        "readiness signed-wasm ready (inventory)")
+    (is (false? (:production-signed-claim? rr))
+        "kit EDN alone is not a production signed Wasm claim")
+    (is (seq (:package-blockers rr)))))
 
 (deftest empty-wasm-module-digest-stable
   (let [d (kit/wasm-artifact-digest kit/empty-wasm-module-bytes :fixture-synthetic)]
@@ -188,9 +194,13 @@
     (is (true? (:signed-wasm-provider? rr)))
     (is (true? (:wasm-fixture? rr)))
     (is (string? (:wasm-artifact-digest rr)))
-    (is (= :pending (get-in secret [:scores :signed-wasm])))
-    (is (false? (:production-signed-claim-allowed? rr))
-        "fixture signed Wasm must not open production-signed claim")))
+    (is (= :ready (get-in secret [:scores :signed-wasm]))
+        "inventory ready under ADR 0166")
+    (is (true? (:production-signed-claim-allowed? rr))
+        "readiness gate alone")
+    (is (false? (:production-signed-claim? rr))
+        "fixture signed Wasm must not open production-signed claim")
+    (is (some #{:wasm-artifact-is-fixture} (:package-blockers rr)))))
 
 (deftest hex-encode-decode-round-trip
   (let [raw (byte-array (map unchecked-byte [0 1 255 16]))
@@ -306,7 +316,9 @@
     (is (true? (get-in m [:layers :wasm :signed?])))
     (is (true? (get-in m [:layers :wasm :fixture?])))
     (is (false? (:production-signed-claim? m)))
-    (is (some #{:signed-wasm-not-ready} (:blockers m)))
+    ;; ADR 0166: secret readiness is ready → no signed-wasm-not-ready blocker;
+    ;; fixture still blocks production claim.
+    (is (not-any? #{:signed-wasm-not-ready} (:blockers m)))
     (is (some #{:wasm-artifact-is-fixture} (:blockers m)))
     (is (false? (:production-signed-claim? rr)))
     (is (seq (:package-blockers rr)))))
@@ -420,9 +432,11 @@
     (is (true? (kit/pure-allowlist-publisher-policy-satisfied? row entry bytes)))
     (is (false? (kit/pure-allowlist-publisher-policy-satisfied? secret)))
     (is (= :ready (get-in row [:scores :signed-wasm])))
-    (is (= :pending (get-in secret [:scores :signed-wasm])))
+    ;; ADR 0166: secret inventory may be ready via Component; pure-allowlist path still false.
+    (is (false? (kit/pure-allowlist-kit? secret)))
     (is (true? (kit/production-signed-allowed? row)))
-    (is (false? (kit/production-signed-allowed? secret)))))
+    (is (true? (kit/production-signed-allowed? secret))
+        "secret signed-wasm ready under ADR 0166 inventory")))
 
 (deftest grant-binding-host-admissible-pure-allowlist
   "Signed real wasm + kit receipts → host-admissible grant binding;
@@ -577,8 +591,9 @@
       (is (false? (:fixture? rec)))
       (is (= :secret-get (:name rec))))))
 
-(deftest ops-secret-still-production-inadmissible-after-real-wasm
-  "ADR 0163 honesty: real name-policy bytes do not flip secret signed-wasm."
+(deftest ops-secret-module-pilot-does-not-clear-component-gate
+  "ADR 0163 module pilot: packaging bar true; Component gate false for module entry.
+  Inventory may still be :ready via Component entry (ADR 0166)."
   (let [readiness (kit/readiness-table
                    (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
         secret (kit/readiness-for readiness :secret)
@@ -602,14 +617,18 @@
              :readiness-row secret
              :package-entry entry
              :wasm-bytes bytes})]
-    (is (= :pending (get-in secret [:scores :signed-wasm])))
     (is (false? (kit/pure-allowlist-kit? secret)))
     (is (false? (kit/pure-allowlist-publisher-policy-satisfied? secret entry bytes)))
     (is (true? (kit/ops-network-publisher-policy-satisfied? secret entry bytes)))
-    (is (false? (kit/ops-signed-wasm-ready-allowed? secret entry bytes)))
-    (is (false? (kit/production-signed-allowed? secret)))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? secret entry bytes))
+        "wasm-module pilot must not clear Component gate")
+    (is (= :ready (get-in secret [:scores :signed-wasm]))
+        "inventory flipped by Component entry, not module")
     (is (true? (:host-admissible? gb)))
-    (is (false? (:production-admissible? gb)))))
+    ;; production-admissible uses readiness scores (ready) + signed receipts;
+    ;; module artifact is still non-fixture so may be production-admissible when
+    ;; readiness is ready — gate honesty lives in ops-signed-wasm-ready-allowed?
+    (is (true? (kit/production-signed-allowed? secret)))))
 
 (deftest ops-network-publisher-policy
   "ADR 0164 packaging bar + ADR 0165 Component gate for http."
@@ -637,15 +656,21 @@
     (is (false? (kit/ops-network-publisher-policy-satisfied? http))) ; needs package-entry
     (is (false? (kit/ops-signed-wasm-ready-allowed? http http-entry http-bytes))
         "wasm-module pilot must not flip signed-wasm")
-    (is (false? (kit/ops-signed-wasm-ready-allowed? secret secret-entry secret-bytes)))
-    ;; ADR 0165: real Component entry clears flip gate; inventory flips http only.
-    (is (= :wasm-component (:artifact-kind http-comp)))
-    (is (true? (kit/verify-wasm-package-digest http-comp http-comp-bytes)))
-    (is (true? (kit/ops-signed-wasm-ready-allowed? http http-comp http-comp-bytes)))
-    (is (= :ready (get-in http [:scores :signed-wasm])))
-    (is (= :pending (get-in secret [:scores :signed-wasm])))
-    (is (true? (kit/production-signed-allowed? http)))
-    (is (false? (kit/production-signed-allowed? secret)))))
+    (is (false? (kit/ops-signed-wasm-ready-allowed? secret secret-entry secret-bytes))
+        "wasm-module pilot must not flip signed-wasm")
+    ;; ADR 0165/0166: Component entries clear flip gate; inventory flips both.
+    (let [secret-comp (kit/wasm-package-for pkg-table :secret-get-component)
+          secret-comp-bytes (kit/load-wasm-package-bytes (:resource secret-comp))]
+      (is (= :wasm-component (:artifact-kind http-comp)))
+      (is (true? (kit/verify-wasm-package-digest http-comp http-comp-bytes)))
+      (is (true? (kit/ops-signed-wasm-ready-allowed? http http-comp http-comp-bytes)))
+      (is (= :wasm-component (:artifact-kind secret-comp)))
+      (is (true? (kit/verify-wasm-package-digest secret-comp secret-comp-bytes)))
+      (is (true? (kit/ops-signed-wasm-ready-allowed? secret secret-comp secret-comp-bytes)))
+      (is (= :ready (get-in http [:scores :signed-wasm])))
+      (is (= :ready (get-in secret [:scores :signed-wasm])))
+      (is (true? (kit/production-signed-allowed? http)))
+      (is (true? (kit/production-signed-allowed? secret))))))
 
 (deftest ops-http-component-grant-binding-production-admissible
   "ADR 0165: http readiness ready + signed Component receipts → production-admissible."
@@ -677,6 +702,41 @@
             :kit-receipt kit-signed
             :wasm-receipt wasm-signed})]
     (is (true? (kit/ops-signed-wasm-ready-allowed? http entry bytes)))
+    (is (true? (:host-admissible? gb)))
+    (is (true? (:production-admissible? gb)))
+    (is (true? (:production-signed-claim? m)))
+    (is (empty? (:blockers m)))))
+
+(deftest ops-secret-component-grant-binding-production-admissible
+  "ADR 0166: secret readiness ready + signed Component receipts → production-admissible."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        secret (kit/readiness-for readiness :secret)
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :secret-get-component)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-secret-component-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :secret path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt entry bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :secret
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row secret
+             :package-entry entry
+             :wasm-bytes bytes})
+        m (kit/package-manifest
+           {:readiness-row secret
+            :kit-receipt kit-signed
+            :wasm-receipt wasm-signed})]
+    (is (true? (kit/ops-signed-wasm-ready-allowed? secret entry bytes)))
     (is (true? (:host-admissible? gb)))
     (is (true? (:production-admissible? gb)))
     (is (true? (:production-signed-claim? m)))
