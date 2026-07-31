@@ -74,8 +74,9 @@
      begin/url/headers/body/end phased host protocol.
 
   26. **Compiler-AOT http typed request_ok** (T8.3, ADR 0186) — url+headers+body+timeout single-call.
+  27. **Compiler-AOT http typed header_name_ok** (T8.3, ADR 0187) — RFC 7230 tchar + length.
 
-  See ADR 0152–0186."
+  See ADR 0152–0187."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))
