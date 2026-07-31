@@ -27,4 +27,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0168 hand bounds; 0172 single-shot AOT bounds; 0183 multi-step begin/arg/end (per-arg :arg-bytes 4096). OS spawn host-injected. Codec AOT open (wasm-aot :partial)."}}
+                 :notes "ADR 0168 hand bounds; 0172 single-shot AOT bounds; 0183 multi-step begin/arg/end (per-arg :arg-bytes 4096). OS spawn host-injected. Codec AOT open (wasm-aot :partial). ADR 0238/0239 fixed-depth process request/reply EDN package (main -2309). OS spawn host-injected; W4/wasm-aot open."}}
