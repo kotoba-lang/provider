@@ -1234,3 +1234,70 @@
             code (.waitFor p)]
         (is (zero? code) (str "browser-host live failed: " out))
         (is (= [-13467] (edn/read-string out)))))))
+
+(deftest http-pure-memory-scan-package-registered
+  "ADR 0194: pure hand-WAT memory-scan one-shot + Component."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-memory-scan)
+        comp (get by-name :http-memory-scan-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (some? mod))
+    (is (some? comp))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :hand-wat/v1 (get-in mod [:source :builder])))
+    (is (nil? (get-in mod [:source :typed-host])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (doseq [e ["http_request_scan" "http_response_scan" "http_error_scan" "http_result_arm_ok"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_memory_scan.wat")))))
+
+(deftest http-pure-memory-scan-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/http-memory-scan-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "http-memscan" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const mem=new Uint8Array(instance.exports.memory.buffer);"
+                "const enc=new TextEncoder();"
+                "function put(s,off){const u=enc.encode(s); mem.set(u,off); return u.length;}"
+                "const req=instance.exports.http_request_scan;"
+                "const resp=instance.exports.http_response_scan;"
+                "const err=instance.exports.http_error_scan;"
+                "const arm=instance.exports.http_result_arm_ok;"
+                "const u1=put('https://x',0);"
+                "const a=req(0,u1,1,2,1000);"
+                "const u2=put('http://x',32);"
+                "const b1=req(32,u2,1,2,1000);"
+                "const c=req(0,0,1,2,1000);"
+                "const d=resp(200,1,10);"
+                "const e=resp(42,1,10);"
+                "const cl=put('http/transport',64);"
+                "const f=err(64,cl,6,0);"
+                "const g=err(64,0,6,0);"
+                "const bad=put('bad name',128);"
+                "const h=err(128,bad,1,0);"
+                "const i=arm(1);"
+                "const j=arm(3);"
+                "console.log(JSON.stringify([a,b1,c,d,e,f,g,h,i,j]));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        pb (ProcessBuilder. ["node" "-e" script])
+        p (.start pb)
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    ;; request ok, not-https, empty; response ok/bad; error ok/empty/bad-char; arm ok/bad
+    (is (= [0 -3 -1 0 -1 0 -1 -3 0 -1] (edn/read-string out)))))
