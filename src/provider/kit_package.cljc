@@ -20,11 +20,11 @@
      may set readiness `:signed-wasm :ready` when real non-fixture wasm +
      grant-binding path exist. Ops kits (http/secret/…) stay pending until
      real AOT Components land.
-  7. **Ops/network real-bytes pilot** (T8.3, ADR 0162) — http-post ships a
-     real non-fixture host-import forwarder package; `:signed-wasm` stays
-     `:pending` (not covered by pure-allowlist publisher policy).
+  7. **Ops/network real-bytes pilots** (T8.3, ADR 0162–0163) — http-post
+     host-import forwarder + secret-get pure name-policy packages; `:signed-wasm`
+     stays `:pending` (not covered by pure-allowlist publisher policy).
 
-  See ADR 0152–0162."
+  See ADR 0152–0163."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. T8.3 pure-allowlist publisher policy (ADR 0161): pure-allowlist kits may set :signed-wasm :ready when real non-fixture wasm + grant-binding path exist. Ops/network pilot (ADR 0162): http ships real non-fixture http-post-v1.wasm (host-import forwarder); ops kits keep :signed-wasm :pending until full AOT Component + publisher policy. Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. T8.3 pure-allowlist publisher policy (ADR 0161): pure-allowlist kits may set :signed-wasm :ready when real non-fixture wasm + grant-binding path exist. Ops pilots (ADR 0162 http-post forwarder; ADR 0163 secret-get pure name policy) ship real non-fixture wasm; ops kits keep :signed-wasm :pending until full AOT Component + publisher policy. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -33,7 +33,9 @@
             :host-parity :ready
             :package :ready
             :signed-wasm :pending}
-   :evidence ["secret-v1.edn" "provider#26+#27" "murakumo/com-cloudflare named-fetch cutover"]}
+   :evidence ["secret-v1.edn" "provider#26+#27" "murakumo/com-cloudflare named-fetch cutover"
+              "wasm-packages/secret-get-v1.wasm (ADR 0163 ops real-bytes pilot)"]
+   :note "Real non-fixture pure name-policy wasm shipped; production claim blocked until AOT Component + signed-wasm ready"}
 
   {:name :process
    :id 20
