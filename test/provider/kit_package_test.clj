@@ -392,7 +392,7 @@
   (let [table (kit/load-wasm-packages-table)
         pure (filterv #(not= :ops-network (:class %)) (:packages table))]
     (is (= 8 (count pure)))
-    (is (<= 9 (count (:packages table))))
+    (is (<= 10 (count (:packages table))))
     (doseq [entry pure]
       (let [bytes (kit/load-wasm-package-bytes (:resource entry))]
         (is (false? (:fixture? entry)) (str (:name entry)))
@@ -571,5 +571,52 @@
     (is (false? (kit/pure-allowlist-kit? http)))
     (is (false? (kit/pure-allowlist-publisher-policy-satisfied? http entry bytes)))
     (is (false? (kit/production-signed-allowed? http)))
+    (is (true? (:host-admissible? gb)))
+    (is (false? (:production-admissible? gb)))))
+
+(deftest ops-secret-get-wasm-package-digest-match
+  "ADR 0163: ops secret real non-fixture pure name-policy pilot."
+  (let [table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for table :secret-get)
+        bytes (kit/load-wasm-package-bytes (:resource entry))]
+    (is (= :secret-get (:name entry)))
+    (is (= :ops-network (:class entry)))
+    (is (false? (:fixture? entry)))
+    (is (true? (kit/verify-wasm-package-digest entry bytes)))
+    (is (= [0x00 0x61 0x73 0x6d]
+           (map #(bit-and % 0xff) (take 4 bytes))))
+    (let [rec (kit/real-wasm-provider-receipt entry bytes)]
+      (is (false? (:fixture? rec)))
+      (is (= :secret-get (:name rec))))))
+
+(deftest ops-secret-still-production-inadmissible-after-real-wasm
+  "ADR 0163 honesty: real name-policy bytes do not flip secret signed-wasm."
+  (let [readiness (kit/readiness-table
+                   (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        secret (kit/readiness-for readiness :secret)
+        pkg-table (kit/load-wasm-packages-table)
+        entry (kit/wasm-package-for pkg-table :secret-get)
+        bytes (kit/load-wasm-package-bytes (:resource entry))
+        path "kotoba/lang/capability-kits/secret-v1.edn"
+        text (slurp (io/resource path))
+        {:keys [sign]} (kit/test-hmac-signer "ops-secret-key")
+        kit-signed (kit/sign-kit-package-receipt
+                    (kit/kit-package-receipt :secret path text) sign)
+        wasm-signed (kit/sign-wasm-provider-receipt
+                     (kit/chain-kit-and-wasm-receipts
+                      (kit/real-wasm-provider-receipt entry bytes)
+                      kit-signed)
+                     sign)
+        gb (kit/grant-binding
+            {:kit-name :secret
+             :kit-receipt kit-signed
+             :wasm-receipt wasm-signed
+             :readiness-row secret
+             :package-entry entry
+             :wasm-bytes bytes})]
+    (is (= :pending (get-in secret [:scores :signed-wasm])))
+    (is (false? (kit/pure-allowlist-kit? secret)))
+    (is (false? (kit/pure-allowlist-publisher-policy-satisfied? secret entry bytes)))
+    (is (false? (kit/production-signed-allowed? secret)))
     (is (true? (:host-admissible? gb)))
     (is (false? (:production-admissible? gb)))))

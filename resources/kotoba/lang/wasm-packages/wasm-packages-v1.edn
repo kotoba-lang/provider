@@ -138,4 +138,23 @@
    :exports {"http_post" {:params [:i32 :i32 :i32 :i32 :i32 :i32] :result :i32}}
    :imports {"kotoba" {"http_post" {:params [:i32 :i32 :i32 :i32 :i32 :i32] :result :i32}}}
    :fixture? false
+   :signed-content-addressed-package :pending}
+
+  ;; Ops secret pilot (ADR 0163) — pure name-policy core module (no ambient read).
+  ;; Implements provider.secret/validate-name in Wasm; fetch stays host-injected.
+  ;; Not a production AOT Component; do not flip :signed-wasm :ready.
+  {:name :secret-get
+   :resource "kotoba/lang/wasm-packages/secret-get-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "972e08c010263d2e515aa232f1d8e20f0e8759d9c3c1536676f1f283bb4d7236"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-get-v1.wasm"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :note "pure name-policy pilot; host-injected fetch + AOT Component open"}
+   :exports {"secret_name_ok" {:params [:i32 :i32] :result :i32}}
+   :fixture? false
    :signed-content-addressed-package :pending}]}
