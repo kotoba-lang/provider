@@ -1,5 +1,5 @@
 (ns kotoba.http.edn-set-package
-  ;; T8.3 ADR 0228: pure multi-export EDN kit body with **true set** uniqueness.
+  ;; T8.3 ADR 0229: pure multi-export EDN kit body with **true set** uniqueness.
   ;; Folds ADR 0224 set-backed append into request/result encode (ADR 0209–0211
   ;; pure multi-export surface, without substring :name marker scan).
   ;; Guest record state carries EDN vector + [:set :string] names + sticky code.

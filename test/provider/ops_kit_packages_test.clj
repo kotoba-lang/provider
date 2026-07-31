@@ -1073,7 +1073,7 @@
 
 
 (deftest http-edn-set-package-true-set-multi-export-registered
-  "T8.3 ADR 0228: pure multi-export EDN kit body + true set uniqueness."
+  "T8.3 ADR 0229: pure multi-export EDN kit body + true set uniqueness."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))

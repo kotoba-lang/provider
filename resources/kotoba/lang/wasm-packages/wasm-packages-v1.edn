@@ -1051,7 +1051,7 @@
    :signed-content-addressed-package :pending}
 
   ;; T8.3 ADR 0190: typed-string response surface (status + headers-n + body)
-  ;; T8.3 ADR 0228: pure multi-export EDN kit body + true set uniqueness
+  ;; T8.3 ADR 0229: pure multi-export EDN kit body + true set uniqueness
   {:name :http-edn-set-package
    :resource "kotoba/lang/wasm-packages/http-edn-set-package-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
@@ -1067,7 +1067,7 @@
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
             :compiler-sha "8952a0685a4b21397b18cec27979a4f551780188"
-            :note "ADR 0228 pure multi-export EDN kit body (set-append + request + results); true-set uniqueness; main → -9002; W4/wasm-aot open"}
+            :note "ADR 0229 pure multi-export EDN kit body (set-append + request + results); true-set uniqueness; main → -9002; W4/wasm-aot open"}
    :exports {"http_headers_edn_set_begin" {:params [] :result :externref}
              "http_headers_edn_set_append" {:params [:externref :externref :externref] :result :externref}
              "http_headers_edn_set_edn" {:params [:externref] :result :externref}

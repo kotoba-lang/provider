@@ -1,4 +1,4 @@
-# ADR 0228: T8.3 pure multi-export EDN kit body with true-set uniqueness
+# ADR 0229: T8.3 pure multi-export EDN kit body with true-set uniqueness
 
 - Status: Accepted
 - Date: 2026-08-01
