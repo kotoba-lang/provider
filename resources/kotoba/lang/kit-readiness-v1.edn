@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body: http (0171); process/entropy/git (0172); secret name-len (0173); scoped-fs path-len (0174); secret/fs value-len (0175); secret char-class (0176); fs path gates (0177); typed-string secret_name_ok (0178); secret multi-step walk (0179); scoped-fs typed-string path (0180). Fixtures never claim production."
+ "T8.2 readiness + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164) for http/secret/entropy/process/scoped-fs/git. Real-bytes+Components: http (0165), secret (0166), entropy (0167), process (0168), scoped-fs (0169), git (0170). Compiler-AOT kit body: http (0171); process/entropy/git (0172); secret name-len (0173); scoped-fs path-len (0174); secret/fs value-len (0175); secret char-class (0176); fs path gates (0177); typed-string secret_name_ok (0178); secret multi-step walk (0179); scoped-fs typed-string path (0180). Fixtures never claim production; pure multi-step path walk (0181)."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -77,8 +77,9 @@
               "wasm-packages/fs-path-len-v1.wasm + .component.wasm (ADR 0174)"
               "wasm-packages/fs-value-len-v1.wasm + .component.wasm (ADR 0175)"
               "wasm-packages/fs-path-gate-v1.wasm + .component.wasm (ADR 0177)"
-              "wasm-packages/fs-path-ok-v1.wasm (ADR 0180 typed-string single-call)"]
-   :note "ADR 0169 hand path-policy + 0174/0175 length + 0177 gates + 0180 typed-string; wasm-aot partial"}
+              "wasm-packages/fs-path-ok-v1.wasm (ADR 0180 typed-string single-call)"
+              "wasm-packages/fs-path-walk-v1.wasm + .component.wasm (ADR 0181 multi-step walk)"]
+   :note "ADR 0169 hand + 0174/0175/0177 gates + 0180 typed-string + 0181 multi-step walk; wasm-aot partial"}
 
   {:name :git
    :id 22

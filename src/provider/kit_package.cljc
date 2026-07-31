@@ -60,7 +60,10 @@
 
   20. **Compiler-AOT scoped-fs typed-string path** (T8.3, ADR 0180) — single-call fs_path_ok via kotoba:typed.
 
-  See ADR 0152–0180."
+  18. **Compiler-AOT pure multi-step path walk** (T8.3, ADR 0181) —
+     `fs_path_begin`/`next`/`end` host-walk protocol (mirrors secret 0179).
+
+  See ADR 0152–0181."
   (:require [clojure.edn :as edn]
             [clojure.string :as str]
             #?(:clj [clojure.java.io :as io]))

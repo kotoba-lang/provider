@@ -595,3 +595,59 @@
             code (.waitFor p)]
         (is (zero? code) (str "browser-host live failed: " out))
         (is (= [-15470] (edn/read-string out)))))))
+
+(deftest scoped-fs-multistep-walk-package-registered
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :fs-path-walk)
+        comp (get by-name :fs-path-walk-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))]
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (false? (:fixture? mod)))
+    (is (= :ops-network (:class mod)))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (is (contains? (:exports mod) "fs_path_begin"))
+    (is (contains? (:exports mod) "fs_path_next"))
+    (is (contains? (:exports mod) "fs_path_end"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/fs_path_walk.kotoba")))))
+
+(deftest scoped-fs-multistep-walk-live-behavior
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/fs-path-walk-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "fs-walk" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const {fs_path_begin,fs_path_next,fs_path_end}=instance.exports;"
+                "const N=x=>Number(x);"
+                "function walk(s){"
+                "  let st=N(fs_path_begin(BigInt(s.length)));"
+                "  if(st<0) return st;"
+                "  for(const ch of s){"
+                "    st=N(fs_path_next(BigInt(st), BigInt(ch.charCodeAt(0))));"
+                "    if(st<0) return st;"
+                "  }"
+                "  return N(fs_path_end(BigInt(st)));"
+                "}"
+                "const cases=['','a','a/b','../x','/a','~a','a\\\\b','ok/path','a/..'];"
+                "const out=cases.map(walk);"
+                "console.log(JSON.stringify(out));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        p (.start (ProcessBuilder. ["node" "-e" script]))
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str "node failed: " err out))
+    (is (= [-1 0 0 -7 -5 -6 -4 0 -7] (edn/read-string out)))))
