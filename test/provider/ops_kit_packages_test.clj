@@ -761,3 +761,52 @@
     (.delete tmp)
     (is (zero? code) (str "node failed: " err out))
     (is (= [0 -1 -2 -6 -7 -5 -4 -3] (edn/read-string out)))))
+
+(deftest compiler-aot-git-run-walk-packages
+  "ADR 0184: pure multi-step git run walk."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [^bytes b]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md b)
+                (apply str (map #(format "%02x" %) (.digest md)))))
+        mod (get by-name :git-run-walk)
+        comp (get by-name :git-run-walk-component)
+        mod-bytes (-> (io/resource (:resource mod)) io/input-stream .readAllBytes)
+        comp-bytes (-> (io/resource (:resource comp)) io/input-stream .readAllBytes)]
+    (is (some? mod))
+    (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
+    (is (= (:sha256 mod) (sha mod-bytes)))
+    (is (= (:sha256 comp) (sha comp-bytes)))
+    (doseq [e ["git_run_begin" "git_run_arg" "git_run_end"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_run_walk.kotoba")))))
+
+(deftest compiler-aot-git-run-walk-live
+  (let [bytes (-> (io/resource "kotoba/lang/wasm-packages/git-run-walk-v1.wasm")
+                  io/input-stream .readAllBytes)
+        tmp (java.io.File/createTempFile "gwalk" ".wasm")
+        _ (java.nio.file.Files/write (.toPath tmp) bytes
+                                     (into-array java.nio.file.OpenOption []))
+        script (str
+                "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
+                "WebAssembly.instantiate(b).then(({instance})=>{"
+                "const begin=instance.exports.git_run_begin;"
+                "const arg=instance.exports.git_run_arg;"
+                "const end=instance.exports.git_run_end;"
+                "const N=x=>Number(x);"
+                "const walk=(argc,lens,mo,to)=>{let st=begin(BigInt(argc)); if(N(st)<0) return N(st);"
+                "for(const L of lens){st=arg(st,BigInt(L)); if(N(st)<0) return N(st);} return N(end(st,BigInt(mo),BigInt(to)));};"
+                "let st=begin(1n); st=arg(st,3n); const extra=N(arg(st,3n));"
+                "console.log(JSON.stringify([walk(2,[3,4],100,1000),walk(0,[],100,1000),walk(65,[1],100,1000),"
+                "walk(1,[5000],100,1000),walk(2,[3],100,1000),extra,walk(1,[1],0,1000),walk(1,[1],100,0)]));"
+                "}).catch(e=>{console.error(e); process.exit(1);});")
+        pb (ProcessBuilder. ["node" "-e" script])
+        p (.start pb)
+        out (slurp (.getInputStream p))
+        err (slurp (.getErrorStream p))
+        code (.waitFor p)]
+    (.delete tmp)
+    (is (zero? code) (str err out))
+    (is (= [0 -1 -2 -6 -7 -5 -3 -4] (edn/read-string out)))))
