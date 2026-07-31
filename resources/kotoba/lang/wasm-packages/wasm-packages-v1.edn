@@ -381,6 +381,82 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0174: secret value-len + scoped-fs path/value length pure bounds
+  {:name :secret-value-len
+   :resource "kotoba/lang/wasm-packages/secret-value-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "30e9eccbe140a2b92f01549d0203864c90611613020ca966456b0bde29ffd8ce"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-value-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_value_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure secret-bytes length (ADR 0174); companion to 0173 name-len"}
+   :exports {"secret_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :secret-value-len-component
+   :resource "kotoba/lang/wasm-packages/secret-value-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "f5a0ee237687bad24e06b3105ca683106d4aa856d87805c7d14789cdd56f8d4a"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-value-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_value_len.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0174 Component embeds compiler-AOT secret value-len core"}
+   :exports {"secret_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-len
+   :resource "kotoba/lang/wasm-packages/fs-path-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "8155e8bcb21cb7b5e826309897d3e8dc6a82728dde0683b8ddecc984c08a2f69"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_len.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "compiler-AOT pure path/value length half of scoped-fs limits (ADR 0174); escape scan hand WAT"}
+   :exports {"fs_path_len_ok" {:params [:i64] :result :i64}
+             "fs_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :fs-path-len-component
+   :resource "kotoba/lang/wasm-packages/fs-path-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "b473f58d8555a479ec4123d1cdc9ace1c9f19b485fed53c24fdf43c20af380a5"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/fs-path-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/fs_path_len.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0174 Component embeds compiler-AOT fs length bounds core"}
+   :exports {"fs_path_len_ok" {:params [:s64] :result :s64}
+             "fs_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
