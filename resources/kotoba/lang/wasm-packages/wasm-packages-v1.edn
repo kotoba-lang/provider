@@ -1001,6 +1001,28 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+
+  ;; T8.3 ADR 0225: Component twin true-set name list append (element equality)
+  {:name :http-headers-names-add-component
+   :resource "kotoba/lang/wasm-packages/http-headers-names-add-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "939b4bfdff19bd17290a8a6b6e4d123baf727a9306c45625af50756e167c24fd"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-headers-names-add-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_headers_names_add.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/headers-names-add
+            :kotoba-component-sha "dfba9407b0eedafcc2abed25f556f162a0c08966"
+            :note "ADR 0225 Component twin true-set name uniqueness on EDN string vector; element-bound equality; not substring :name scan; W4/wasm-aot still open"}
+   :exports {"headers-names-add" {:params [:string :string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   ;; T8.3 ADR 0224: pure reject-path EDN append + true set uniqueness
   {:name :http-headers-edn-append-set
    :resource "kotoba/lang/wasm-packages/http-headers-edn-append-set-v1.wasm"
