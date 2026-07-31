@@ -587,6 +587,29 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0182: typed-string single-call http_url_ok (kotoba:typed host)
+  {:name :http-url-ok
+   :resource "kotoba/lang/wasm-packages/http-url-ok-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "2ee3a5748aaf4ba25e46dbb76679d5147c5bdf93c378c7dc0eba2af9ec80bb60"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-url-ok-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_url_ok.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "compiler-AOT typed-string https URL policy (ADR 0182); requires kotoba:typed; not pure Component"}
+   :exports {"http_url_ok" {:params [:externref] :result :i64}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :entropy-draw
    :resource "kotoba/lang/wasm-packages/entropy-draw-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
