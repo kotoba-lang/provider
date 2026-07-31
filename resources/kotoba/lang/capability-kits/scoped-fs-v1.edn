@@ -25,7 +25,8 @@
   :os-store-cljs :landed}
  :qualification {:reference :implemented
                  :dual-runtime-os-transport :landed
-                 :wasm-aot :pending
+                 :wasm-aot :partial
                  :native-aot :pending
                  :jit :pending
-                 :signed-content-addressed-package :pending}}
+                 :signed-content-addressed-package :ready
+                 :notes "ADR 0169: pure path policy module+Component; host root-scoped store; wasm-aot partial."}}
