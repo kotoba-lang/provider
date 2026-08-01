@@ -63,6 +63,14 @@
     (is (= :n/a (get-in (kit/readiness-for table :entropy) [:scores :audit])))
     (is (re-find #"0269|audit ready" (:kotoba.kit-readiness/summary table)))))
 
+(deftest readiness-object-storage-audit-ready
+  "ADR 0271: object/storage audit :ready via mem + production on-call."
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))]
+    (is (= :ready (get-in (kit/readiness-for table :object) [:scores :audit])))
+    (is (= :ready (get-in (kit/readiness-for table :storage) [:scores :audit])))
+    (is (re-find #"0271" (:kotoba.kit-readiness/summary table)))))
+
 (deftest readiness-covers-t8-critical-kits
   (let [table (kit/readiness-table
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))

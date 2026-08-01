@@ -68,6 +68,50 @@
      (let [v (aget js/process.env name)]
        (when (and v (seq (string/trim v))) v))))
 
+(defn mem-transport
+  "In-memory object transport for tests + audit-hook demos (ADR 0271).
+
+  Not durable. Optional `:on-call` receives
+  `{:kit :object :operation :binding :key :reply-tag}` after each op
+  (same optional audit surface as `production-transport`). Exceptions
+  from on-call are swallowed.
+
+  Blocks are keyed by digest string; refs by key → etag string."
+  ([] (mem-transport {}))
+  ([{:keys [initial-blocks initial-refs on-call]
+     :or {initial-blocks {} initial-refs {} on-call (fn [_])}}]
+   (let [blocks (atom (into {} initial-blocks))
+         refs (atom (into {} initial-refs))
+         audit! (fn [e]
+                  (try (on-call e)
+                       (catch #?(:clj Exception :cljs :default) _ nil)))]
+     (fn [{:keys [operation binding key digest bytes expected next] :as _req}]
+       (let [reply
+             (case operation
+               :get-stream
+               (if-let [b (or (get @blocks key) (get @blocks digest))]
+                 {:bytes b}
+                 (throw (ex-info "object mem not found"
+                                 {:phase :object-transport})))
+               :put-block
+               (do (swap! blocks assoc (str digest) bytes)
+                   true)
+               :compare-and-set-ref
+               (let [cur (get @refs key)]
+                 (if (= cur expected)
+                   (do (swap! refs assoc key next) true)
+                   false))
+               (throw (ex-info "object mem unknown op"
+                               {:phase :object-transport :operation operation})))]
+         (audit! {:kit :object
+                  :operation operation
+                  :binding binding
+                  :key key
+                  :reply-tag (if (boolean? reply)
+                               (if reply :ok :lost)
+                               :bytes)})
+         reply)))))
+
 (defn resolve-endpoint
   "Resolve host-configured object-store origin: `:endpoint` option, else
   `KOTOBA_OBJECT_ENDPOINT`, else throw. No ambient default."
