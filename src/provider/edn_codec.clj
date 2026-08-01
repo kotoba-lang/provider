@@ -131,3 +131,129 @@
   through W4 0255. Host authority remains outside guest AOT."
   []
   true)
+
+;; --- ADR 0257: audit-hook integration (pure EDN only; no extra host I/O) ---
+
+(defn- keyword-code [code]
+  (cond
+    (keyword? code) (name code)
+    (string? code) code
+    :else (str code)))
+
+(defn- codec-value [result]
+  (when (and (map? result) (:ok result) (string? (:value result)))
+    (:value result)))
+
+(defn http-headers-list-edn
+  "Build 2-header EDN list for recursive-record-kv (exactly two pairs)."
+  [name1 value1 name2 value2]
+  (invoke-export :recursive-record-kv-edn :headers_list_edn
+                 [(str name1) (str value1) (str name2) (str value2)]))
+
+(defn http-request-edn
+  "W4 HTTP request EDN. headers-edn from `http-headers-list-edn`."
+  [url body timeout-ms headers-edn]
+  (invoke-export :recursive-record-kv-edn :request_rec_kv_edn
+                 [(str url) (str body) (long timeout-ms) (str headers-edn)]))
+
+(defn http-result-ok-edn
+  [status body headers-edn]
+  (invoke-export :recursive-record-kv-edn :result_ok_rec_kv_edn
+                 [(long status) (str body) (str headers-edn)]))
+
+(defn http-result-err-edn
+  "retryable: 1 true, 0 false."
+  [code message retryable]
+  (invoke-export :recursive-record-kv-edn :result_err_rec_kv_edn
+                 [(str code) (str message) (long retryable)]))
+
+(defn wrap-secret-fetch
+  "Wrap a secret `:fetch` transport so each call audits pure W4 request/reply EDN.
+
+  `on-call` receives a map:
+  `{:kit :secret :op :get :name n :request-edn s :reply-edn s :reply-tag t}`
+
+  Does not change fetch semantics. Codec/on-call failures are swallowed.
+  Underlying fetch is still the only secret authority exercised."
+  ([fetch] (wrap-secret-fetch fetch (fn [_])))
+  ([fetch on-call]
+   (when-not (fn? fetch)
+     (throw (ex-info "wrap-secret-fetch requires a fetch fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "wrap-secret-fetch requires an on-call fn"
+                     {:phase :edn-codec})))
+   (fn [{:keys [name] :as req}]
+     (let [req-codec (secret-request-edn name)
+           reply (fetch req)
+           reply-codec (case (:tag reply)
+                         :value (secret-reply-value-edn (str (:value reply)))
+                         :error (secret-reply-error-edn
+                                 (keyword-code (:code reply))
+                                 (str (or (:message reply) "")))
+                         {:ok false})]
+       (try
+         (on-call {:kit :secret
+                   :op :get
+                   :name name
+                   :request-edn (codec-value req-codec)
+                   :reply-edn (codec-value reply-codec)
+                   :reply-tag (:tag reply)})
+         (catch Exception _))
+       reply))))
+
+(defn- headers-edn-from-map
+  "Pick two headers for W4 headers_list (package is 2-header fixed arity).
+  Prefer Accept/Host; fall back to first entries or synthetic placeholders."
+  [headers]
+  (let [m (into {}
+                (map (fn [[k v]]
+                       [(if (keyword? k) (name k) (str k)) (str v)]))
+                (or headers {}))
+        accept (or (get m "Accept") (get m "accept") "*/*")
+        host (or (get m "Host") (get m "host") "audit.local")
+        other (first (remove (fn [[k _]] (#{"Accept" "accept" "Host" "host"} k)) m))
+        n1 "Accept"
+        v1 accept
+        n2 (if other (key other) "Host")
+        v2 (if other (val other) host)
+        r (http-headers-list-edn n1 v1 n2 v2)]
+    (codec-value r)))
+
+(defn wrap-http-post-transport
+  "Wrap an HTTP post transport fn so each call audits pure W4 request EDN.
+
+  Transport remains `(fn [{:keys [url headers body timeout-ms]}] -> result)`.
+  `on-call` receives:
+  `{:kit :http :op :post :url u :request-edn s :status n :error? bool :latency-ms n}`
+
+  Does not perform network itself — only wraps the host-supplied transport."
+  ([transport] (wrap-http-post-transport transport (fn [_])))
+  ([transport on-call]
+   (when-not (fn? transport)
+     (throw (ex-info "wrap-http-post-transport requires a transport fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "wrap-http-post-transport requires an on-call fn"
+                     {:phase :edn-codec})))
+   (fn [{:keys [url headers body timeout-ms] :as req}]
+     (let [started (System/currentTimeMillis)
+           hdrs (or (headers-edn-from-map headers) "[]")
+           req-codec (http-request-edn (str url)
+                                       (str (or body ""))
+                                       (long (or timeout-ms 5000))
+                                       hdrs)
+           result (transport req)
+           status (or (:status result) -1)
+           err? (boolean (or (:error result) (:error? result)))]
+       (try
+         (on-call {:kit :http
+                   :op :post
+                   :url url
+                   :request-edn (codec-value req-codec)
+                   :status status
+                   :error? err?
+                   :latency-ms (- (System/currentTimeMillis) started)})
+         (catch Exception _))
+       result))))
+
