@@ -29,4 +29,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0169 hand scan; 0174/0175 length; 0177 gates; 0180 typed-string fs_path_ok; 0181 pure multi-step walk; 0207 fs_path_ok pure Component (path state machine). ADR 0242/0243 fixed-depth scoped-fs request/reply EDN package (main -2313). Host store authority. W4/wasm-aot open."}}
+                 :notes "ADR 0169 hand scan; 0174/0175 length; 0177 gates; 0180 typed-string fs_path_ok; 0181 pure multi-step walk; 0207 fs_path_ok pure Component (path state machine). ADR 0243 fixed-depth scoped-fs request/reply EDN package (main -2313). Host store authority. W4/wasm-aot open."}}

@@ -1,5 +1,5 @@
 (ns kotoba.scoped-fs.edn-package
-  ;; T8.3 ADR 0242/0243: pure scoped-fs kit fixed-depth EDN surface.
+  ;; T8.3 ADR 0243: pure scoped-fs kit fixed-depth EDN surface.
   ;; Request: read (root+path) and write (root+path+value).
   ;; Reply: content / written / error. Dual quote/backslash scan on string leaves.
   ;; Path policy slice: non-empty, no leading /, no ".." segment, length bounds.
