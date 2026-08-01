@@ -2493,6 +2493,29 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_w4_host_edn.kotoba")))))
 
+(deftest process-w4-host-edn-package-registered
+  (let [table (edn/read-string (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))
+        check (fn [kw expected-sha]
+                (let [mod (get by-name kw)]
+                  (is (some? mod) (str kw))
+                  (is (= expected-sha (:sha256 mod)))
+                  (is (= expected-sha
+                         (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))))]
+    (check :process-w4-host-edn "a7f27b7a496bb47dbf234088da67e10632350ade79f1d2b4c8b43f87e87a859d")
+    (check :git-w4-host-edn "e81e9de9c8864ee824451e6d4694c278e9ee8ca29d50f22f54e7b92fe97cc37e")
+    (check :entropy-w4-host-edn "efb15002c7e5f9f1061de2cce61ebacaea82b129eba1b924146cdc37e88eb80a")
+    (check :scoped-fs-w4-host-edn "b3daa65988eb26c4c9e5d8dce9f2dec2f711345d96a249f899b48459f2679ab3")
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_w4_host_edn.kotoba")))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_w4_host_edn.kotoba")))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_w4_host_edn.kotoba")))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.kotoba")))))
+
+
 
 
 

@@ -9,7 +9,7 @@
   reimplementing EDN encode in Clojure.
 
   ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
-  factories; ADR 0262–0264 host inject/roundtrips; ADR 0265 secret guest host_get;
+  factories; ADR 0262–0264 host inject/roundtrips; ADR 0265–0266 ops guest host surfaces;
   ADR 0264 remaining ops W4 round-trips (secret/process/git/entropy/fs).
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
@@ -1040,3 +1040,47 @@
   "Prove deny-by-default: host_get without allowCapabilities fails closed."
   [name]
   (invoke-export* :secret-w4-host-edn :host_get_edn [(str name)] {}))
+
+;; --- ADR 0266: remaining ops guest host surfaces + inject helpers ---
+
+(defn process-w4-host-spawn-edn
+  "Guest host_spawn_edn (wire 20) with inject. Default :echo."
+  ([argv-edn max-stdout timeout-ms]
+   (process-w4-host-spawn-edn argv-edn max-stdout timeout-ms :echo))
+  ([argv-edn max-stdout timeout-ms inject-mode]
+   (invoke-export* :process-w4-host-edn :host_spawn_edn
+                   [(str argv-edn) (long max-stdout) (long timeout-ms)]
+                   {:allow-capabilities [20]
+                    :primary-cap-id 20
+                    :inject-mode inject-mode})))
+
+(defn git-w4-host-run-edn
+  "Guest host_run_edn (wire 22) with inject. Default :echo."
+  ([args-edn max-stdout timeout-ms]
+   (git-w4-host-run-edn args-edn max-stdout timeout-ms :echo))
+  ([args-edn max-stdout timeout-ms inject-mode]
+   (invoke-export* :git-w4-host-edn :host_run_edn
+                   [(str args-edn) (long max-stdout) (long timeout-ms)]
+                   {:allow-capabilities [22]
+                    :primary-cap-id 22
+                    :inject-mode inject-mode})))
+
+(defn entropy-w4-host-draw-edn
+  "Guest host_draw_edn (wire 23) with inject. Default :echo."
+  ([n] (entropy-w4-host-draw-edn n :echo))
+  ([n inject-mode]
+   (invoke-export* :entropy-w4-host-edn :host_draw_edn
+                   [(long n)]
+                   {:allow-capabilities [23]
+                    :primary-cap-id 23
+                    :inject-mode inject-mode})))
+
+(defn scoped-fs-w4-host-read-edn
+  "Guest host_read_edn (wire 19) with inject. Default :echo."
+  ([root path] (scoped-fs-w4-host-read-edn root path :echo))
+  ([root path inject-mode]
+   (invoke-export* :scoped-fs-w4-host-edn :host_read_edn
+                   [(str root) (str path)]
+                   {:allow-capabilities [19]
+                    :primary-cap-id 19
+                    :inject-mode inject-mode})))
