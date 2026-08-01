@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness (ops audit :ready ADR 0269) + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207. HTTP EDN reject path through ADR 0227 (element-bound uniqueness + multi-export). Residual: W4 recursive nested EDN ADT (headers 0246 + request/result 0247 + true-kv ≤3 0248 + 4-field 0249 + record-kv 0250 landed; secret W4 0251 + process W4 0252 + git W4 0253 + entropy W4 0254 + scoped-fs W4 0255 landed; ops-kit pure EDN codec AOT complete (0256) + audit wraps 0257–0258 + production/test factories 0259 + guest host_post 0260 + entropy prod EDN-audit 0261 + live host inject 0262 + HTTP W4 roundtrip 0263 + remaining ops W4 roundtrips 0264 + secret guest host_get 0265 + process guest host_spawn 0266 + git/entropy/fs guest host 0267 + fs write 0268; storage pure deny 0273 + host inject parity git/entropy/fs-read 0270; object/storage audit :ready 0271 + object deny-fixtures 0272; residual host authority by design (I/O/fetch/spawn/git/store/CSPRNG); multi-file project kit body CLI first slice (compiler ADR 0192). object/storage signed-wasm flip 0274. Fixtures never claim production."
+ "T8.2 readiness COMPLETE for scored kits: ops audit 0269; object/storage audit+deny 0271–0273 (deny 0272/0273); object/storage signed-wasm 0275 (pure-bounds Components). T8.3 packaging includes pure Component re-emit 0199–0207 (secret-name-ok 0206 / fs-path-ok 0207) + guest host+EDN 0256–0270; residual host I/O wasm-aot :partial by design. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -74,7 +74,7 @@
               "wasm-packages/http-request-full-scan-v1.wasm + .component.wasm (ADR 0197 pure full request scan)"
               "wasm-packages/http-result-full-scan-v1.wasm + .component.wasm (ADR 0198 pure full result scan)"
               "wasm-packages/http-post-walk-v1.wasm + .component.wasm (ADR 0185 multi-step)"]
-   :note "ADR 0165–0204 pure Component re-emit; 0209–0211 fixed-depth nested EDN; 0212–0213 EDN trust Component; 0214–0222 reject-path + multi-export kit body (empty+append+request+results); 0223–0224 pure true-set name uniqueness; 0225–0226 Component names-add true-set + multi-export fold; 0227 map-element-bound append uniqueness on Components. ADR 0246 first W4 recursive nested EDN ADT slice (headers atom|pair print). ADR 0247 second W4 slice (request/result entry-atom pair spine, main -2402). ADR 0248 true-kv maps ≤3 (main -2403). ADR 0249 true-kv 4-field (main -2404, depth 12). ADR 0250 record-typed :edn/kv entries in recursive ADT (main -2405). Residual: host-injected I/O authority (codec-aot 0256–0259; guest host_post 0260; entropy prod factories 0261; live inject 0262; HTTP W4 roundtrip 0263; remaining ops W4 roundtrips 0264; secret guest host_get 0265; process guest host_spawn 0266); multi-file project Component CLI first slice landed (compiler ADR 0192); wasm-aot stays :partial."}
+   :note "ADR 0165–0204 pure Component re-emit; 0209–0211 fixed-depth nested EDN; 0212–0213 EDN trust Component; 0214–0222 reject-path + multi-export kit body (empty+append+request+results); 0223–0224 pure true-set name uniqueness; 0225–0226 Component names-add true-set + multi-export fold; 0227 map-element-bound append uniqueness on Components. ADR 0246 first W4 recursive nested EDN ADT slice (headers atom|pair print). ADR 0247 second W4 slice (request/result entry-atom pair spine, main -2402). ADR 0248 true-kv maps ≤3 (main -2403). ADR 0249 true-kv 4-field (main -2404, depth 12). ADR 0250 record-typed :edn/kv entries in recursive ADT (main -2405). Residual: host-injected I/O authority (codec-aot 0256–0259; guest host_post 0260; entropy prod factories 0261; live inject 0262; HTTP W4 roundtrip 0263; remaining ops W4 roundtrips 0264; secret guest host_get 0265; process guest host_spawn 0266 + later 0267–0270); multi-file project Component CLI first slice landed (compiler ADR 0192); host I/O keeps wasm-aot :partial."}
 
   {:name :secret
    :id 21
@@ -205,8 +205,8 @@
    :evidence ["stream-object-v1.edn multi-cap package" "object get-stream/put-block/cas"
               "mem-transport + production-transport :on-call audit (ADR 0271)"
               "validate-get-stream/put-block/cas pure deny fixtures (ADR 0272)"
-              "object-digest-len Component (ADR 0274 signed-wasm flip)"]
-   :note "ADR 0271 audit :ready; ADR 0272 deny-fixtures :ready; signed-wasm :ready via object-digest-len Component (ADR 0274); host store still authority."}
+              "object-digest-len Component (ADR 0275 signed-wasm flip)"]
+   :note "ADR 0271 audit :ready; ADR 0272 deny-fixtures :ready; signed-wasm :ready via object-digest-len Component (ADR 0275); host store still authority."}
 
   {:name :storage
    :id 12
@@ -222,7 +222,7 @@
    :evidence ["storage-v1.edn" "provider.storage dual-runtime"
               "mem-transport + production-transport :on-call audit (ADR 0271)"
               "validate-get/put/delete pure deny fixtures (ADR 0273)"
-              "storage-value-len Component (ADR 0274 signed-wasm flip)"]}
+              "storage-value-len Component (ADR 0275 signed-wasm flip)"]}
 
   {:name :math-sin
    :id :pure-allowlist

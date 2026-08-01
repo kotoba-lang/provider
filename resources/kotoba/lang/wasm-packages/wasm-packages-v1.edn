@@ -3004,7 +3004,7 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; ADR 0274: storage/object pure bounds + Components for signed-wasm flip
+  ;; ADR 0275: storage/object pure bounds + Components for signed-wasm flip
   {:name :storage-value-len
    :resource "kotoba/lang/wasm-packages/storage-value-len-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/storage-v1.edn"
@@ -3018,7 +3018,7 @@
             :capability-id "storage/transact"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0274 pure storage value-bytes bound (65536); host store remains authority"}
+            :note "ADR 0275 pure storage value-bytes bound (65536); host store remains authority"}
    :exports {"storage_value_len_ok" {:params [:i64] :result :i64}}
    :fixture? false
    :signed-content-addressed-package :pending}
@@ -3036,7 +3036,7 @@
             :capability-id "storage/transact"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0274 Component embeds storage value-len core; enables ops-signed-wasm gate"}
+            :note "ADR 0275 Component embeds storage value-len core; enables ops-signed-wasm gate"}
    :exports {"storage_value_len_ok" {:params [:s64] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}
@@ -3054,7 +3054,7 @@
             :capability-id "object/put-block"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0274 pure object digest length bound; host object store remains authority"}
+            :note "ADR 0275 pure object digest length bound; host object store remains authority"}
    :exports {"object_digest_len_ok" {:params [:i64] :result :i64}}
    :fixture? false
    :signed-content-addressed-package :pending}
@@ -3072,7 +3072,7 @@
             :capability-id "object/put-block"
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
-            :note "ADR 0274 Component embeds object digest-len core; enables ops-signed-wasm gate"}
+            :note "ADR 0275 Component embeds object digest-len core; enables ops-signed-wasm gate"}
    :exports {"object_digest_len_ok" {:params [:s64] :result :s64}}
    :fixture? false
    :signed-content-addressed-package :pending}

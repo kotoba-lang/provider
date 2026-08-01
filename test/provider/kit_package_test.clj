@@ -81,8 +81,8 @@
     (is (= :ready (get-in (kit/readiness-for table :storage) [:scores :audit])))
     (is (re-find #"0271" (:kotoba.kit-readiness/summary table)))))
 
-(deftest readiness-object-storage-signed-wasm-0274
-  "ADR 0274: object/storage signed-wasm :ready + Component packaging gate."
+(deftest readiness-object-storage-signed-wasm-0275
+  "ADR 0275: object/storage signed-wasm :ready + Component packaging gate."
   (let [table (kit/readiness-table
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
         pkg (kit/load-wasm-packages-table)
@@ -100,7 +100,7 @@
     (is (true? (kit/ops-network-kit? storage)))
     (is (true? (kit/ops-signed-wasm-ready-allowed? object o-comp o-bytes)))
     (is (true? (kit/ops-signed-wasm-ready-allowed? storage s-comp s-bytes)))
-    (is (re-find #"0274" (:kotoba.kit-readiness/summary table)))))
+    (is (re-find #"0275" (:kotoba.kit-readiness/summary table)))))
 
 
 

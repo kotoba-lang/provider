@@ -1,5 +1,5 @@
 (ns kotoba.storage.value-len
-  ;; ADR 0274: pure storage value-bytes bound (max-value-bytes 65536).
+  ;; ADR 0275: pure storage value-bytes bound (max-value-bytes 65536).
   (:export [storage_value_len_ok]))
 
 (defn storage_value_len_ok

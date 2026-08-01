@@ -1,5 +1,5 @@
 (ns kotoba.object.digest-len
-  ;; ADR 0274: pure object digest length bound (non-empty, max string limit).
+  ;; ADR 0275: pure object digest length bound (non-empty, max string limit).
   (:export [object_digest_len_ok]))
 
 (defn object_digest_len_ok

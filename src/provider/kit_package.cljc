@@ -731,7 +731,7 @@
 (def ops-network-kit-names
   "Readiness kit names on the ops packaging surface (not pure-allowlist).
   ADR 0164–0170: http/secret/entropy/process/scoped-fs/git;
-  ADR 0274: storage/object (signed-wasm via pure-bounds Components)."
+  ADR 0275: storage/object (signed-wasm via pure-bounds Components)."
   #{:http :secret :entropy :process :scoped-fs :git :storage :object})
 
 (defn ops-network-kit?

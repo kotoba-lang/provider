@@ -1,4 +1,4 @@
-# ADR 0274: T8.2 object/storage signed-wasm :ready (pure-bounds Components)
+# ADR 0275: T8.2 object/storage signed-wasm :ready (pure-bounds Components)
 
 - Status: Accepted
 - Date: 2026-08-01
