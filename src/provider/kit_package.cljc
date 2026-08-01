@@ -34,7 +34,8 @@
      policy module + Component; ops kit set includes `:process`.
   12. **Compiler-AOT kit body pilot** (T8.3, ADR 0171) — http-post pure
      `:limits` checker emitted by kotoba-compiler (`http-post-bounds-v1`);
-     full request/result EDN codec AOT still open (`:wasm-aot :partial`).
+     pure request/result EDN codec AOT complete through W4 0255 (ADR 0256);
+     `:wasm-aot` stays `:partial` solely for host-injected authority (I/O).
   13. **Compiler-AOT numeric bounds re-emit** (T8.3, ADR 0172) — process/
      entropy/git pure bounds via kotoba-compiler (hand WAT remain as reference);
      secret/scoped-fs memory-scan policies still hand-WAT.
@@ -253,7 +254,7 @@
      :kit-name (:kotoba.capability-kit/name kit)
      :kit-version (:kotoba.capability-kit/version kit)
      :package dig
-     :qualification (select-keys q [:reference :wasm-aot :signed-content-addressed-package
+     :qualification (select-keys q [:reference :wasm-aot :codec-aot :signed-content-addressed-package
                                     :dual-runtime-os-transport :host-transports])
      :production-signed-claim?
      false

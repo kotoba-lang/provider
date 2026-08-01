@@ -28,7 +28,8 @@
                  :dual-runtime-os-transport :landed
                  :tooling-cutover :landed
                  :wasm-aot :partial
+                 :codec-aot :implemented
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0170 hand bounds Component + 0172 compiler-AOT one-shot + 0184 multi-step arg walk. Git binary host-injected. Codec AOT open (wasm-aot :partial). ADR 0240/0241 fixed-depth git request/reply EDN package (main -2311). OS git host-injected; ADR 0253 W4 record-typed recursive EDN (main -2503). OS git host-injected; wasm-aot stays :partial."}}
+                 :notes "ADR 0170 hand bounds Component + 0172 compiler-AOT one-shot + 0184 multi-step arg walk. Git binary host-injected. Codec AOT open (wasm-aot :partial). ADR 0240/0241 fixed-depth git request/reply EDN package (main -2311). OS git host-injected; ADR 0253 W4 record-typed recursive EDN (main -2503). OS git host-injected; codec-aot implemented (ADR 0256); host authority keeps wasm-aot :partial."}}
