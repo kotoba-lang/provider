@@ -53,6 +53,16 @@
       ;; readiness gate alone is considered (unsigned receipts still noted elsewhere).
       (is (true? (:production-signed-claim-allowed? rr))))))
 
+
+(deftest readiness-object-deny-fixtures-0272
+  "ADR 0272: object deny-fixtures :ready after pure validate-*."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        object (kit/readiness-for table :object)]
+    (is (= :ready (get-in object [:scores :deny-fixtures])))
+    (is (= :ready (get-in object [:scores :audit])))
+    (is (re-find #"0272" (:kotoba.kit-readiness/summary table)))))
+
 (deftest readiness-ops-audit-ready-after-edn-wire
   "ADR 0269: ops kits with EDN audit wire score audit :ready; entropy stays :n/a."
   (let [table (kit/readiness-table

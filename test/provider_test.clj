@@ -475,3 +475,50 @@
     (is (= :put-block (:operation (first @events))))
     (is (= :ok (:reply-tag (first @events))))
     (is (= :get-stream (:operation (second @events))))))
+
+;; --- ADR 0272: object pure deny fixtures ---
+
+(deftest object-validate-pure-deny-fixtures
+  (let [allowed #{:example/blocks}]
+    (is (nil? (object/validate-get-stream allowed :example/blocks "k")))
+    (is (= :object/binding-not-allowed
+           (object/validate-get-stream allowed :other/ns "k")))
+    (is (= :object/empty-key
+           (object/validate-get-stream allowed :example/blocks "")))
+    (is (= :object/empty-key
+           (object/validate-get-stream allowed :example/blocks "   ")))
+    (is (nil? (object/validate-put-block allowed :example/blocks "sha256:ab"
+                                         (byte-array [1]))))
+    (is (= :object/binding-not-allowed
+           (object/validate-put-block allowed :evil/ns "d" (byte-array [1]))))
+    (is (= :object/empty-digest
+           (object/validate-put-block allowed :example/blocks "" (byte-array [1]))))
+    (is (nil? (object/validate-cas allowed :example/blocks "k" nil "next")))
+    (is (= :object/empty-next-etag
+           (object/validate-cas allowed :example/blocks "k" nil "")))
+    (is (= :object/empty-expected-etag
+           (object/validate-cas allowed :example/blocks "k" "" "next")))))
+
+(deftest object-invoke-deny-codes
+  (let [ps (:providers (object/create-providers
+                        {:allowed-bindings #{:example/blocks}
+                         :transport (fn [_] (byte-array [1]))}))
+        get-p (get ps object/get-stream-capability-id)
+        put-p (get ps object/put-block-capability-id)]
+    (try
+      ((:invoke get-p) [object/get-stream-request-type :nope/x "k"])
+      (is false "expected deny")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :object/binding-not-allowed (:code (ex-data e))))
+        (is (re-find #"denied" (ex-message e)))))
+    (try
+      ((:invoke get-p) [object/get-stream-request-type :example/blocks ""])
+      (is false "expected deny")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :object/empty-key (:code (ex-data e))))))
+    (try
+      ((:invoke put-p)
+       [object/put-block-request-type :example/blocks "" (byte-array [1])])
+      (is false "expected deny")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :object/empty-digest (:code (ex-data e))))))))
