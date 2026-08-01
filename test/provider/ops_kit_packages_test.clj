@@ -2453,6 +2453,27 @@
                "fs_reply_error_rec_kv_edn" "main"]]
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/scoped_fs_record_kv_edn.kotoba")))))
+(deftest http-w4-host-edn-package-registered
+  "T8.3 ADR 0260: W4 record-kv encode + typed-cap-call http/post host surface."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :http-w4-host-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "4f22e626cee06a90610bc9bd1a3a95684a2dee519bd0bc536842b0504ec41113" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["request_rec_kv_edn" "result_ok_rec_kv_edn" "host_post_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_w4_host_edn.kotoba")))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_w4_host_edn.policy.edn")))))
+
+
 
 
 
