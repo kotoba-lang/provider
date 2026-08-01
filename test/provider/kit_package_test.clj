@@ -81,6 +81,29 @@
     (is (= :ready (get-in (kit/readiness-for table :storage) [:scores :audit])))
     (is (re-find #"0271" (:kotoba.kit-readiness/summary table)))))
 
+(deftest readiness-object-storage-signed-wasm-0275
+  "ADR 0275: object/storage signed-wasm :ready + Component packaging gate."
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        pkg (kit/load-wasm-packages-table)
+        object (kit/readiness-for table :object)
+        storage (kit/readiness-for table :storage)
+        o-comp (kit/wasm-package-for pkg :object-digest-len-component)
+        s-comp (kit/wasm-package-for pkg :storage-value-len-component)
+        o-bytes (-> (io/resource (:resource o-comp)) io/input-stream .readAllBytes)
+        s-bytes (-> (io/resource (:resource s-comp)) io/input-stream .readAllBytes)]
+    (is (= :ready (get-in object [:scores :signed-wasm])))
+    (is (= :ready (get-in storage [:scores :signed-wasm])))
+    (is (true? (kit/production-signed-allowed? object)))
+    (is (true? (kit/production-signed-allowed? storage)))
+    (is (true? (kit/ops-network-kit? object)))
+    (is (true? (kit/ops-network-kit? storage)))
+    (is (true? (kit/ops-signed-wasm-ready-allowed? object o-comp o-bytes)))
+    (is (true? (kit/ops-signed-wasm-ready-allowed? storage s-comp s-bytes)))
+    (is (re-find #"0275" (:kotoba.kit-readiness/summary table)))))
+
+
+
 (deftest readiness-covers-t8-critical-kits
   (let [table (kit/readiness-table
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))

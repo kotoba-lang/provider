@@ -31,4 +31,5 @@
    [:error [:record :kotoba.storage/error
              [[:code :keyword] [:message :string] [:retryable :bool]]]]]]
  :qualification {:reference :implemented :wasm-aot :pending
-                 :native-aot :pending :jit :pending}}
+                 :native-aot :pending :jit :pending
+                 :signed-content-addressed-package :ready}}
