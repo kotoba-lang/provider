@@ -43,7 +43,7 @@
               "wasm-packages/http-result-err-edn-v1.component.wasm (ADR 0217 result error arm reject-path)"
               "wasm-packages/http-result-ok-edn-v1.component.wasm (ADR 0218 result ok arm reject-path)"
               "wasm-packages/http-request-edn0-v1.component.wasm (ADR 0219 0-header request EDN reject-path)"
-              "wasm-packages/http-request-edn-reject-v1.component.wasm (ADR 0220 multi-header request EDN reject-path)
+              "wasm-packages/http-request-edn-reject-v1.component.wasm (ADR 0220 multi-header request EDN reject-path)"
               "wasm-packages/http-edn-reject-package-v1.component.wasm (ADR 0221/0222/0226/0227/0230 multi-export reject kit multi-ns + element-bound + names-add)"
               "wasm-packages/http-headers-name-set-v1.wasm (ADR 0223 true set uniqueness via [:set :string])"
               "wasm-packages/http-headers-names-add-v1.component.wasm (ADR 0225 Component twin true-set name list)"
@@ -52,7 +52,8 @@
               "wasm-packages/http-request-set-record-v1.wasm (ADR 0231 pure kit-shaped request set-of-headers)",
               "wasm-packages/http-headers-edn-set-fold-v1.wasm (ADR 0233 full headers EDN typed-set-nth fold)",
               "wasm-packages/http-request-edn-set-record-v1.wasm (ADR 0234 full request EDN kit-shaped set-record)",
-              "wasm-packages/http-result-edn-set-record-v1.wasm (ADR 0235 result-variant EDN kit-shaped set-record)"
+              "wasm-packages/http-result-edn-set-record-v1.wasm (ADR 0235 result-variant EDN kit-shaped set-record)",
+              "wasm-packages/http-kit-edn-package-v1.wasm (ADR 0242 multi-export request+result set-record EDN)"
               "wasm-packages/http-url-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-post-request-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-response-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
@@ -86,10 +87,10 @@
               "wasm-packages/secret-value-len-v1.wasm + .component.wasm (ADR 0175)"
               "wasm-packages/secret-name-char-v1.wasm + .component.wasm (ADR 0176 compiler-AOT char-class)"
               "wasm-packages/secret-name-ok-v1.wasm (ADR 0178 typed-string single-call)"
-              "wasm-packages/secret-name-ok-v1.component.wasm (ADR 0206 pure Component re-emit; denylist charset)
-              "wasm-packages/secret-reply-edn-v1.wasm (ADR 0232 fixed-depth reply value/error EDN)
+              "wasm-packages/secret-name-ok-v1.component.wasm (ADR 0206 pure Component re-emit; denylist charset)"
+              "wasm-packages/secret-reply-edn-v1.wasm (ADR 0232 fixed-depth reply value/error EDN)"
               "wasm-packages/secret-request-edn-v1.wasm (ADR 0236 fixed-depth request EDN)"
-              "wasm-packages/secret-edn-package-v1.wasm (ADR 0237 multi-export request+reply EDN)"""
+              "wasm-packages/secret-edn-package-v1.wasm (ADR 0237 multi-export request+reply EDN)"
               "wasm-packages/secret-name-walk-v1.wasm + .component.wasm (ADR 0179 pure walk)"]
    :note "ADR 0166 hand scan + pure gates 0173/0175/0176 + typed 0178 + walk 0179 + 0206 secret_name_ok pure Component; wasm-aot partial (ADR 0232–0237 fixed-depth request/reply EDN package; W4 recursive / host-fetch kit body open)"}
 

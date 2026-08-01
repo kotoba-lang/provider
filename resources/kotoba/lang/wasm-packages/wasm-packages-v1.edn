@@ -1323,6 +1323,40 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0242: multi-export HTTP kit request+result set-record EDN
+  {:name :http-kit-edn-package
+   :resource "kotoba/lang/wasm-packages/http-kit-edn-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "b3b734ed9dd62cc1eb008cdcd4c00dd0904bdc7a99ef8a1e80c6bc1ceb0732d1"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-kit-edn-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_kit_edn_package.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "4b006d05d714be81a6148ceebab227510f368554"
+            :note "ADR 0242 multi-export HTTP kit request+result set-record EDN; main → -9242; W4/wasm-aot open"}
+   :exports {"http_req_begin" {:params [:externref :externref :i64] :result :externref}
+             "http_req_add_header" {:params [:externref :externref :externref] :result :externref}
+             "http_req_code" {:params [:externref] :result :i64}
+             "http_req_count" {:params [:externref] :result :i64}
+             "http_req_edn" {:params [:externref] :result :externref}
+             "http_res_ok_begin" {:params [:i64 :externref] :result :externref}
+             "http_res_ok_add_header" {:params [:externref :externref :externref] :result :externref}
+             "http_res_ok_code" {:params [:externref] :result :i64}
+             "http_res_ok_count" {:params [:externref] :result :i64}
+             "http_res_ok_edn" {:params [:externref] :result :externref}
+             "http_res_err_edn" {:params [:externref :externref :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + set + record + set-nth"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
 
   {:name :http-response-ok
    :resource "kotoba/lang/wasm-packages/http-response-ok-v1.wasm"
