@@ -1,4 +1,4 @@
-# ADR 0245: T8.3 / W4 first ops slice — recursive nested EDN ADT for headers
+# ADR 0246: T8.3 / W4 first ops slice — recursive nested EDN ADT for headers
 
 - Status: Accepted
 - Date: 2026-08-01

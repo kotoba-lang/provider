@@ -2249,7 +2249,7 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_edn_package.kotoba")))))
 
 (deftest recursive-headers-edn-package-registered
-  "T8.3 ADR 0245: W4 recursive nested EDN ADT for header lists."
+  "T8.3 ADR 0246: W4 recursive nested EDN ADT for header lists."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -2266,4 +2266,25 @@
     (doseq [e ["edn_atom" "edn_pair" "edn_print" "headers_list_edn" "main"]]
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_headers_edn.kotoba")))))
+
+
+(deftest secret-request-edn-component-registered
+  "T8.3 ADR 0245: Component twin of secret_request_edn (Canonical dual scan)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        comp (get by-name :secret-request-edn-component)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? comp))
+    (is (= :wasm-component (:artifact-kind comp)))
+    (is (= :kotoba-component/secret-request-edn
+           (get-in comp [:source :component-lowering])))
+    (is (= "906d9032be23ca17b1630126d6a3f2ce51da6ef7bd39e237dfaa247636836a54"
+           (:sha256 comp)
+           (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
+    (is (contains? (:exports comp) "secret-request-edn"))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_request_edn_component.kotoba")))))
 

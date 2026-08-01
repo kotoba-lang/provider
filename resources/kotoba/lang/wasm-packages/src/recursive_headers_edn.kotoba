@@ -1,5 +1,5 @@
 (ns kotoba.edn.recursive-headers
-  ;; T8.3 / W4 first ops slice ADR 0245: recursive nested EDN ADT for
+  ;; T8.3 / W4 first ops slice ADR 0246: recursive nested EDN ADT for
   ;; header-list identity. Binary tree of EDN atoms (header maps) with
   ;; recursive guest print. Dual quote/backslash reject on name/value.
   ;; Does NOT alone flip wasm-aot :implemented (full kit request/result
