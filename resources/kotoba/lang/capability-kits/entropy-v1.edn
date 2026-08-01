@@ -25,4 +25,4 @@
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0167 hand pure draw-size Component + ADR 0172 compiler-AOT entropy-draw-bounds-v1 (kotoba-compiler). CSPRNG host-injected. ADR 0244 fixed-depth entropy request/reply EDN package (main -2315). CSPRNG host-injected; W4/wasm-aot open."}}
+                 :notes "ADR 0167 hand pure draw-size Component + ADR 0172 compiler-AOT entropy-draw-bounds-v1 (kotoba-compiler). CSPRNG host-injected. ADR 0244 fixed-depth entropy request/reply EDN package (main -2315). ADR 0253 W4 record-typed recursive EDN request+reply (main -2503). CSPRNG host-injected; wasm-aot open."}}

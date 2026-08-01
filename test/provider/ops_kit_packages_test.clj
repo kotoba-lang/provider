@@ -2390,6 +2390,28 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_record_kv_edn.kotoba")))))
 
+(deftest entropy-record-kv-edn-package-registered
+  "T8.3 ADR 0253: entropy kit W4 record-typed recursive EDN request+reply."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :entropy-record-kv-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "2515611078d4c0cae16e525ad4810b5ba51f110e5435745932737d315778591f" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
+               "entropy_req_rec_kv_edn" "entropy_reply_hex_rec_kv_edn"
+               "entropy_reply_error_rec_kv_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_record_kv_edn.kotoba")))))
+
+
 
 
 

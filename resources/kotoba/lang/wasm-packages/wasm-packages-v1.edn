@@ -437,6 +437,36 @@
    :signed-content-addressed-package :pending}
 
   ;; T8.3 ADR 0246: W4 recursive nested EDN ADT for header lists (first ops slice)
+  ;; T8.3 ADR 0253: entropy kit W4 record-typed recursive EDN request+reply
+  {:name :entropy-record-kv-edn
+   :resource "kotoba/lang/wasm-packages/entropy-record-kv-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "2515611078d4c0cae16e525ad4810b5ba51f110e5435745932737d315778591f"
+   :class :ops-entropy
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-record-kv-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/entropy_record_kv_edn.kotoba"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "9da7a60"
+            :note "ADR 0253 entropy W4 record-typed recursive EDN; main → -2503; CSPRNG host-injected; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_entry" {:params [:externref :externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "entropy_req_rec_kv_edn" {:params [:i64] :result :externref}
+             "entropy_reply_hex_rec_kv_edn" {:params [:externref] :result :externref}
+             "entropy_reply_error_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant + record surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :recursive-headers-edn
    :resource "kotoba/lang/wasm-packages/recursive-headers-edn-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
