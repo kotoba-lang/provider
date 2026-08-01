@@ -132,7 +132,7 @@
               "wasm-packages/fs-path-ok-v1.component.wasm (ADR 0207 pure Component re-emit; path state machine)"
               "wasm-packages/fs-path-walk-v1.wasm + .component.wasm (ADR 0181 multi-step walk)"
               "wasm-packages/scoped-fs-edn-package-v1.wasm (ADR 0243 scoped-fs request/reply EDN)"]
-   :note "ADR 0169 hand + 0174/0175/0177 gates + 0180 typed-string + 0181 multi-step walk + 0207 fs_path_ok pure Component + 0242/0243 fixed-depth EDN package; host store; wasm-aot partial (W4 open)"}
+   :note "ADR 0169 hand + 0174/0175/0177 gates + 0180 typed-string + 0181 multi-step walk + 0207 fs_path_ok pure Component + 0243 fixed-depth EDN package; host store; wasm-aot partial (W4 open)"}
 
   {:name :git
    :id 22
