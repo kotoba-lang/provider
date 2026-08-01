@@ -2369,6 +2369,28 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_record_kv_edn.kotoba")))))
 
+(deftest process-record-kv-edn-package-registered
+  "T8.3 ADR 0252: process kit W4 record-typed recursive EDN request+reply."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :process-record-kv-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "a4d3cd960584b80f52150e4b4232698e886f5da3413a7d425ca4af37327768e7" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
+               "process_req_rec_kv_edn" "process_reply_ok_rec_kv_edn"
+               "process_reply_error_rec_kv_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_record_kv_edn.kotoba")))))
+
+
 
 
 (deftest secret-request-edn-component-registered
