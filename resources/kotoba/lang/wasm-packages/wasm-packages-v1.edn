@@ -461,6 +461,36 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0248: W4 true nested pair(k,v) map spine (≤3 fields)
+  {:name :recursive-kv-edn
+   :resource "kotoba/lang/wasm-packages/recursive-kv-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "540e939d4838ce3d89669f4839da6ac64194961502cb9b6435478f35506f1861"
+   :class :ops-http
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/recursive-kv-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/recursive_kv_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "ab504901"
+            :note "ADR 0248 W4 true-kv pair(k,v) maps ≤3 fields under ADT depth 8; main → -2403; nested records in variants + host I/O open; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "header_kv_edn" {:params [:externref :externref] :result :externref}
+             "headers_list_edn" {:params [:externref :externref :externref :externref] :result :externref}
+             "request_kv_edn" {:params [:externref :externref :externref] :result :externref}
+             "result_ok_kv_edn" {:params [:i64 :externref] :result :externref}
+             "result_err_kv_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
