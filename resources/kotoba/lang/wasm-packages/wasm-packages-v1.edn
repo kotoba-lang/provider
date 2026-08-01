@@ -612,6 +612,35 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0253: git kit W4 record-kv request/reply EDN
+  {:name :git-record-kv-edn
+   :resource "kotoba/lang/wasm-packages/git-record-kv-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "9fded0b63676f4fc51b377e4796a34702886c4836b01b83e9b75bdd1cd310cfc"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/git-record-kv-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/git_record_kv_edn.kotoba"
+            :capability-id "git/run"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "9da7a60"
+            :note "ADR 0253 git W4 record-typed recursive EDN; main → -2503; OS git host-injected; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_entry" {:params [:externref :externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "git_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
+             "git_reply_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
+             "git_reply_error_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant + record surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
