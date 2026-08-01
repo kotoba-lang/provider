@@ -2267,6 +2267,26 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_headers_edn.kotoba")))))
 
+(deftest recursive-http-edn-package-registered
+  "T8.3 ADR 0247: W4 recursive HTTP request/result EDN ADT."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :recursive-http-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "d2a07804f5cd798d2b8e7342ea8a345648964e8fc4131bd8ce656fdefd9627cd" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_pair" "edn_print" "headers_list_edn"
+               "request_tree_edn" "result_ok_tree_edn" "result_err_tree_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_http_edn.kotoba")))))
+
 
 (deftest secret-request-edn-component-registered
   "T8.3 ADR 0245: Component twin of secret_request_edn (Canonical dual scan)."
