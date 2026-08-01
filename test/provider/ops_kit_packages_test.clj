@@ -2390,6 +2390,28 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_record_kv_edn.kotoba")))))
 
+(deftest git-record-kv-edn-package-registered
+  "T8.3 ADR 0253: git kit W4 record-kv request/reply EDN."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :git-record-kv-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "9fded0b63676f4fc51b377e4796a34702886c4836b01b83e9b75bdd1cd310cfc" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
+               "git_req_rec_kv_edn" "git_reply_ok_rec_kv_edn"
+               "git_reply_error_rec_kv_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_record_kv_edn.kotoba")))))
+
+
 
 
 
