@@ -2411,6 +2411,50 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_record_kv_edn.kotoba")))))
 
+(deftest entropy-record-kv-edn-package-registered
+  "T8.3 ADR 0254: entropy kit W4 record-kv request/reply EDN."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :entropy-record-kv-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "236703ad7afd8a0014c253b211974b3d9326e9d5ef12351c216e3666079c0c7e" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
+               "entropy_req_rec_kv_edn" "entropy_reply_hex_rec_kv_edn"
+               "entropy_reply_error_rec_kv_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_record_kv_edn.kotoba")))))
+
+(deftest scoped-fs-record-kv-edn-package-registered
+  "T8.3 ADR 0255: scoped-fs kit W4 record-kv request/reply EDN."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :scoped-fs-record-kv-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "9121592edd3d771066afaff6302add43d33635fc922f691ce6cabc9e2ef2faaa" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
+               "fs_req_read_rec_kv_edn" "fs_req_write_rec_kv_edn"
+               "fs_reply_content_rec_kv_edn" "fs_reply_written_rec_kv_edn"
+               "fs_reply_error_rec_kv_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/scoped_fs_record_kv_edn.kotoba")))))
+
+
 
 
 
