@@ -8,8 +8,8 @@
   runs pure guest codecs so hosts can audit kit request/reply shapes without
   reimplementing EDN encode in Clojure.
 
-  ADR 0257: secret/http audit wraps. ADR 0258: process/git/entropy/scoped-fs
-  helpers + audit wraps; HTTP wrap also attaches reply EDN.
+  ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
+  factories; ADR 0262 live host_post inject via typedCapCall.
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
@@ -66,12 +66,35 @@
     :else (throw (ex-info "unsupported edn-codec arg type"
                           {:phase :edn-codec :arg a}))))
 
-(defn invoke-export
-  "Invoke `export` on registry package `:name` with args (strings/i64).
+(defn- host-options-js
+  "Emit instantiateKotoba options object (allowCapabilities + typedCapCall).
 
-  Returns `{:ok true :value string-or-long}` or
-  `{:ok false :reason keyword :detail string}`."
-  [package-name export args]
+  inject-mode:
+    nil      — no capability inject (pure exports only)
+    :echo    — typedCapCall returns the request string (prove cap path)
+    :ok-200  — typedCapCall returns fixed ok EDN arm
+  allow-capabilities — seq of integer cap ids (e.g. [4] for http/post)."
+  [{:keys [allow-capabilities inject-mode]}]
+  (if (and (nil? inject-mode) (empty? allow-capabilities))
+    "{}"
+    (let [allow (or allow-capabilities [])
+          allow-js (str "[" (str/join "," (map str allow)) "]")
+          inject-js (case inject-mode
+                      :echo "typedCapCall(id,request){if(id===4)return request;throw new Error('unimpl '+id);}"
+                      :ok-200 (str "typedCapCall(id,request){if(id===4)return "
+                                   (js-quote "{:tag :ok :status 200 :body \"injected\"}")
+                                   ";throw new Error('unimpl '+id);}")
+                      nil nil
+                      (throw (ex-info "unknown inject-mode"
+                                      {:phase :edn-codec :inject-mode inject-mode})))]
+      (str "{"
+           "allowCapabilities:" allow-js
+           (when inject-js (str "," inject-js))
+           "}"))))
+
+(defn- invoke-export*
+  "Internal: invoke export with optional host capability inject (ADR 0262)."
+  [package-name export args host-opts]
   (let [host (browser-host-path)
         table (kit/load-wasm-packages-table)
         entry (kit/wasm-package-for table package-name)]
@@ -87,12 +110,13 @@
         (let [wasm (resource-file (:resource entry))
               call (str "h.instance.exports[" (js-quote (name export)) "]("
                         (str/join "," (map encode-arg args)) ")")
+              opts-js (host-options-js host-opts)
               script (str "import { readFileSync } from 'fs';"
                           "import { instantiateKotoba } from "
                           (pr-str (str "file://" host))
                           ";"
                           "const h=await instantiateKotoba(readFileSync("
-                          (pr-str wasm) "));"
+                          (pr-str wasm) ")," opts-js ");"
                           "const v=" call ";"
                           "if(typeof v==='bigint'){console.log(JSON.stringify({t:'i64',v:v.toString()}));}"
                           "else if(typeof v==='string'){console.log(JSON.stringify({t:'s',v:v}));}"
@@ -104,7 +128,10 @@
               code (.waitFor p)]
           (if (zero? code)
             (let [line (str/trim out)
-                  parsed (json/read-str line)]
+                  ;; last JSON line only (cap debug may print earlier)
+                  lines (str/split-lines line)
+                  json-line (or (last (filter #(str/starts-with? % "{") lines)) line)
+                  parsed (json/read-str json-line)]
               (case (get parsed "t")
                 "s" {:ok true :value (get parsed "v")}
                 "i64" {:ok true :value (Long/parseLong (get parsed "v"))}
@@ -112,6 +139,14 @@
             {:ok false :reason :node-exit :detail out :code code}))
         (catch Exception e
           {:ok false :reason :exception :detail (ex-message e)})))))
+
+(defn invoke-export
+  "Invoke `export` on registry package `:name` with args (strings/i64).
+
+  Returns `{:ok true :value string-or-long}` or
+  `{:ok false :reason keyword :detail string}`."
+  [package-name export args]
+  (invoke-export* package-name export args {}))
 
 ;; High-level pure codec helpers (no host I/O)
 
@@ -578,3 +613,30 @@
    (let [on-call (:on-call opts (fn [_]))
          base (entropy-t/os-draw (dissoc opts :on-call))]
      (wrap-entropy-draw base on-call))))
+
+;; --- ADR 0262: live guest host_post_edn with typedCapCall inject ---
+
+(defn http-w4-host-post-edn
+  "Invoke guest `host_post_edn` (ADR 0260) with browser-host capability inject.
+
+  Builds W4 request EDN in-guest then calls typed-cap-call :http/post (id 4).
+  `inject-mode`:
+    :echo   — host returns the request EDN string (cap path proof)
+    :ok-200 — host returns fixed `{:tag :ok :status 200 :body \"injected\"}`
+
+  Does not perform network itself — inject is the host authority boundary.
+  Does not flip wasm-aot :implemented."
+  ([url body timeout-ms headers-edn]
+   (http-w4-host-post-edn url body timeout-ms headers-edn :echo))
+  ([url body timeout-ms headers-edn inject-mode]
+   (invoke-export* :http-w4-host-edn :host_post_edn
+                   [(str url) (str body) (long timeout-ms) (str headers-edn)]
+                   {:allow-capabilities [4]
+                    :inject-mode inject-mode})))
+
+(defn http-w4-host-post-denied
+  "Prove deny-by-default: host_post without allowCapabilities fails closed."
+  [url body timeout-ms headers-edn]
+  (invoke-export* :http-w4-host-edn :host_post_edn
+                  [(str url) (str body) (long timeout-ms) (str headers-edn)]
+                  {}))
