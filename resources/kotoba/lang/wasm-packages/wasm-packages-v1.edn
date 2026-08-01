@@ -327,6 +327,36 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0240/0241: git kit fixed-depth EDN request+reply package
+  {:name :git-edn-package
+   :resource "kotoba/lang/wasm-packages/git-edn-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "98eaaa12bf2a92829d463add4d4e98a48d8fa6ba0c8129de0f5a5e6519885cc2"
+   :class :ops-git
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/git-edn-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/git_edn_package.kotoba"
+            :capability-id "git/run"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "4b006d05"
+            :note "ADR 0240/0241 git args fold + reply ok/err EDN; main → -2311; OS git host; W4/wasm-aot open"}
+   :exports {"git_req_begin" {:params [] :result :externref}
+             "git_req_arg" {:params [:externref :externref] :result :externref}
+             "git_req_code" {:params [:externref] :result :i64}
+             "git_req_argc" {:params [:externref] :result :i64}
+             "git_req_edn" {:params [:externref :i64 :i64] :result :externref}
+             "git_reply_ok_edn" {:params [:i64 :externref :externref] :result :externref}
+             "git_reply_error_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + record surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"

@@ -144,10 +144,11 @@
             :package :ready
             :signed-wasm :ready}
    :evidence ["git-v1.edn" "provider#29+#31+#32"
-              "wasm-packages/git-run-v1.wasm + .component.wasm (ADR 0170)"
+              "wasm-packages/git-run-v1.wasm + .component.wasm (ADR 0170)",
+              "wasm-packages/git-edn-package-v1.wasm (ADR 0240/0241 git request/reply EDN)"
               "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"
               "wasm-packages/git-run-walk-v1.wasm + .component.wasm (ADR 0184)"]
-   :note "ADR 0170 Component + 0172 one-shot + 0184 multi-step walk; git binary host-injected; wasm-aot partial"}
+   :note "ADR 0170 Component + 0172 one-shot + 0184 multi-step walk + 0240/0241 fixed-depth EDN package; git binary host-injected; wasm-aot partial (W4 open)"}
 
   {:name :entropy
    :id 23
