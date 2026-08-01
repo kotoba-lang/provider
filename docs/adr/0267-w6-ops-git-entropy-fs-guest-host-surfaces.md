@@ -20,7 +20,7 @@ needed the same encode + typed-cap-call inject pattern.
 2. edn-codec inject helpers (echo / primary-cap-id).
 3. Completes ops-kit guest host surface plane (HTTP/secret/process/git/entropy/fs).
 4. Does **not** flip `:wasm-aot :implemented`. Named catalog registration for
-   wire ids 19–23 remains a kotoba-lang authority follow-up.
+   wire ids 19–23 **landed** (kotoba-lang#358 + compiler#470 / ADR 0198).
 
 ## Evidence
 
