@@ -9,7 +9,8 @@
   reimplementing EDN encode in Clojure.
 
   ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
-  factories; ADR 0262 live host_post inject; ADR 0263 W4 round-trip via host transport.
+  factories; ADR 0262 live host_post inject; ADR 0263 HTTP W4 round-trip;
+  ADR 0264 remaining ops W4 round-trips (secret/process/git/entropy/fs).
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
@@ -740,3 +741,268 @@
         transport (http-t/production-transport
                    (assoc (dissoc opts :on-call) :on-call (fn [_])))]
     (http-w4-roundtrip url headers body timeout-ms transport on-call)))
+
+;; --- ADR 0264: remaining ops-kit W4 round-trips (guest encode + host + guest reply) ---
+
+(defn secret-w4-roundtrip
+  "Guest pure secret request EDN + host fetch + guest pure reply EDN.
+
+  `fetch` is `(fn [{:keys [name]}] -> {:tag :value/:error ...})`.
+  Returns `{:ok true :request-edn s :reply-edn s :result reply}` or codec failure.
+  Does not flip wasm-aot — secret authority remains host-injected."
+  ([name fetch]
+   (secret-w4-roundtrip name fetch (fn [_])))
+  ([name fetch on-call]
+   (when-not (fn? fetch)
+     (throw (ex-info "secret-w4-roundtrip requires a fetch fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "secret-w4-roundtrip requires an on-call fn"
+                     {:phase :edn-codec})))
+   (let [req-r (secret-request-edn (str name))
+         req-edn (codec-value req-r)
+         started (System/currentTimeMillis)
+         reply (fetch {:name (str name)})
+         reply-r (case (:tag reply)
+                   :value (secret-reply-value-edn (str (:value reply)))
+                   :error (secret-reply-error-edn
+                           (keyword-code (:code reply))
+                           (str (or (:message reply) "")))
+                   {:ok false})
+         reply-edn (codec-value reply-r)
+         event {:kit :secret
+                :op :w4-roundtrip
+                :name name
+                :request-edn req-edn
+                :reply-edn reply-edn
+                :reply-tag (:tag reply)
+                :latency-ms (- (System/currentTimeMillis) started)}]
+     (try (on-call event) (catch Exception _))
+     (if (and req-edn reply-edn)
+       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+       {:ok false
+        :reason :codec-failed
+        :request-codec req-r
+        :reply-codec reply-r
+        :result reply}))))
+
+(defn secret-w4-roundtrip-with-map
+  "secret-w4-roundtrip over map-fetch (test/prod named map). Optional on-call."
+  ([m name] (secret-w4-roundtrip-with-map m name (fn [_])))
+  ([m name on-call]
+   (secret-w4-roundtrip name (secret-t/map-fetch m) on-call)))
+
+(defn process-w4-roundtrip
+  "Guest pure process request EDN + host spawn + guest pure reply EDN.
+
+  `spawn` is `(fn [{:keys [argv max-stdout-bytes timeout-ms]}] ->
+  {:tag :ok/:error ...})`. Does not flip wasm-aot."
+  ([argv max-stdout-bytes timeout-ms spawn]
+   (process-w4-roundtrip argv max-stdout-bytes timeout-ms spawn (fn [_])))
+  ([argv max-stdout-bytes timeout-ms spawn on-call]
+   (when-not (fn? spawn)
+     (throw (ex-info "process-w4-roundtrip requires a spawn fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "process-w4-roundtrip requires an on-call fn"
+                     {:phase :edn-codec})))
+   (let [argv-edn (cond
+                    (string? argv) argv
+                    (sequential? argv)
+                    (str "[" (str/join " " (map #(str "\"" % "\"") argv)) "]")
+                    :else "[]")
+         req-r (process-request-edn argv-edn
+                                    (long (or max-stdout-bytes 4096))
+                                    (long (or timeout-ms 5000)))
+         req-edn (codec-value req-r)
+         started (System/currentTimeMillis)
+         reply (spawn {:argv argv
+                       :max-stdout-bytes (long (or max-stdout-bytes 4096))
+                       :timeout-ms (long (or timeout-ms 5000))})
+         reply-r (case (:tag reply)
+                   :ok (process-reply-ok-edn (long (or (:exit reply) 0))
+                                             (str (or (:stdout reply) ""))
+                                             (str (or (:stderr reply) "")))
+                   :error (process-reply-error-edn
+                           (keyword-code (:code reply))
+                           (str (or (:message reply) "")))
+                   {:ok false})
+         reply-edn (codec-value reply-r)
+         event {:kit :process
+                :op :w4-roundtrip
+                :request-edn req-edn
+                :reply-edn reply-edn
+                :reply-tag (:tag reply)
+                :latency-ms (- (System/currentTimeMillis) started)}]
+     (try (on-call event) (catch Exception _))
+     (if (and req-edn reply-edn)
+       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+       {:ok false
+        :reason :codec-failed
+        :request-codec req-r
+        :reply-codec reply-r
+        :result reply}))))
+
+(defn process-w4-roundtrip-echo
+  "process-w4-roundtrip with process/echo-transport (no OS spawn)."
+  ([argv] (process-w4-roundtrip-echo argv (fn [_])))
+  ([argv on-call]
+   (process-w4-roundtrip argv 4096 5000 (process/echo-transport) on-call)))
+
+(defn git-w4-roundtrip
+  "Guest pure git request EDN + host run + guest pure reply EDN.
+  `run` is `(fn [{:keys [args max-stdout-bytes timeout-ms]}] -> reply)`.
+  Does not flip wasm-aot."
+  ([args max-stdout-bytes timeout-ms run]
+   (git-w4-roundtrip args max-stdout-bytes timeout-ms run (fn [_])))
+  ([args max-stdout-bytes timeout-ms run on-call]
+   (when-not (fn? run)
+     (throw (ex-info "git-w4-roundtrip requires a run fn" {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "git-w4-roundtrip requires an on-call fn" {:phase :edn-codec})))
+   (let [args-edn (cond
+                    (string? args) args
+                    (sequential? args)
+                    (str "[" (str/join " " (map #(str "\"" % "\"") args)) "]")
+                    :else "[]")
+         req-r (git-request-edn args-edn
+                                (long (or max-stdout-bytes 4096))
+                                (long (or timeout-ms 5000)))
+         req-edn (codec-value req-r)
+         started (System/currentTimeMillis)
+         reply (run {:args args
+                     :max-stdout-bytes (long (or max-stdout-bytes 4096))
+                     :timeout-ms (long (or timeout-ms 5000))})
+         reply-r (case (:tag reply)
+                   :ok (git-reply-ok-edn (long (or (:exit reply) 0))
+                                         (str (or (:stdout reply) ""))
+                                         (str (or (:stderr reply) "")))
+                   :error (git-reply-error-edn
+                           (keyword-code (:code reply))
+                           (str (or (:message reply) "")))
+                   {:ok false})
+         reply-edn (codec-value reply-r)
+         event {:kit :git
+                :op :w4-roundtrip
+                :request-edn req-edn
+                :reply-edn reply-edn
+                :reply-tag (:tag reply)
+                :latency-ms (- (System/currentTimeMillis) started)}]
+     (try (on-call event) (catch Exception _))
+     (if (and req-edn reply-edn)
+       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+       {:ok false
+        :reason :codec-failed
+        :request-codec req-r
+        :reply-codec reply-r
+        :result reply}))))
+
+(defn git-w4-roundtrip-echo
+  "git-w4-roundtrip with git/echo-transport (no OS git)."
+  ([args] (git-w4-roundtrip-echo args (fn [_])))
+  ([args on-call]
+   (git-w4-roundtrip args 8192 30000 (git/echo-transport) on-call)))
+
+(defn entropy-w4-roundtrip
+  "Guest pure entropy request EDN + host draw + guest pure hex/error reply EDN.
+
+  `draw` is `(fn [{:keys [n]}] -> {:tag :bytes/:hex/:error ...})`.
+  Bytes replies are hex-encoded for pure W4 reply arm (audit-only conversion).
+  Does not flip wasm-aot — CSPRNG remains host-injected."
+  ([n draw]
+   (entropy-w4-roundtrip n draw (fn [_])))
+  ([n draw on-call]
+   (when-not (fn? draw)
+     (throw (ex-info "entropy-w4-roundtrip requires a draw fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "entropy-w4-roundtrip requires an on-call fn"
+                     {:phase :edn-codec})))
+   (let [req-r (entropy-request-edn (long n))
+         req-edn (codec-value req-r)
+         started (System/currentTimeMillis)
+         reply (draw {:n (long n)})
+         reply-r (case (:tag reply)
+                   :hex (entropy-reply-hex-edn (str (:hex reply)))
+                   :bytes (let [hx (bytes->hex (:bytes reply))]
+                            (if hx
+                              (entropy-reply-hex-edn hx)
+                              {:ok false}))
+                   :error (entropy-reply-error-edn
+                           (keyword-code (:code reply))
+                           (str (or (:message reply) "")))
+                   {:ok false})
+         reply-edn (codec-value reply-r)
+         event {:kit :entropy
+                :op :w4-roundtrip
+                :n n
+                :request-edn req-edn
+                :reply-edn reply-edn
+                :reply-tag (:tag reply)
+                :latency-ms (- (System/currentTimeMillis) started)}]
+     (try (on-call event) (catch Exception _))
+     (if (and req-edn reply-edn)
+       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+       {:ok false
+        :reason :codec-failed
+        :request-codec req-r
+        :reply-codec reply-r
+        :result reply}))))
+
+(defn entropy-w4-roundtrip-mem
+  "entropy-w4-roundtrip with mem-draw seed (no CSPRNG)."
+  ([seed-bytes n] (entropy-w4-roundtrip-mem seed-bytes n (fn [_])))
+  ([seed-bytes n on-call]
+   (entropy-w4-roundtrip n (entropy-t/mem-draw seed-bytes) on-call)))
+
+(defn scoped-fs-w4-roundtrip
+  "Guest pure fs request EDN + host tx + guest pure reply EDN.
+
+  `tx` is `(fn [{:keys [op root path value]}] ->
+  {:tag :content/:written/:error ...})`. Does not flip wasm-aot."
+  ([op root path value tx]
+   (scoped-fs-w4-roundtrip op root path value tx (fn [_])))
+  ([op root path value tx on-call]
+   (when-not (fn? tx)
+     (throw (ex-info "scoped-fs-w4-roundtrip requires a tx fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "scoped-fs-w4-roundtrip requires an on-call fn"
+                     {:phase :edn-codec})))
+   (let [req-r (case op
+                 :read (fs-req-read-edn root path)
+                 :write (fs-req-write-edn root path (str (or value "")))
+                 {:ok false})
+         req-edn (codec-value req-r)
+         started (System/currentTimeMillis)
+         reply (tx {:op op :root root :path path :value value})
+         reply-r (case (:tag reply)
+                   :content (fs-reply-content-edn
+                             (str (or (:value reply) (:content reply) "")))
+                   :written (fs-reply-written-edn
+                             (if (or (true? (:written reply))
+                                     (= 1 (:written reply))
+                                     (nil? (:written reply)))
+                               1 0))
+                   :error (fs-reply-error-edn
+                           (keyword-code (:code reply))
+                           (str (or (:message reply) "")))
+                   {:ok false})
+         reply-edn (codec-value reply-r)
+         event {:kit :scoped-fs
+                :op :w4-roundtrip
+                :fs-op op
+                :root root
+                :path path
+                :request-edn req-edn
+                :reply-edn reply-edn
+                :reply-tag (:tag reply)
+                :latency-ms (- (System/currentTimeMillis) started)}]
+     (try (on-call event) (catch Exception _))
+     (if (and req-edn reply-edn)
+       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+       {:ok false
+        :reason :codec-failed
+        :request-codec req-r
+        :reply-codec reply-r
+        :result reply}))))
