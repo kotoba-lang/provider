@@ -722,6 +722,79 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+
+  {:name :git-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/git-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "28f4dbc09f838339b7f9aa82e6e1fd48bb3c4d8aeeb2590a5d37420c81069e98"
+   :class :ops-git
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/git-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/git_w4_host_edn.kotoba"
+            :policy "resources/kotoba/lang/wasm-packages/src/git_w4_host_edn.policy.edn"
+            :capability-id "git/run"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "ADR 0267 guest W4 git encode + typed-cap-call wire 22; main pure → -2509; host inject required for host_run_edn; wasm-aot still partial"}
+   :exports {"git_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
+             "git_reply_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
+             "host_run_edn" {:params [:externref :i64 :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + recursive variant + record + cap 22"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :entropy-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/entropy-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "2e01016331e71c79be98db88293ef1b658060b5d0621c77e070ffcac877e0bac"
+   :class :ops-entropy
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/entropy_w4_host_edn.kotoba"
+            :policy "resources/kotoba/lang/wasm-packages/src/entropy_w4_host_edn.policy.edn"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "ADR 0267 guest W4 entropy encode + typed-cap-call wire 23; main pure → -2510; host inject required for host_draw_edn; wasm-aot still partial"}
+   :exports {"entropy_req_rec_kv_edn" {:params [:i64] :result :externref}
+             "entropy_reply_hex_rec_kv_edn" {:params [:externref] :result :externref}
+             "host_draw_edn" {:params [:i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + recursive variant + record + cap 23"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :scoped-fs-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/scoped-fs-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "2c9f2deca4a20d8435d7174336899c0568236575e0d4eb3b1719778ca1aace43"
+   :class :ops-scoped-fs
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/scoped-fs-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.kotoba"
+            :policy "resources/kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.policy.edn"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :note "ADR 0267 guest W4 fs read encode + typed-cap-call wire 19; main pure → -2511; host inject required for host_read_edn; wasm-aot still partial"}
+   :exports {"fs_req_read_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "fs_reply_content_rec_kv_edn" {:params [:externref] :result :externref}
+             "host_read_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + recursive variant + record + cap 19"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :git-record-kv-edn
    :resource "kotoba/lang/wasm-packages/git-record-kv-edn-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"

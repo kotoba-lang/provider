@@ -2513,6 +2513,58 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_w4_host_edn.kotoba")))))
 
+(deftest git-w4-host-edn-package-registered
+  "T8.3 ADR 0267: git W4 host_run_edn package (cap 22)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :git-w4-host-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= "28f4dbc09f838339b7f9aa82e6e1fd48bb3c4d8aeeb2590a5d37420c81069e98" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["git_req_rec_kv_edn" "host_run_edn" "main"]]
+      (is (contains? (:exports mod) e)))))
+
+(deftest entropy-w4-host-edn-package-registered
+  "T8.3 ADR 0267: entropy W4 host_draw_edn package (cap 23)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :entropy-w4-host-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= "2e01016331e71c79be98db88293ef1b658060b5d0621c77e070ffcac877e0bac" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["entropy_req_rec_kv_edn" "host_draw_edn" "main"]]
+      (is (contains? (:exports mod) e)))))
+
+(deftest scoped-fs-w4-host-edn-package-registered
+  "T8.3 ADR 0267: scoped-fs W4 host_read_edn package (cap 19)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :scoped-fs-w4-host-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= "2c9f2deca4a20d8435d7174336899c0568236575e0d4eb3b1719778ca1aace43" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["fs_req_read_rec_kv_edn" "host_read_edn" "main"]]
+      (is (contains? (:exports mod) e)))))
+
+
 
 
 

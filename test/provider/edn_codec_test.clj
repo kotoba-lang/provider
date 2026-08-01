@@ -509,3 +509,83 @@
       (do
         (is (false? (:ok r)) (pr-str r))
         (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
+(deftest git-w4-host-run-echo-inject-optional
+  "ADR 0267: guest host_run_edn + :echo."
+  (let [r (codec/git-w4-host-run-edn "[\"status\" \"--short\"]" 8192 30000 :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":args"))
+        (is (str/includes? (:value r) "status"))
+        (is (str/includes? (:value r) "30000"))))))
+
+(deftest git-w4-host-run-ok-inject-optional
+  (let [r (codec/git-w4-host-run-edn "[\"status\"]" 8192 30000 :git-ok)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":ok"))
+        (is (str/includes? (:value r) "stdout"))))))
+
+(deftest git-w4-host-run-denied-optional
+  (let [r (codec/git-w4-host-run-denied "[\"status\"]" 8192 30000)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
+(deftest entropy-w4-host-draw-echo-inject-optional
+  (let [r (codec/entropy-w4-host-draw-edn 16 :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":n"))
+        (is (str/includes? (:value r) "16"))))))
+
+(deftest entropy-w4-host-draw-hex-inject-optional
+  (let [r (codec/entropy-w4-host-draw-edn 8 :entropy-hex)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":hex"))
+        (is (str/includes? (:value r) "deadbeef"))))))
+
+(deftest entropy-w4-host-draw-denied-optional
+  (let [r (codec/entropy-w4-host-draw-denied 16)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
+(deftest scoped-fs-w4-host-read-echo-inject-optional
+  (let [r (codec/scoped-fs-w4-host-read-edn "workspace" "docs/a.txt" :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":read"))
+        (is (str/includes? (:value r) "docs/a.txt"))))))
+
+(deftest scoped-fs-w4-host-read-content-inject-optional
+  (let [r (codec/scoped-fs-w4-host-read-edn "workspace" "docs/a.txt" :fs-content)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":content"))
+        (is (str/includes? (:value r) "hello"))))))
+
+(deftest scoped-fs-w4-host-read-denied-optional
+  (let [r (codec/scoped-fs-w4-host-read-denied "workspace" "docs/a.txt")]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))

@@ -1,0 +1,163 @@
+(ns kotoba.scoped-fs.w4-host-edn
+  ;; T8.3 ADR 0267: guest W4 scoped-fs read encode + typed-cap-call wire id 19
+  ;; (provider fs/transact). Main pure → -2511. Host injects cap 19 for host_read_edn.
+  (:schemas {:edn/kv [:record :edn/kv [[:k :string] [:v :string]]]
+             :edn/node [:variant :edn/node
+                         [[:atom :string]
+                          [:entry [:ref :edn/kv]]
+                          [:pair [:vector [[:ref :edn/node]
+                                           [:ref :edn/node]]]]]]})
+  (:export [fs_req_read_rec_kv_edn
+            fs_reply_content_rec_kv_edn
+            host_read_edn
+            main]))
+
+(defn- has-forbidden [s :string] :i64
+  (let [n (string-length s)]
+    (loop [i 0]
+      (if (>= i n) 0
+        (let [c (string-code-point-at s i)]
+          (if (= c 34) 1
+            (if (= c 92) 1 (recur (+ i 1)))))))))
+
+(defn- qstr [s :string] :string
+  (string-concat (string-substring "\"x" 0 1)
+                 (string-concat s (string-substring "\"x" 0 1))))
+
+(defn- root-ok [root :string] :i64
+  (let [n (string-length root)]
+    (if (or (<= n 0) (> n 64)) 0
+      (loop [i 0]
+        (if (>= i n) 1
+          (let [c (string-code-point-at root i)]
+            (if (or (and (>= c 65) (<= c 90))
+                    (and (>= c 97) (<= c 122))
+                    (and (>= c 48) (<= c 57))
+                    (= c 95)
+                    (= c 45))
+              (recur (+ i 1))
+              0)))))))
+
+(defn- path-has-dotdot [path :string] :i64
+  (if (string=? path "..") 1
+    (if (string-contains? path "/../") 1
+      (if (string-contains? path "../") 1
+        (if (string-contains? path "/..") 1
+          0)))))
+
+(defn- path-ok [path :string] :i64
+  (let [n (string-length path)]
+    (if (or (<= n 0) (> n 1024)) 0
+      (if (= (has-forbidden path) 1) 0
+        (if (= (string-code-point-at path 0) 47) 0
+          (if (= (path-has-dotdot path) 1) 0
+            1))))))
+
+(defn- root-kw [root :string] :string
+  (string-concat ":" root))
+
+(defn- edn_entry [k :string v :string]
+  [:variant :edn/node
+    [[:atom :string]
+     [:entry [:ref :edn/kv]]
+     [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+  (variant-new
+   [:variant :edn/node
+     [[:atom :string]
+      [:entry [:ref :edn/kv]]
+      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+   :entry
+   (record-new [:record :edn/kv [[:k :string] [:v :string]]] k v)))
+
+(defn- edn_pair
+  [l [:variant :edn/node
+       [[:atom :string]
+        [:entry [:ref :edn/kv]]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+   r [:variant :edn/node
+       [[:atom :string]
+        [:entry [:ref :edn/kv]]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
+  [:variant :edn/node
+    [[:atom :string]
+     [:entry [:ref :edn/kv]]
+     [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+  (variant-new
+   [:variant :edn/node
+     [[:atom :string]
+      [:entry [:ref :edn/kv]]
+      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+   :pair
+   (hetero-vector [:vector [[:ref :edn/node] [:ref :edn/node]]] l r)))
+
+(defn- edn_print
+  [n [:variant :edn/node
+       [[:atom :string]
+        [:entry [:ref :edn/kv]]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
+  :string
+  (match-variant n
+   [:variant :edn/node
+     [[:atom :string]
+      [:entry [:ref :edn/kv]]
+      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+    (:atom s s)
+    (:entry r
+      (string-concat
+       (record-get [:record :edn/kv [[:k :string] [:v :string]]] r :k)
+       (string-concat " "
+                      (record-get [:record :edn/kv [[:k :string] [:v :string]]] r :v))))
+    (:pair p
+      (string-concat
+       (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 0))
+       (string-concat " "
+                      (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 1)))))))
+
+(defn- brace-print
+  [n [:variant :edn/node
+       [[:atom :string]
+        [:entry [:ref :edn/kv]]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
+  :string
+  (string-concat "{" (string-concat (edn_print n) "}")))
+
+(defn fs_req_read_rec_kv_edn
+  [root :string path :string]
+  :string
+  (if (or (= (root-ok root) 0) (= (path-ok path) 0))
+    ""
+    (brace-print
+     (edn_pair (edn_entry ":tag" ":read")
+               (edn_pair (edn_entry ":root" (root-kw root))
+                         (edn_entry ":path" (qstr path)))))))
+
+(defn fs_reply_content_rec_kv_edn [content :string] :string
+  (if (or (= (has-forbidden content) 1)
+          (> (string-length content) 65536))
+    ""
+    (brace-print
+     (edn_pair (edn_entry ":tag" ":content")
+               (edn_entry ":content" (qstr content))))))
+
+(defn host_read_edn [root :string path :string] :string
+  (let [req (fs_req_read_rec_kv_edn root path)]
+    (if (= (string-length req) 0)
+      ""
+      (typed-cap-call 19 :string :string req))))
+
+(defn main [] :i64
+  (let [rd (fs_req_read_rec_kv_edn "workspace" "docs/a.txt")
+        bad (fs_req_read_rec_kv_edn "workspace" "../etc/passwd")
+        content (fs_reply_content_rec_kv_edn "hello")
+        good-rd (if (string-contains? rd ":read")
+                  (if (string-contains? rd "docs/a.txt")
+                    (if (string-contains? rd ":workspace") 1 0)
+                    0)
+                  0)
+        good-c (if (string-contains? content "hello") 1 0)
+        ok-bad (if (= (string-length bad) 0) 1 0)]
+    (if (= good-rd 1)
+      (if (= good-c 1)
+        (if (= ok-bad 1) -2511 -1)
+        -1)
+      -1)))

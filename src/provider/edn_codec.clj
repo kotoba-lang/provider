@@ -1,5 +1,5 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0266).
+  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0267).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
@@ -10,7 +10,7 @@
 
   ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
   factories; ADR 0262–0264 host inject/roundtrips; ADR 0265 secret host_get;
-  ADR 0266 process host_spawn;
+  ADR 0266 process host_spawn; ADR 0267 git/entropy/fs guest host surfaces;
   ADR 0264 remaining ops W4 round-trips (secret/process/git/entropy/fs).
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
@@ -77,7 +77,10 @@
     :ok-200       — HTTP fixed ok EDN arm (cap 4)
     :secret-value — secret fixed value arm (cap 21)
     :process-ok   — process fixed ok arm (cap 20)
-  allow-capabilities — seq of integer cap ids (e.g. [4] http, [20] process, [21] secret).
+    :git-ok       — git fixed ok arm (cap 22)
+    :entropy-hex  — entropy fixed hex arm (cap 23)
+    :fs-content   — scoped-fs fixed content arm (cap 19)
+  allow-capabilities — seq of integer cap ids (http 4, fs 19, process 20, secret 21, git 22, entropy 23).
   primary-cap-id — cap id matched in inject body (default first of allow)."
   [{:keys [allow-capabilities inject-mode primary-cap-id]}]
   (if (and (nil? inject-mode) (empty? allow-capabilities))
@@ -99,6 +102,18 @@
                       :process-ok (str "typedCapCall(id,request){if(id===" cap-id
                                        ")return "
                                        (js-quote "{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}")
+                                       ";throw new Error('unimpl '+id);}")
+                      :git-ok (str "typedCapCall(id,request){if(id===" cap-id
+                                   ")return "
+                                   (js-quote "{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}")
+                                   ";throw new Error('unimpl '+id);}")
+                      :entropy-hex (str "typedCapCall(id,request){if(id===" cap-id
+                                        ")return "
+                                        (js-quote "{:tag :hex :hex \"deadbeefcafebabe\"}")
+                                        ";throw new Error('unimpl '+id);}")
+                      :fs-content (str "typedCapCall(id,request){if(id===" cap-id
+                                       ")return "
+                                       (js-quote "{:tag :content :content \"hello\"}")
                                        ";throw new Error('unimpl '+id);}")
                       nil nil
                       (throw (ex-info "unknown inject-mode"
@@ -1073,4 +1088,59 @@
   [argv-edn max-stdout timeout-ms]
   (invoke-export* :process-w4-host-edn :host_spawn_edn
                   [(str argv-edn) (long max-stdout) (long timeout-ms)]
+                  {}))
+
+;; --- ADR 0267: remaining guest host surfaces git/entropy/fs ---
+
+(defn git-w4-host-run-edn
+  "Invoke guest `host_run_edn` (ADR 0267) with inject. Wire id 22 (git/run).
+
+  inject-mode: :echo | :git-ok. Does not run OS git."
+  ([args-edn max-stdout timeout-ms]
+   (git-w4-host-run-edn args-edn max-stdout timeout-ms :echo))
+  ([args-edn max-stdout timeout-ms inject-mode]
+   (invoke-export* :git-w4-host-edn :host_run_edn
+                   [(str args-edn) (long max-stdout) (long timeout-ms)]
+                   {:allow-capabilities [22]
+                    :primary-cap-id 22
+                    :inject-mode inject-mode})))
+
+(defn git-w4-host-run-denied
+  [args-edn max-stdout timeout-ms]
+  (invoke-export* :git-w4-host-edn :host_run_edn
+                  [(str args-edn) (long max-stdout) (long timeout-ms)]
+                  {}))
+
+(defn entropy-w4-host-draw-edn
+  "Invoke guest `host_draw_edn` (ADR 0267) with inject. Wire id 23 (entropy/draw).
+
+  inject-mode: :echo | :entropy-hex. Does not call CSPRNG."
+  ([n] (entropy-w4-host-draw-edn n :echo))
+  ([n inject-mode]
+   (invoke-export* :entropy-w4-host-edn :host_draw_edn
+                   [(long n)]
+                   {:allow-capabilities [23]
+                    :primary-cap-id 23
+                    :inject-mode inject-mode})))
+
+(defn entropy-w4-host-draw-denied
+  [n]
+  (invoke-export* :entropy-w4-host-edn :host_draw_edn [(long n)] {}))
+
+(defn scoped-fs-w4-host-read-edn
+  "Invoke guest `host_read_edn` (ADR 0267) with inject. Wire id 19 (fs/transact).
+
+  inject-mode: :echo | :fs-content. Does not touch host store."
+  ([root path] (scoped-fs-w4-host-read-edn root path :echo))
+  ([root path inject-mode]
+   (invoke-export* :scoped-fs-w4-host-edn :host_read_edn
+                   [(str root) (str path)]
+                   {:allow-capabilities [19]
+                    :primary-cap-id 19
+                    :inject-mode inject-mode})))
+
+(defn scoped-fs-w4-host-read-denied
+  [root path]
+  (invoke-export* :scoped-fs-w4-host-edn :host_read_edn
+                  [(str root) (str path)]
                   {}))
