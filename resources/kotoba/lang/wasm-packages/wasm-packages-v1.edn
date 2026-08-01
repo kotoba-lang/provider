@@ -521,6 +521,38 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0250: W4 record-typed kv entries in recursive EDN ADT
+  {:name :recursive-record-kv-edn
+   :resource "kotoba/lang/wasm-packages/recursive-record-kv-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "dfd44b0c5a6bb1323e5814db9857a94235ba670535c25d7a8962a9640bfebce7"
+   :class :ops-http
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/recursive-record-kv-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/recursive_record_kv_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "9da7a60"
+            :note "ADR 0250 W4 record-typed :edn/kv entries inside recursive :edn/node (closes record-in-variant residual); main → -2405; host I/O still open; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_entry" {:params [:externref :externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "header_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "headers_list_edn" {:params [:externref :externref :externref :externref] :result :externref}
+             "request_rec_kv_edn" {:params [:externref :externref :i64 :externref] :result :externref}
+             "result_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
+             "result_err_rec_kv_edn" {:params [:externref :externref :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant + record surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
