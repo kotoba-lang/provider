@@ -1,4 +1,4 @@
-# ADR 0242/0243: T8.3 scoped-fs kit fixed-depth EDN request+reply package
+# ADR 0243: T8.3 scoped-fs kit fixed-depth EDN request+reply package
 
 - Status: Accepted
 - Date: 2026-08-01

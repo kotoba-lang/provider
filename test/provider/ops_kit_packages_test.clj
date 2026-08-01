@@ -1230,7 +1230,7 @@
 
 
 (deftest scoped-fs-edn-package-registered
-  "T8.3 ADR 0242/0243: scoped-fs kit fixed-depth EDN request+reply package."
+  "T8.3 ADR 0243: scoped-fs kit fixed-depth EDN request+reply package."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))

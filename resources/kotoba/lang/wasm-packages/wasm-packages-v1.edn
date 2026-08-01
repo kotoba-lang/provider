@@ -356,7 +356,7 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; T8.3 ADR 0242/0243: scoped-fs kit fixed-depth EDN request+reply package
+  ;; T8.3 ADR 0243: scoped-fs kit fixed-depth EDN request+reply package
   {:name :scoped-fs-edn-package
    :resource "kotoba/lang/wasm-packages/scoped-fs-edn-package-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
@@ -372,7 +372,7 @@
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
             :compiler-sha "4b006d05"
-            :note "ADR 0242/0243 scoped-fs read/write req + content/written/error reply EDN; main → -2313; host store; W4/wasm-aot open"}
+            :note "ADR 0243 scoped-fs read/write req + content/written/error reply EDN; main → -2313; host store; W4/wasm-aot open"}
    :exports {"fs_req_read_edn" {:params [:externref :externref] :result :externref}
              "fs_req_write_edn" {:params [:externref :externref :externref] :result :externref}
              "fs_reply_content_edn" {:params [:externref] :result :externref}
