@@ -1,0 +1,261 @@
+(ns kotoba.http.kit-edn-package
+  ;; T8.3 ADR 0242: multi-export HTTP kit pure EDN (request + result set-record).
+  ;; Folds ADR 0234 full request EDN + ADR 0235 result-variant EDN into one
+  ;; pure multi-export surface for hosts. Fixed-depth / bounded sets only —
+  ;; not W4 recursive nested EDN ADT. wasm-aot stays :partial.
+  (:schemas {:hdr/pair [:record :hdr/pair
+                        [[:name :string] [:value :string]]]
+              :hdr/req [:record :hdr/req
+                        [[:url :string]
+                         [:headers [:set [:ref :hdr/pair]]]
+                         [:names [:set :string]]
+                         [:body :string]
+                         [:timeout :i64]
+                         [:code :i64]]]
+              :hdr/ok [:record :hdr/ok
+                       [[:status :i64]
+                        [:headers [:set [:ref :hdr/pair]]]
+                        [:names [:set :string]]
+                        [:body :string]
+                        [:code :i64]]]})
+  (:export [http_req_begin
+            http_req_add_header
+            http_req_code
+            http_req_count
+            http_req_edn
+            http_res_ok_begin
+            http_res_ok_add_header
+            http_res_ok_code
+            http_res_ok_count
+            http_res_ok_edn
+            http_res_err_edn
+            main]))
+
+;; Sticky codes: 0 ok; -1 empty name; -2 status OOB; -3 forbidden; -4 full; -9 dup
+
+(defn- has-forbidden [s :string] :i64
+  (let [n (string-length s)]
+    (loop [i 0]
+      (if (>= i n) 0
+        (let [c (string-code-point-at s i)]
+          (if (= c 34) 1
+            (if (= c 92) 1 (recur (+ i 1)))))))))
+
+(defn- digit-char [d :i64] :string
+  (string-substring "0123456789" d (+ d 1)))
+
+(defn- nat-str [n :i64] :string
+  (if (< n 10)
+    (digit-char n)
+    (string-concat (nat-str (quot n 10))
+                   (digit-char (- n (* (quot n 10) 10))))))
+
+(defn- header-map-edn [h [:ref :hdr/pair]] :string
+  (string-concat "{:name \""
+                 (string-concat (record-get h :name)
+                                (string-concat "\" :value \""
+                                               (string-concat (record-get h :value) "\"}")))))
+
+(defn- fold-headers-edn
+  [headers [:set [:ref :hdr/pair]] n :i64 i :i64 acc :string]
+  :string
+  (if (>= i n)
+    acc
+    (let [h (typed-set-nth [:set [:ref :hdr/pair]] headers i)
+          piece (header-map-edn h)
+          acc2 (if (string=? acc "[]")
+                 (string-concat "[" (string-concat piece "]"))
+                 (string-concat
+                  (string-substring acc 0 (- (string-length acc) 1))
+                  (string-concat " " (string-concat piece "]"))))]
+      (fold-headers-edn headers n (+ i 1) acc2))))
+
+;; ---- request (ADR 0234 surface) ----
+
+(defn http_req_begin
+  [url :string body :string timeout :i64]
+  [:ref :hdr/req]
+  (if (or (= (has-forbidden url) 1)
+          (= (has-forbidden body) 1)
+          (< timeout 0))
+    (record-new [:ref :hdr/req]
+                ""
+                (typed-set-new [:set [:ref :hdr/pair]])
+                (typed-set-new [:set :string])
+                ""
+                0
+                -3)
+    (record-new [:ref :hdr/req]
+                url
+                (typed-set-new [:set [:ref :hdr/pair]])
+                (typed-set-new [:set :string])
+                body
+                timeout
+                0)))
+
+(defn http_req_code [st [:ref :hdr/req]] :i64 (record-get st :code))
+
+(defn http_req_count [st [:ref :hdr/req]] :i64
+  (typed-set-count [:set [:ref :hdr/pair]] (record-get st :headers)))
+
+(defn http_req_add_header
+  [st [:ref :hdr/req] name :string value :string]
+  [:ref :hdr/req]
+  (let [url (record-get st :url)
+        headers (record-get st :headers)
+        names (record-get st :names)
+        body (record-get st :body)
+        timeout (record-get st :timeout)
+        code (record-get st :code)]
+    (if (not= code 0)
+      (record-new [:ref :hdr/req] url headers names body timeout code)
+      (if (= (string-length name) 0)
+        (record-new [:ref :hdr/req] url headers names body timeout -1)
+        (if (or (= (has-forbidden name) 1) (= (has-forbidden value) 1))
+          (record-new [:ref :hdr/req] url headers names body timeout -3)
+          (if (typed-set-contains [:set :string] names name)
+            (record-new [:ref :hdr/req] url headers names body timeout -9)
+            (if (>= (typed-set-count [:set [:ref :hdr/pair]] headers) 32)
+              (record-new [:ref :hdr/req] url headers names body timeout -4)
+              (let [h (record-new [:ref :hdr/pair] name value)
+                    headers2 (typed-set-conj [:set [:ref :hdr/pair]] headers h)
+                    names2 (typed-set-conj [:set :string] names name)]
+                (record-new [:ref :hdr/req]
+                            url headers2 names2 body timeout 0)))))))))
+
+(defn http_req_edn
+  [st [:ref :hdr/req]]
+  :string
+  (let [code (record-get st :code)
+        url (record-get st :url)
+        body (record-get st :body)
+        timeout (record-get st :timeout)
+        headers (record-get st :headers)
+        n (typed-set-count [:set [:ref :hdr/pair]] headers)]
+    (if (not= code 0)
+      ""
+      (let [hv (fold-headers-edn headers n 0 "[]")]
+        (string-concat "{:url \""
+                       (string-concat url
+                                      (string-concat "\" :headers "
+                                                     (string-concat hv
+                                                                    (string-concat " :body \""
+                                                                                   (string-concat body
+                                                                                                  (string-concat "\" :timeout-ms "
+                                                                                                                 (string-concat (nat-str timeout) "}"))))))))))))
+
+;; ---- result (ADR 0235 surface) ----
+
+(defn http_res_ok_begin
+  [status :i64 body :string]
+  [:ref :hdr/ok]
+  (if (or (< status 0) (> status 999) (= (has-forbidden body) 1))
+    (record-new [:ref :hdr/ok]
+                0
+                (typed-set-new [:set [:ref :hdr/pair]])
+                (typed-set-new [:set :string])
+                ""
+                -2)
+    (record-new [:ref :hdr/ok]
+                status
+                (typed-set-new [:set [:ref :hdr/pair]])
+                (typed-set-new [:set :string])
+                body
+                0)))
+
+(defn http_res_ok_code [st [:ref :hdr/ok]] :i64 (record-get st :code))
+
+(defn http_res_ok_count [st [:ref :hdr/ok]] :i64
+  (typed-set-count [:set [:ref :hdr/pair]] (record-get st :headers)))
+
+(defn http_res_ok_add_header
+  [st [:ref :hdr/ok] name :string value :string]
+  [:ref :hdr/ok]
+  (let [status (record-get st :status)
+        headers (record-get st :headers)
+        names (record-get st :names)
+        body (record-get st :body)
+        code (record-get st :code)]
+    (if (not= code 0)
+      (record-new [:ref :hdr/ok] status headers names body code)
+      (if (= (string-length name) 0)
+        (record-new [:ref :hdr/ok] status headers names body -1)
+        (if (or (= (has-forbidden name) 1) (= (has-forbidden value) 1))
+          (record-new [:ref :hdr/ok] status headers names body -3)
+          (if (typed-set-contains [:set :string] names name)
+            (record-new [:ref :hdr/ok] status headers names body -9)
+            (if (>= (typed-set-count [:set [:ref :hdr/pair]] headers) 32)
+              (record-new [:ref :hdr/ok] status headers names body -4)
+              (let [h (record-new [:ref :hdr/pair] name value)
+                    headers2 (typed-set-conj [:set [:ref :hdr/pair]] headers h)
+                    names2 (typed-set-conj [:set :string] names name)]
+                (record-new [:ref :hdr/ok]
+                            status headers2 names2 body 0)))))))))
+
+(defn http_res_ok_edn
+  [st [:ref :hdr/ok]]
+  :string
+  (let [code (record-get st :code)
+        status (record-get st :status)
+        body (record-get st :body)
+        headers (record-get st :headers)
+        n (typed-set-count [:set [:ref :hdr/pair]] headers)]
+    (if (not= code 0)
+      ""
+      (let [hv (fold-headers-edn headers n 0 "[]")]
+        (string-concat "{:tag :ok :status "
+                       (string-concat (nat-str status)
+                                      (string-concat " :headers "
+                                                     (string-concat hv
+                                                                    (string-concat " :body \""
+                                                                                   (string-concat body "\"}"))))))))))
+
+(defn http_res_err_edn
+  [code :string message :string retryable :i64]
+  :string
+  (if (or (= (string-length code) 0)
+          (= (has-forbidden code) 1)
+          (= (has-forbidden message) 1))
+    ""
+    (if (= retryable 0)
+      (string-concat "{:tag :error :code \""
+                     (string-concat code
+                                    (string-concat "\" :message \""
+                                                   (string-concat message
+                                                                  "\" :retryable false}"))))
+      (if (= retryable 1)
+        (string-concat "{:tag :error :code \""
+                       (string-concat code
+                                      (string-concat "\" :message \""
+                                                     (string-concat message
+                                                                    "\" :retryable true}"))))
+        ""))))
+
+;; main → -9242: request EDN + result ok EDN + err EDN + request dup -9 + res bad status
+(defn main [] :i64
+  (let [r0 (http_req_begin "https://x.test" "{}" 1000)
+        r1 (http_req_add_header r0 "Host" "ex.com")
+        r2 (http_req_add_header r1 "Accept" "*/*")
+        req-edn (http_req_edn r2)
+        r3 (http_req_add_header r2 "Host" "other")
+        rc (http_req_code r3)
+        rn (http_req_count r2)
+        s0 (http_res_ok_begin 200 "ok")
+        s1 (http_res_ok_add_header s0 "Content-Type" "text/plain")
+        s2 (http_res_ok_add_header s1 "Server" "kotoba")
+        ok-edn (http_res_ok_edn s2)
+        err-edn (http_res_err_edn "timeout" "upstream" 1)
+        bad (http_res_ok_begin 1000 "x")
+        bc (http_res_ok_code bad)
+        ok (if (string-contains? req-edn "https://x.test")
+             (if (string-contains? req-edn "timeout-ms")
+               (if (string-contains? ok-edn ":tag :ok")
+                 (if (string-contains? ok-edn "Content-Type")
+                   (if (string-contains? err-edn "retryable true") 1 0)
+                   0)
+                 0)
+               0)
+             0)]
+    (if (and (= rc -9) (= rn 2) (= bc -2) (= ok 1))
+      -9242
+      -1)))

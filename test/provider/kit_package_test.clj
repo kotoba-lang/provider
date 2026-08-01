@@ -424,7 +424,12 @@
 
 (deftest pure-allowlist-wasm-packages-all-digest-match
   (let [table (kit/load-wasm-packages-table)
-        pure (filterv #(not (contains? #{:ops-network :ops} (:class %)))
+        ;; Exclude ops kit packaging classes (:ops, :ops-network, :ops-process,
+        ;; :ops-git, …). Pure-allowlist packages have nil :class.
+        pure (filterv (fn [e]
+                        (let [c (:class e)]
+                          (not (and c (or (= c :ops)
+                                          (.startsWith (name c) "ops-"))))))
                       (:packages table))]
     (is (= 8 (count pure)))
     (is (<= 16 (count (:packages table))))
