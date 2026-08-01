@@ -369,3 +369,86 @@
         (is (str/includes? (:reply-edn r) ":error")
             (str "got " (:reply-edn r)))
         (is (str/includes? (:reply-edn r) "timeout"))))))
+
+(deftest secret-w4-roundtrip-map-optional
+  "ADR 0264: guest secret request EDN + map-fetch + guest reply EDN."
+  (let [events (atom [])
+        r (codec/secret-w4-roundtrip-with-map
+           {"API_TOKEN" "s3cr3t"}
+           "API_TOKEN"
+           (fn [e] (swap! events conj e)))]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:request-edn r) "API_TOKEN"))
+        (is (str/includes? (:reply-edn r) "s3cr3t"))
+        (is (= :value (get-in r [:result :tag])))
+        (when (seq @events)
+          (is (= :secret (:kit (first @events))))
+          (is (= :w4-roundtrip (:op (first @events)))))))))
+
+(deftest secret-w4-roundtrip-not-found-optional
+  (let [r (codec/secret-w4-roundtrip-with-map {} "MISSING")]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (= :error (get-in r [:result :tag])))
+        (is (str/includes? (:reply-edn r) "not-found")
+            (str "got " (:reply-edn r)))))))
+
+(deftest process-w4-roundtrip-echo-optional
+  (let [events (atom [])
+        r (codec/process-w4-roundtrip-echo
+           ["echo" "hi"]
+           (fn [e] (swap! events conj e)))]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:request-edn r) "echo"))
+        (is (= :ok (get-in r [:result :tag])))
+        (when (seq @events)
+          (is (= :process (:kit (first @events)))))))))
+
+(deftest git-w4-roundtrip-echo-optional
+  (let [r (codec/git-w4-roundtrip-echo ["status" "--short"])]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:request-edn r) "status"))
+        (is (= :ok (get-in r [:result :tag])))))))
+
+(deftest entropy-w4-roundtrip-mem-optional
+  (let [seed (vec (range 8))
+        r (codec/entropy-w4-roundtrip-mem seed 8)]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:request-edn r) "8"))
+        (is (= :bytes (get-in r [:result :tag])))
+        (is (str/includes? (:reply-edn r) ":hex"))
+        (is (str/includes? (:reply-edn r) "0001"))))))
+
+(deftest scoped-fs-w4-roundtrip-read-optional
+  (let [store (fn [{:keys [op path]}]
+                (if (= op :read)
+                  {:tag :content :value "hello"}
+                  {:tag :written}))
+        r (codec/scoped-fs-w4-roundtrip :read "workspace" "docs/a.txt" nil store)]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:request-edn r) "docs/a.txt"))
+        (is (str/includes? (:reply-edn r) "hello"))
+        (is (= :content (get-in r [:result :tag])))))))
