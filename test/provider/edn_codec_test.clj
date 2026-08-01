@@ -294,3 +294,34 @@
         (if (nil? (:request-edn e))
           (is true "skip when browser-host unavailable")
           (is (str/includes? (:request-edn e) "4")))))))
+
+(deftest http-w4-host-post-echo-inject-optional
+  "ADR 0262: guest host_post_edn + typedCapCall :echo returns W4 request EDN."
+  (let [r (codec/http-w4-host-post-edn "https://ex.com/a" "hi" 30 "[]" :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (string? (:value r)))
+        (is (str/includes? (:value r) ":url"))
+        (is (str/includes? (:value r) "https://ex.com/a"))
+        (is (str/includes? (:value r) ":timeout-ms"))
+        (is (str/includes? (:value r) "30"))))))
+
+(deftest http-w4-host-post-ok-200-inject-optional
+  (let [r (codec/http-w4-host-post-edn "https://ex.com" "x" 5 "[]" :ok-200)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":ok"))
+        (is (str/includes? (:value r) "200"))
+        (is (str/includes? (:value r) "injected"))))))
+
+(deftest http-w4-host-post-denied-without-allow-optional
+  (let [r (codec/http-w4-host-post-denied "https://ex.com" "x" 5 "[]")]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
