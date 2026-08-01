@@ -1238,6 +1238,28 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  {:name :secret-request-edn-component
+   :resource "kotoba/lang/wasm-packages/secret-request-edn-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "906d9032be23ca17b1630126d6a3f2ce51da6ef7bd39e237dfaa247636836a54"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-request-edn-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_request_edn_component.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :component-lowering :kotoba-component/secret-request-edn
+            :kotoba-component-sha "22a1c704900e87742c806a522d436fb8a9036cf1"
+            :compiler-sha "b79a131a2e28"
+            :note "ADR 0245 Component twin of secret_request_edn (Canonical dual scan + empty/len≤128); not multi-export package; W4/wasm-aot open"}
+   :exports {"secret-request-edn" {:params [:string] :result :string}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   ;; T8.3 ADR 0237: multi-export secret request+reply EDN package
   {:name :secret-edn-package
    :resource "kotoba/lang/wasm-packages/secret-edn-package-v1.wasm"
