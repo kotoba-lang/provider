@@ -26,7 +26,8 @@
  :qualification {:reference :implemented
                  :dual-runtime-os-transport :landed
                  :wasm-aot :partial
+                 :codec-aot :implemented
                  :native-aot :pending
                  :jit :pending
                  :signed-content-addressed-package :ready
-                 :notes "ADR 0169 hand scan; 0174/0175 length; 0177 gates; 0180 typed-string fs_path_ok; 0181 pure multi-step walk; 0207 fs_path_ok pure Component (path state machine). ADR 0243 fixed-depth scoped-fs request/reply EDN package (main -2313). Host store authority. ADR 0255 W4 record-kv request/reply (main -2505). Host store open; wasm-aot stays :partial."}}
+                 :notes "ADR 0169 hand scan; 0174/0175 length; 0177 gates; 0180 typed-string fs_path_ok; 0181 pure multi-step walk; 0207 fs_path_ok pure Component (path state machine). ADR 0243 fixed-depth scoped-fs request/reply EDN package (main -2313). Host store authority. ADR 0255 W4 record-kv request/reply (main -2505). Host store open; codec-aot implemented (ADR 0256); host authority keeps wasm-aot :partial."}}
