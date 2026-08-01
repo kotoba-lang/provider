@@ -1,5 +1,5 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0258).
+  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0265).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
@@ -9,7 +9,7 @@
   reimplementing EDN encode in Clojure.
 
   ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
-  factories; ADR 0262 live host_post inject; ADR 0263 HTTP W4 round-trip;
+  factories; ADR 0262–0264 host inject/roundtrips; ADR 0265 secret guest host_get;
   ADR 0264 remaining ops W4 round-trips (secret/process/git/entropy/fs).
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
@@ -71,20 +71,29 @@
   "Emit instantiateKotoba options object (allowCapabilities + typedCapCall).
 
   inject-mode:
-    nil      — no capability inject (pure exports only)
-    :echo    — typedCapCall returns the request string (prove cap path)
-    :ok-200  — typedCapCall returns fixed ok EDN arm
-  allow-capabilities — seq of integer cap ids (e.g. [4] for http/post)."
-  [{:keys [allow-capabilities inject-mode]}]
+    nil           — no capability inject (pure exports only)
+    :echo         — typedCapCall returns the request string (prove cap path)
+    :ok-200       — HTTP fixed ok EDN arm (cap 4)
+    :secret-value — secret fixed value arm (cap 21)
+  allow-capabilities — seq of integer cap ids (e.g. [4] http/post, [21] secret/get).
+  primary-cap-id — cap id matched in inject body (default first of allow)."
+  [{:keys [allow-capabilities inject-mode primary-cap-id]}]
   (if (and (nil? inject-mode) (empty? allow-capabilities))
     "{}"
     (let [allow (or allow-capabilities [])
+          cap-id (long (or primary-cap-id (first allow) 4))
           allow-js (str "[" (str/join "," (map str allow)) "]")
           inject-js (case inject-mode
-                      :echo "typedCapCall(id,request){if(id===4)return request;throw new Error('unimpl '+id);}"
-                      :ok-200 (str "typedCapCall(id,request){if(id===4)return "
+                      :echo (str "typedCapCall(id,request){if(id===" cap-id
+                                 ")return request;throw new Error('unimpl '+id);}")
+                      :ok-200 (str "typedCapCall(id,request){if(id===" cap-id
+                                   ")return "
                                    (js-quote "{:tag :ok :status 200 :body \"injected\"}")
                                    ";throw new Error('unimpl '+id);}")
+                      :secret-value (str "typedCapCall(id,request){if(id===" cap-id
+                                         ")return "
+                                         (js-quote "{:tag :value :value \"s3cr3t\"}")
+                                         ";throw new Error('unimpl '+id);}")
                       nil nil
                       (throw (ex-info "unknown inject-mode"
                                       {:phase :edn-codec :inject-mode inject-mode})))]
@@ -1006,3 +1015,28 @@
         :request-codec req-r
         :reply-codec reply-r
         :result reply}))))
+
+;; --- ADR 0265: guest secret W4 host_get_edn + live inject (wire id 21) ---
+
+(defn secret-w4-host-get-edn
+  "Invoke guest `host_get_edn` (ADR 0265) with browser-host capability inject.
+
+  Guest builds W4 request EDN then typed-cap-call wire id 21 (secret/get).
+  inject-mode:
+    :echo         — host returns request EDN (cap path proof)
+    :secret-value — host returns fixed `{:tag :value :value \"s3cr3t\"}`
+
+  Does not read real secrets — inject is the host authority boundary.
+  Does not flip wasm-aot :implemented."
+  ([name] (secret-w4-host-get-edn name :secret-value))
+  ([name inject-mode]
+   (invoke-export* :secret-w4-host-edn :host_get_edn
+                   [(str name)]
+                   {:allow-capabilities [21]
+                    :primary-cap-id 21
+                    :inject-mode inject-mode})))
+
+(defn secret-w4-host-get-denied
+  "Prove deny-by-default: host_get without allowCapabilities fails closed."
+  [name]
+  (invoke-export* :secret-w4-host-edn :host_get_edn [(str name)] {}))

@@ -671,6 +671,33 @@
    :signed-content-addressed-package :pending}
 
   ;; T8.3 ADR 0253: git kit W4 record-kv request/reply EDN
+  ;; T8.3 ADR 0265: secret W4 encode + typed-cap-call wire 21 (secret/get)
+  {:name :secret-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/secret-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "075a3d1f009410d4663b14e7943ec94a0957ae4a3edcc81d05dd9018a79e559b"
+   :class :ops-secret
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_w4_host_edn.kotoba"
+            :policy "resources/kotoba/lang/wasm-packages/src/secret_w4_host_edn.policy.edn"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "13463b5"
+            :note "ADR 0265 guest W4 secret encode + typed-cap-call wire 21; main pure → -2507; host inject required for host_get_edn; wasm-aot still partial"}
+   :exports {"secret_request_rec_kv_edn" {:params [:externref] :result :externref}
+             "secret_reply_value_rec_kv_edn" {:params [:externref] :result :externref}
+             "host_get_edn" {:params [:externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + recursive variant + record + cap 21"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :git-record-kv-edn
    :resource "kotoba/lang/wasm-packages/git-record-kv-edn-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"

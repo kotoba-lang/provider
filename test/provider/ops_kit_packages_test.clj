@@ -2473,6 +2473,27 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_w4_host_edn.kotoba")))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_w4_host_edn.policy.edn")))))
 
+(deftest secret-w4-host-edn-package-registered
+  "T8.3 ADR 0265: secret W4 encode + typed-cap-call wire 21 host surface."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :secret-w4-host-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "075a3d1f009410d4663b14e7943ec94a0957ae4a3edcc81d05dd9018a79e559b" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["secret_request_rec_kv_edn" "secret_reply_value_rec_kv_edn"
+               "host_get_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_w4_host_edn.kotoba")))))
+
+
 
 
 
