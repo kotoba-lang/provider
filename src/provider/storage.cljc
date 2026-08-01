@@ -126,51 +126,77 @@
     (throw (ex-info "storage transport result tag is invalid"
                     {:phase :storage-provider :tag (:tag reply)}))))
 
+(defn- safe-audit! [on-call event]
+  (try
+    (on-call event)
+    (catch #?(:clj Throwable :cljs :default) _ nil)))
+
 (defn provider
   "Creates a storage provider around a host-supplied synchronous transport.
   The namespace is host-owned and never supplied by guest code. The transport
   receives {:namespace kw :operation kw :key kw ...} and returns a tagged map.
   It is responsible for durable commits, namespace quota, and atomic version
-  checks; the adapter validates and types both sides of the boundary."
-  [{:keys [storage-namespace transport]}]
+  checks; the adapter validates and types both sides of the boundary.
+
+  Optional `:on-call` audit hook (ADR 0271) is invoked after each operation
+  with `{:namespace :operation :key :status :tag}` (`:status` `:ok` or
+  `:error`). Exceptions from the hook are swallowed and never affect the call.
+  Transport-level `:on-call` (production-transport) remains additive."
+  [{:keys [storage-namespace transport on-call]}]
   (when-not (and (qualified-keyword? storage-namespace)
                  (fn? transport))
     (throw (ex-info "storage provider requires a qualified namespace and transport"
                     {:phase :storage-provider})))
   (value/bounded-keyword! storage-namespace value/keyword-value-byte-limit)
-  {:request-type request-type
-   :result-type result-type
-   :invoke
-   (fn [[actual-type operation payload]]
-     (when-not (= actual-type request-type)
-       (throw (ex-info "storage request contract mismatch"
-                       {:phase :storage-provider})))
-     (case operation
-       :get
-       (let [[_ key] payload]
-         (typed-result key
-                       (invoke-transport transport
-                                         {:namespace storage-namespace
-                                          :operation :get :key key})))
+  (let [audit (or on-call (fn [_]))]
+    {:request-type request-type
+     :result-type result-type
+     :invoke
+     (fn [[actual-type operation payload]]
+       (when-not (= actual-type request-type)
+         (throw (ex-info "storage request contract mismatch"
+                         {:phase :storage-provider})))
+       (case operation
+         :get
+         (let [[_ key] payload
+               reply (invoke-transport transport
+                                       {:namespace storage-namespace
+                                        :operation :get :key key})
+               typed (typed-result key reply)]
+           (safe-audit! audit {:namespace storage-namespace
+                               :operation :get :key key
+                               :status (if (= :error (:tag reply)) :error :ok)
+                               :tag (:tag reply)})
+           typed)
 
-       :put
-       (let [[_ key text version-option] payload
-             expected (expected-version version-option)]
-         (value/bounded-string! text max-value-bytes)
-         (typed-result key
-                       (invoke-transport transport
-                                         {:namespace storage-namespace
-                                          :operation :put :key key :value text
-                                          :expected-version expected})))
+         :put
+         (let [[_ key text version-option] payload
+               expected (expected-version version-option)
+               _ (value/bounded-string! text max-value-bytes)
+               reply (invoke-transport transport
+                                       {:namespace storage-namespace
+                                        :operation :put :key key :value text
+                                        :expected-version expected})
+               typed (typed-result key reply)]
+           (safe-audit! audit {:namespace storage-namespace
+                               :operation :put :key key
+                               :status (if (= :error (:tag reply)) :error :ok)
+                               :tag (:tag reply)})
+           typed)
 
-       :delete
-       (let [[_ key version-option] payload
-             expected (expected-version version-option)]
-         (typed-result key
-                       (invoke-transport transport
-                                         {:namespace storage-namespace
-                                          :operation :delete :key key
-                                          :expected-version expected})))
+         :delete
+         (let [[_ key version-option] payload
+               expected (expected-version version-option)
+               reply (invoke-transport transport
+                                       {:namespace storage-namespace
+                                        :operation :delete :key key
+                                        :expected-version expected})
+               typed (typed-result key reply)]
+           (safe-audit! audit {:namespace storage-namespace
+                               :operation :delete :key key
+                               :status (if (= :error (:tag reply)) :error :ok)
+                               :tag (:tag reply)})
+           typed)
 
-       (throw (ex-info "unknown storage operation"
-                       {:phase :storage-provider :operation operation}))))})
+         (throw (ex-info "unknown storage operation"
+                         {:phase :storage-provider :operation operation}))))}))

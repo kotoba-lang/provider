@@ -14,7 +14,7 @@
             [provider.object :as object]
             [provider.object-transport :as object-transport]
             [provider.state :as state]
-            [provider.storage]
+            [provider.storage :as storage]
             [provider.storage-transport]
             [provider.ui]
             [provider.scoped-fs :as scoped-fs]
@@ -433,3 +433,86 @@
     (is (re-matches #"[0-9a-f]{32}" (nth a 2)))
     ;; cryptographic draws should almost never collide
     (is (not= (nth a 2) (nth b 2)))))
+
+;; --- ADR 0271: object deny-fixtures + object/storage audit hooks ---
+
+(deftest object-validate-pure-deny-fixtures
+  (let [allowed #{:example/blocks}]
+    (is (nil? (object/validate-get-stream allowed :example/blocks "k")))
+    (is (= :object/binding-not-allowed
+           (object/validate-get-stream allowed :other/ns "k")))
+    (is (= :object/empty-key
+           (object/validate-get-stream allowed :example/blocks "")))
+    (is (= :object/empty-key
+           (object/validate-get-stream allowed :example/blocks "   ")))
+    (is (nil? (object/validate-put-block allowed :example/blocks "sha256:ab"
+                                         (byte-array [1]))))
+    (is (= :object/binding-not-allowed
+           (object/validate-put-block allowed :evil/ns "d" (byte-array [1]))))
+    (is (= :object/empty-digest
+           (object/validate-put-block allowed :example/blocks "" (byte-array [1]))))
+    (is (nil? (object/validate-cas allowed :example/blocks "k" nil "next")))
+    (is (= :object/empty-next-etag
+           (object/validate-cas allowed :example/blocks "k" nil "")))
+    (is (= :object/empty-expected-etag
+           (object/validate-cas allowed :example/blocks "k" "" "next")))))
+
+(deftest object-invoke-deny-and-audit
+  (let [events (atom [])
+        ps (:providers (object/create-providers
+                        {:allowed-bindings #{:example/blocks}
+                         :transport (fn [req]
+                                      (case (:operation req)
+                                        :get-stream (byte-array [9])
+                                        :put-block true
+                                        :compare-and-set-ref true
+                                        (throw (ex-info "unexpected op" req))))
+                         :on-call (fn [e] (swap! events conj e))}))
+        get-p (get ps object/get-stream-capability-id)
+        put-p (get ps object/put-block-capability-id)]
+    (is (thrown-with-msg? clojure.lang.ExceptionInfo #"denied"
+                          ((:invoke get-p)
+                           [object/get-stream-request-type :nope/x "k"])))
+    (try
+      ((:invoke get-p) [object/get-stream-request-type :nope/x "k"])
+      (is false "expected throw")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :object/binding-not-allowed (:code (ex-data e))))))
+    (let [task ((:invoke get-p)
+                [object/get-stream-request-type :example/blocks "ok-key"])]
+      (is (some? (:stream (value/task-poll task))))
+      (is (= 1 (count @events)))
+      (is (= :get-stream (:operation (first @events))))
+      (is (= :ok (:status (first @events)))))
+    (is (true?
+         ((:invoke put-p)
+          [object/put-block-request-type :example/blocks "sha256:x"
+           (byte-array [1 2])])))
+    (is (= 2 (count @events)))
+    (is (= :put-block (:operation (second @events))))))
+
+(deftest storage-provider-on-call-audit
+  (let [events (atom [])
+        p (storage/provider
+           {:storage-namespace :app/session
+            :transport (fn [{:keys [operation]}]
+                         (case operation
+                           :get {:tag :missing}
+                           :put {:tag :written :value "v" :version 1}
+                           :delete {:tag :deleted}
+                           {:tag :error :error {:code :storage/unknown
+                                                :message "x"
+                                                :retryable false}}))
+            :on-call (fn [e] (swap! events conj e))})
+        get-req [storage/request-type :get [storage/get-type :k1]]
+        put-req [storage/request-type :put
+                 [storage/put-type :k1 "hello"
+                  [storage/expected-version-type false]]]
+        get-reply ((:invoke p) get-req)
+        put-reply ((:invoke p) put-req)]
+    (is (= :missing (second get-reply)))
+    (is (= :written (second put-reply)))
+    (is (= 2 (count @events)))
+    (is (= [:get :put] (mapv :operation @events)))
+    (is (every? #(= :ok (:status %)) @events))
+    (is (every? #(= :app/session (:namespace %)) @events))))

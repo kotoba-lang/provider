@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness (ops audit :ready ADR 0269) + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207. HTTP EDN reject path through ADR 0227 (element-bound uniqueness + multi-export). Residual: W4 recursive nested EDN ADT (headers 0246 + request/result 0247 + true-kv ≤3 0248 + 4-field 0249 + record-kv 0250 landed; secret W4 0251 + process W4 0252 + git W4 0253 + entropy W4 0254 + scoped-fs W4 0255 landed; ops-kit pure EDN codec AOT complete (0256) + audit wraps 0257–0258 + production/test factories 0259 + guest host_post 0260 + entropy prod EDN-audit 0261 + live host inject 0262 + HTTP W4 roundtrip 0263 + remaining ops W4 roundtrips 0264 + secret guest host_get 0265 + process guest host_spawn 0266 + git/entropy/fs guest host 0267 + fs write 0268 + host inject parity git/entropy/fs-read 0270; residual host authority by design (I/O/fetch/spawn/git/store/CSPRNG); multi-file project kit body CLI first slice (compiler ADR 0192). Fixtures never claim production."
+ "T8.2 readiness (ops audit :ready ADR 0269) + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207. HTTP EDN reject path through ADR 0227 (element-bound uniqueness + multi-export). Residual: W4 recursive nested EDN ADT (headers 0246 + request/result 0247 + true-kv ≤3 0248 + 4-field 0249 + record-kv 0250 landed; secret W4 0251 + process W4 0252 + git W4 0253 + entropy W4 0254 + scoped-fs W4 0255 landed; ops-kit pure EDN codec AOT complete (0256) + audit wraps 0257–0258 + production/test factories 0259 + guest host_post 0260 + entropy prod EDN-audit 0261 + live host inject 0262 + HTTP W4 roundtrip 0263 + remaining ops W4 roundtrips 0264 + secret guest host_get 0265 + process guest host_spawn 0266 + git/entropy/fs guest host 0267 + fs write 0268 + host inject parity git/entropy/fs-read 0270 + object/storage deny+audit 0271; residual host authority by design (I/O/fetch/spawn/git/store/CSPRNG); multi-file project kit body CLI first slice (compiler ADR 0192). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -196,13 +196,16 @@
    :resource "kotoba/lang/capability-kits/stream-object-v1.edn"
    :scores {:schema :ready
             :dual-runtime :ready
-            :deny-fixtures :partial
+            :deny-fixtures :ready
             :quota :ready
-            :audit :partial
+            :audit :ready
             :host-parity :ready
             :package :ready
             :signed-wasm :pending}
-   :evidence ["stream-object-v1.edn multi-cap package" "object get-stream/put-block/cas"]}
+   :evidence ["stream-object-v1.edn multi-cap package" "object get-stream/put-block/cas"
+              "provider.object validate-get-stream/put-block/cas pure deny (ADR 0271)"
+              "provider.object optional :on-call audit hook (ADR 0271)"]
+   :note "ADR 0271 deny-fixtures + audit :ready; signed-wasm remains :pending (no production-signed object wasm yet); linear stream wasm-aot open by design."}
 
   {:name :storage
    :id 12
@@ -211,11 +214,14 @@
             :dual-runtime :ready
             :deny-fixtures :ready
             :quota :ready
-            :audit :partial
+            :audit :ready
             :host-parity :ready
             :package :ready
             :signed-wasm :pending}
-   :evidence ["storage-v1.edn" "provider.storage dual-runtime"]}
+   :evidence ["storage-v1.edn" "provider.storage dual-runtime"
+              "provider.storage optional :on-call audit (ADR 0271)"
+              "storage-transport production-transport :on-call (HTTP attempt audit)"]
+   :note "ADR 0271 audit :ready via provider + production-transport on-call; signed-wasm :pending (host durable store; no production-signed storage wasm claim)."}
 
   {:name :math-sin
    :id :pure-allowlist

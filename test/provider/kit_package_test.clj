@@ -53,6 +53,19 @@
       ;; readiness gate alone is considered (unsigned receipts still noted elsewhere).
       (is (true? (:production-signed-claim-allowed? rr))))))
 
+(deftest readiness-object-storage-deny-audit-0271
+  "ADR 0271: object deny-fixtures+audit ready; storage audit ready; signed-wasm stays pending."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
+        object (kit/readiness-for table :object)
+        storage (kit/readiness-for table :storage)]
+    (is (= :ready (get-in object [:scores :deny-fixtures])))
+    (is (= :ready (get-in object [:scores :audit])))
+    (is (= :pending (get-in object [:scores :signed-wasm])))
+    (is (= :ready (get-in storage [:scores :audit])))
+    (is (= :pending (get-in storage [:scores :signed-wasm])))
+    (is (re-find #"0271" (:kotoba.kit-readiness/summary table)))))
+
 (deftest readiness-ops-audit-ready-after-edn-wire
   "ADR 0269: ops kits with EDN audit wire score audit :ready; entropy stays :n/a."
   (let [table (kit/readiness-table
