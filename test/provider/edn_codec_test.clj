@@ -452,3 +452,30 @@
         (is (str/includes? (:request-edn r) "docs/a.txt"))
         (is (str/includes? (:reply-edn r) "hello"))
         (is (= :content (get-in r [:result :tag])))))))
+
+(deftest secret-w4-host-get-value-inject-optional
+  "ADR 0265: guest host_get_edn + typedCapCall :secret-value."
+  (let [r (codec/secret-w4-host-get-edn "API_TOKEN" :secret-value)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":value"))
+        (is (str/includes? (:value r) "s3cr3t"))))))
+
+(deftest secret-w4-host-get-echo-inject-optional
+  (let [r (codec/secret-w4-host-get-edn "API_TOKEN" :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":name"))
+        (is (str/includes? (:value r) "API_TOKEN"))))))
+
+(deftest secret-w4-host-get-denied-optional
+  (let [r (codec/secret-w4-host-get-denied "API_TOKEN")]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
