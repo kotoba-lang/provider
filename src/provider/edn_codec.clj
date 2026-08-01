@@ -9,7 +9,7 @@
   reimplementing EDN encode in Clojure.
 
   ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
-  factories; ADR 0262 live host_post inject via typedCapCall.
+  factories; ADR 0262 live host_post inject; ADR 0263 W4 round-trip via host transport.
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
@@ -640,3 +640,103 @@
   (invoke-export* :http-w4-host-edn :host_post_edn
                   [(str url) (str body) (long timeout-ms) (str headers-edn)]
                   {}))
+
+;; --- ADR 0263: production W4 round-trip (guest encode + host transport + guest reply) ---
+
+(defn- headers-map->pairs
+  "Normalize headers map to two name/value pairs for W4 headers_list arity."
+  [headers]
+  (let [m (into {}
+                (map (fn [[k v]]
+                       [(if (keyword? k) (name k) (str k)) (str v)]))
+                (or headers {}))
+        accept (or (get m "Accept") (get m "accept") "*/*")
+        host (or (get m "Host") (get m "host") "audit.local")
+        other (first (remove (fn [[k _]] (#{"Accept" "accept" "Host" "host"} k)) m))
+        n1 "Accept"
+        v1 accept
+        n2 (if other (key other) "Host")
+        v2 (if other (val other) host)]
+    [n1 v1 n2 v2]))
+
+(defn http-w4-roundtrip
+  "Production path: guest pure W4 request EDN + host transport + guest pure reply EDN.
+
+  Unlike `http-w4-host-post-edn` (guest typed-cap-call with inject stubs), this
+  keeps **network authority** on the host transport and only uses guest packages
+  as pure codecs — matching host-injected authority honesty.
+
+  `transport` is `(fn [{:keys [url headers body timeout-ms]}] -> result)` where
+  result is `{:status n :body s :headers m}` or `{:error {:code :message ...}
+  :error? true}` / `{:error true ...}`.
+
+  Returns:
+  `{:ok true :request-edn s :reply-edn s :result transport-result}`
+  or `{:ok false :reason ...}` if codecs fail hard.
+
+  Does not flip wasm-aot :implemented."
+  ([url headers body timeout-ms transport]
+   (http-w4-roundtrip url headers body timeout-ms transport (fn [_])))
+  ([url headers body timeout-ms transport on-call]
+   (when-not (fn? transport)
+     (throw (ex-info "http-w4-roundtrip requires a transport fn"
+                     {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "http-w4-roundtrip requires an on-call fn"
+                     {:phase :edn-codec})))
+   (let [[n1 v1 n2 v2] (headers-map->pairs headers)
+         hdrs-r (http-headers-list-edn n1 v1 n2 v2)
+         hdrs (or (codec-value hdrs-r) "[]")
+         req-r (http-request-edn (str url) (str (or body ""))
+                                 (long (or timeout-ms 5000)) hdrs)
+         req-edn (codec-value req-r)
+         started (System/currentTimeMillis)
+         result (transport {:url (str url)
+                            :headers (into {}
+                                           (map (fn [[k v]]
+                                                  [(if (keyword? k) k (keyword k))
+                                                   (str v)]))
+                                           (or headers {}))
+                            :body (str (or body ""))
+                            :timeout-ms (long (or timeout-ms 5000))})
+         status (long (or (:status result) -1))
+         err? (boolean (or (:error result) (:error? result)))
+         reply-r (if err?
+                   (let [err (if (map? (:error result)) (:error result) {})]
+                     (http-result-err-edn
+                      (keyword-code (or (:code err) (:code result) :transport-error))
+                      (str (or (:message err) (:message result) "error"))
+                      (if (or (:retryable err) (:retryable result)) 1 0)))
+                   (http-result-ok-edn status
+                                       (str (or (:body result) ""))
+                                       hdrs))
+         reply-edn (codec-value reply-r)
+         event {:kit :http
+                :op :w4-roundtrip
+                :url url
+                :request-edn req-edn
+                :reply-edn reply-edn
+                :status status
+                :error? err?
+                :latency-ms (- (System/currentTimeMillis) started)}]
+     (try (on-call event) (catch Exception _))
+     (if (and req-edn reply-edn)
+       {:ok true
+        :request-edn req-edn
+        :reply-edn reply-edn
+        :result result}
+       {:ok false
+        :reason :codec-failed
+        :request-codec req-r
+        :reply-codec reply-r
+        :result result}))))
+
+(defn http-w4-roundtrip-with-production
+  "http-w4-roundtrip using production HTTP transport (allowed-origins required).
+
+  opts: same as production-transport plus optional :on-call for EDN events."
+  [url headers body timeout-ms opts]
+  (let [on-call (:on-call opts (fn [_]))
+        transport (http-t/production-transport
+                   (assoc (dissoc opts :on-call) :on-call (fn [_])))]
+    (http-w4-roundtrip url headers body timeout-ms transport on-call)))
