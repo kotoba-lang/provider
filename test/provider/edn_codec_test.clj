@@ -254,3 +254,43 @@
         (if (nil? (:reply-edn e))
           (is true "skip when browser-host unavailable")
           (is (str/includes? (:reply-edn e) "hello")))))))
+
+(deftest entropy-mem-draw-factory-audits-bytes-as-hex-optional
+  (let [events (atom [])
+        ;; 8 deterministic bytes as 0–255 ints (entropy mem-draw contract)
+        seed (vec (range 8))
+        draw (codec/entropy-mem-draw-with-edn-audit
+              seed
+              (fn [e] (swap! events conj e)))
+        reply (draw {:n 8})]
+    (is (= :bytes (:tag reply)))
+    (is (= 8 (count (:bytes reply))))
+    (if (empty? @events)
+      (is true "unexpected empty")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip when browser-host unavailable")
+          (do
+            (is (= :entropy (:kit e)))
+            (is (str/includes? (:request-edn e) ":n"))
+            (is (str/includes? (:request-edn e) "8"))
+            (is (= :bytes (:reply-tag e)))
+            (is (string? (:reply-edn e)))
+            (is (str/includes? (:reply-edn e) ":hex"))
+            ;; first two bytes 0x00 0x01 → 0001...
+            (is (str/includes? (:reply-edn e) "0001"))))))))
+
+(deftest entropy-os-draw-factory-smoke-optional
+  (let [events (atom [])
+        draw (codec/entropy-os-draw-with-edn-audit
+              {:on-call (fn [e] (swap! events conj e))})
+        reply (draw {:n 4})]
+    (is (#{:bytes :error} (:tag reply)))
+    (when (= :bytes (:tag reply))
+      (is (= 4 (count (:bytes reply)))))
+    (if (empty? @events)
+      (is true "unexpected empty")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip when browser-host unavailable")
+          (is (str/includes? (:request-edn e) "4")))))))

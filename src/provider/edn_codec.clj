@@ -23,6 +23,8 @@
             [provider.kit-package :as kit]
             [provider.process :as process]
             [provider.process-transport :as process-t]
+            [provider.entropy :as entropy]
+            [provider.entropy-transport :as entropy-t]
             [provider.scoped-fs-transport :as fs-t]
             [provider.secret-transport :as secret-t])
   (:import (java.io File)))
@@ -412,9 +414,24 @@
          (catch Exception _))
        reply))))
 
+(defn- bytes->hex
+  "Lowercase hex for byte seq (0–255 ints or signed bytes)."
+  [bs]
+  (when bs
+    (apply str
+           (map (fn [b]
+                  (format "%02x" (bit-and (long b) 0xff)))
+                bs))))
+
 (defn wrap-entropy-draw
   "Wrap entropy draw `(fn [{:keys [n]}] -> reply)`.
-  Reply: `{:tag :hex :hex s}` or `{:tag :error :code c :message m}`."
+
+  Transport reply shapes (provider.entropy):
+  - `{:tag :bytes :bytes [0..255 ...]}` (os-draw / mem-draw)
+  - `{:tag :hex :hex s}` (legacy/test)
+  - `{:tag :error :code c :message m}`
+
+  Pure W4 EDN reply uses hex arm; bytes are converted for audit only."
   ([draw] (wrap-entropy-draw draw (fn [_])))
   ([draw on-call]
    (when-not (fn? draw)
@@ -426,6 +443,10 @@
            reply (draw req)
            reply-codec (case (:tag reply)
                          :hex (entropy-reply-hex-edn (str (:hex reply)))
+                         :bytes (let [hx (bytes->hex (:bytes reply))]
+                                  (if hx
+                                    (entropy-reply-hex-edn hx)
+                                    {:ok false}))
                          :error (entropy-reply-error-edn
                                  (keyword-code (:code reply))
                                  (str (or (:message reply) "")))
@@ -540,3 +561,20 @@
   (let [on-call (:on-call opts (fn [_]))
         base (fs-t/os-store (dissoc opts :on-call))]
     (wrap-scoped-fs-transact base on-call)))
+
+;; --- ADR 0261: entropy production/test factories + :bytes reply honesty ---
+
+(defn entropy-mem-draw-with-edn-audit
+  "Deterministic mem-draw + pure W4 EDN audit (no CSPRNG)."
+  ([seed-bytes] (entropy-mem-draw-with-edn-audit seed-bytes (fn [_])))
+  ([seed-bytes on-call]
+   (wrap-entropy-draw (entropy-t/mem-draw seed-bytes) on-call)))
+
+(defn entropy-os-draw-with-edn-audit
+  "CSPRNG `entropy-transport/os-draw` + pure W4 EDN audit.
+  Optional :on-call and :random (JVM SecureRandom inject for tests)."
+  ([] (entropy-os-draw-with-edn-audit {}))
+  ([opts]
+   (let [on-call (:on-call opts (fn [_]))
+         base (entropy-t/os-draw (dissoc opts :on-call))]
+     (wrap-entropy-draw base on-call))))
