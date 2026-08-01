@@ -12,8 +12,11 @@
   max-pull-bytes (65536).
 
   Bindings are host-owned allowlist keywords. No ambient object store or
-  network."
-  (:require [kotoba.kir.value :as value]))
+  network.
+
+  ADR 0272: pure `validate-*` deny fixtures (stable error keywords)."
+  (:require [clojure.string :as str]
+            [kotoba.kir.value :as value]))
 
 (def get-stream-capability-id 14)
 (def put-block-capability-id 15)
@@ -49,6 +52,55 @@
   "Validate the reference-runtime host representation of kit `:bytes`."
   [payload]
   (value/bounded-bytes! payload max-pull-bytes))
+
+(defn- string-policy
+  "Pure string gate. Returns nil when ok, else an error keyword."
+  [s empty-code]
+  (cond
+    (not (string? s)) :object/bad-string
+    (str/blank? s) empty-code
+    :else
+    (try
+      (value/bounded-string! s value/string-value-byte-limit)
+      nil
+      (catch #?(:clj Exception :cljs :default) _
+        :object/string-too-large))))
+
+(defn validate-get-stream
+  "Pure get-stream policy. Returns nil when ok, else an error keyword."
+  [allowed-bindings binding key]
+  (cond
+    (not (contains? allowed-bindings binding)) :object/binding-not-allowed
+    :else (string-policy key :object/empty-key)))
+
+(defn validate-put-block
+  "Pure put-block policy. Returns nil when ok, else an error keyword."
+  [allowed-bindings binding digest payload]
+  (cond
+    (not (contains? allowed-bindings binding)) :object/binding-not-allowed
+    :else
+    (or (string-policy digest :object/empty-digest)
+        (try
+          (bounded-payload! payload)
+          nil
+          (catch #?(:clj Exception :cljs :default) _
+            :object/bad-payload)))))
+
+(defn validate-cas
+  "Pure compare-and-set-ref policy. Returns nil when ok, else an error keyword.
+  `expected` is already decoded (nil or string)."
+  [allowed-bindings binding key expected next-etag]
+  (cond
+    (not (contains? allowed-bindings binding)) :object/binding-not-allowed
+    :else
+    (or (string-policy key :object/empty-key)
+        (when (some? expected)
+          (string-policy expected :object/empty-expected-etag))
+        (string-policy next-etag :object/empty-next-etag))))
+
+(defn- deny! [code context]
+  (throw (ex-info "object request denied"
+                  (merge {:phase :object-provider :code code} context))))
 
 (defn- expected-etag
   "Decode `[:option :string]` into nil or a bounded string."
@@ -126,13 +178,8 @@
      (when-not (= actual-type get-stream-request-type)
        (throw (ex-info "object get-stream contract mismatch"
                        {:phase :object-provider})))
-     (when-not (contains? allowed-bindings binding)
-       (throw (ex-info "object binding is not allowed"
-                       {:phase :object-provider :binding binding})))
-     (value/bounded-string! key value/string-value-byte-limit)
-     (when (zero? (value/utf8-byte-count! key))
-       (throw (ex-info "object stream key must be non-empty"
-                       {:phase :object-provider})))
+     (when-let [code (validate-get-stream allowed-bindings binding key)]
+       (deny! code {:operation :get-stream :binding binding}))
      (as-bytes-task!
       (invoke-transport transport
                         {:operation :get-stream
@@ -158,14 +205,8 @@
      (when-not (= actual-type put-block-request-type)
        (throw (ex-info "object put-block contract mismatch"
                        {:phase :object-provider})))
-     (when-not (contains? allowed-bindings binding)
-       (throw (ex-info "object binding is not allowed"
-                       {:phase :object-provider :binding binding})))
-     (value/bounded-string! digest value/string-value-byte-limit)
-     (when (zero? (value/utf8-byte-count! digest))
-       (throw (ex-info "object digest must be non-empty"
-                       {:phase :object-provider})))
-     (bounded-payload! payload)
+     (when-let [code (validate-put-block allowed-bindings binding digest payload)]
+       (deny! code {:operation :put-block :binding binding}))
      (as-bool!
       (invoke-transport transport
                         {:operation :put-block
@@ -193,18 +234,9 @@
      (when-not (= actual-type cas-request-type)
        (throw (ex-info "object CAS contract mismatch"
                        {:phase :object-provider})))
-     (when-not (contains? allowed-bindings binding)
-       (throw (ex-info "object binding is not allowed"
-                       {:phase :object-provider :binding binding})))
-     (value/bounded-string! key value/string-value-byte-limit)
-     (when (zero? (value/utf8-byte-count! key))
-       (throw (ex-info "object ref key must be non-empty"
-                       {:phase :object-provider})))
-     (value/bounded-string! next-etag value/string-value-byte-limit)
-     (when (zero? (value/utf8-byte-count! next-etag))
-       (throw (ex-info "object next etag must be non-empty"
-                       {:phase :object-provider})))
      (let [expected (expected-etag expected-option)]
+       (when-let [code (validate-cas allowed-bindings binding key expected next-etag)]
+         (deny! code {:operation :compare-and-set-ref :binding binding}))
        (as-bool!
         (invoke-transport transport
                           {:operation :compare-and-set-ref
