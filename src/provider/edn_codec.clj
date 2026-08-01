@@ -17,7 +17,14 @@
   (:require [clojure.data.json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
-            [provider.kit-package :as kit])
+            [provider.git :as git]
+            [provider.git-transport :as git-t]
+            [provider.http-transport :as http-t]
+            [provider.kit-package :as kit]
+            [provider.process :as process]
+            [provider.process-transport :as process-t]
+            [provider.scoped-fs-transport :as fs-t]
+            [provider.secret-transport :as secret-t])
   (:import (java.io File)))
 
 (defn- browser-host-path
@@ -449,10 +456,13 @@
                        {:ok false})
            reply (tx req)
            reply-codec (case (:tag reply)
-                         :content (fs-reply-content-edn (str (:content reply)))
+                         ;; store reply uses :value for content body (scoped-fs mem/os-store)
+                         :content (fs-reply-content-edn
+                                   (str (or (:value reply) (:content reply) "")))
                          :written (fs-reply-written-edn
                                    (if (or (true? (:written reply))
-                                           (= 1 (:written reply)))
+                                           (= 1 (:written reply))
+                                           (nil? (:written reply)))
                                      1 0))
                          :error (fs-reply-error-edn
                                  (keyword-code (:code reply))
@@ -468,3 +478,65 @@
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))
+
+;; --- ADR 0259: production / test-double factories with EDN audit ---
+
+(defn production-http-transport
+  "Build `http-transport/production-transport` wrapped with pure W4 EDN audit.
+
+  Options match `production-transport`. The base transport's internal
+  `:on-call` is silenced; supply a single `:on-call` here to receive
+  EDN-enriched events (`:request-edn` / `:reply-edn` / `:status` / `:latency-ms`).
+
+  Does not flip wasm-aot — still host network authority."
+  ([] (production-http-transport {}))
+  ([opts]
+   (let [user-on-call (:on-call opts (fn [_]))
+         base (http-t/production-transport (assoc opts :on-call (fn [_])))]
+     (wrap-http-post-transport base user-on-call))))
+
+(defn secret-map-fetch-with-edn-audit
+  "Secret map-fetch wrapped with pure W4 request/reply EDN audit."
+  ([m] (secret-map-fetch-with-edn-audit m (fn [_])))
+  ([m on-call]
+   (wrap-secret-fetch (secret-t/map-fetch m) on-call)))
+
+(defn secret-env-fetch-with-edn-audit
+  "Secret env-fetch wrapped with pure W4 EDN audit."
+  ([name->env] (secret-env-fetch-with-edn-audit name->env (fn [_])))
+  ([name->env on-call]
+   (wrap-secret-fetch (secret-t/env-fetch name->env) on-call)))
+
+(defn process-echo-with-edn-audit
+  "Process echo test double + pure W4 EDN audit (no OS spawn)."
+  ([] (process-echo-with-edn-audit (fn [_])))
+  ([on-call]
+   (wrap-process-spawn (process/echo-transport) on-call)))
+
+(defn git-echo-with-edn-audit
+  "Git echo test double + pure W4 EDN audit (no OS git)."
+  ([] (git-echo-with-edn-audit (fn [_])))
+  ([on-call]
+   (wrap-git-run (git/echo-transport) on-call)))
+
+(defn process-os-spawn-with-edn-audit
+  "JVM/cljs `process-transport/os-spawn` + pure W4 EDN audit.
+  Pass the same opts as os-spawn (absolute bin, etc.). Optional :on-call."
+  [opts]
+  (let [on-call (:on-call opts (fn [_]))
+        base (process-t/os-spawn (dissoc opts :on-call))]
+    (wrap-process-spawn base on-call)))
+
+(defn git-os-run-with-edn-audit
+  "git-transport/os-run + pure W4 EDN audit. Optional :on-call in opts."
+  [opts]
+  (let [on-call (:on-call opts (fn [_]))
+        base (git-t/os-run (dissoc opts :on-call))]
+    (wrap-git-run base on-call)))
+
+(defn scoped-fs-os-store-with-edn-audit
+  "scoped-fs-transport/os-store + pure W4 EDN audit. Optional :on-call."
+  [opts]
+  (let [on-call (:on-call opts (fn [_]))
+        base (fs-t/os-store (dissoc opts :on-call))]
+    (wrap-scoped-fs-transact base on-call)))

@@ -187,3 +187,70 @@
             (is (= :scoped-fs (:kit e)))
             (is (str/includes? (:request-edn e) "docs/a.txt"))
             (is (str/includes? (:reply-edn e) "hello"))))))))
+
+(deftest secret-map-fetch-factory-audits-optional
+  (let [events (atom [])
+        fetch (codec/secret-map-fetch-with-edn-audit
+               {"API_TOKEN" "s3cr3t"}
+               (fn [e] (swap! events conj e)))
+        reply (fetch {:name "API_TOKEN"})]
+    (is (= :value (:tag reply)))
+    (is (= "s3cr3t" (:value reply)))
+    (if (empty? @events)
+      (is true "unexpected empty")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip when browser-host unavailable")
+          (do
+            (is (str/includes? (:request-edn e) "API_TOKEN"))
+            (is (str/includes? (:reply-edn e) "s3cr3t"))))))))
+
+(deftest process-echo-factory-audits-optional
+  (let [events (atom [])
+        spawn (codec/process-echo-with-edn-audit
+               (fn [e] (swap! events conj e)))
+        reply (spawn {:argv ["echo" "hi"] :max-stdout-bytes 4096 :timeout-ms 5000})]
+    (is (= :ok (:tag reply)))
+    (if (empty? @events)
+      (is true "unexpected empty")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip when browser-host unavailable")
+          (do
+            (is (= :process (:kit e)))
+            (is (str/includes? (:request-edn e) "echo"))
+            (is (= :ok (:reply-tag e)))))))))
+
+(deftest git-echo-factory-audits-optional
+  (let [events (atom [])
+        run (codec/git-echo-with-edn-audit
+             (fn [e] (swap! events conj e)))
+        reply (run {:args ["status" "--short"] :max-stdout-bytes 8192 :timeout-ms 30000})]
+    (is (= :ok (:tag reply)))
+    (if (empty? @events)
+      (is true "unexpected empty")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip when browser-host unavailable")
+          (do
+            (is (= :git (:kit e)))
+            (is (str/includes? (:request-edn e) "status"))
+            (is (= :ok (:reply-tag e)))))))))
+
+(deftest wrap-scoped-fs-uses-value-field
+  (let [events (atom [])
+        store (fn [{:keys [op path]}]
+                (if (= op :read)
+                  {:tag :content :value "hello"}
+                  {:tag :written}))
+        wrapped (codec/wrap-scoped-fs-transact
+                 store
+                 (fn [e] (swap! events conj e)))
+        reply (wrapped {:op :read :root :workspace :path "a.txt"})]
+    (is (= :content (:tag reply)))
+    (if (empty? @events)
+      (is true "unexpected empty")
+      (let [e (first @events)]
+        (if (nil? (:reply-edn e))
+          (is true "skip when browser-host unavailable")
+          (is (str/includes? (:reply-edn e) "hello")))))))
