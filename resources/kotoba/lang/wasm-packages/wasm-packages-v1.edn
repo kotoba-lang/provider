@@ -406,6 +406,33 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0246: W4 recursive nested EDN ADT for header lists (first ops slice)
+  {:name :recursive-headers-edn
+   :resource "kotoba/lang/wasm-packages/recursive-headers-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "7b074e203bc400c6a391119701051222ace431080768cb3f07bc3a38dbb4c1a1"
+   :class :ops-http
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/recursive-headers-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/recursive_headers_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "ab504901"
+            :note "ADR 0246 W4 recursive edn/node atom|pair headers list print; main → -2401; not full kit request identity; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "headers_list_edn" {:params [:externref :externref :externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
 
 
 

@@ -2248,6 +2248,25 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_edn_package.kotoba")))))
 
+(deftest recursive-headers-edn-package-registered
+  "T8.3 ADR 0246: W4 recursive nested EDN ADT for header lists."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :recursive-headers-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "7b074e203bc400c6a391119701051222ace431080768cb3f07bc3a38dbb4c1a1" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_pair" "edn_print" "headers_list_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_headers_edn.kotoba")))))
+
 
 (deftest secret-request-edn-component-registered
   "T8.3 ADR 0245: Component twin of secret_request_edn (Canonical dual scan)."
@@ -2268,3 +2287,4 @@
            (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
     (is (contains? (:exports comp) "secret-request-edn"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_request_edn_component.kotoba")))))
+
