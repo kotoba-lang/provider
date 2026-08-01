@@ -2307,7 +2307,25 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_kv_edn.kotoba")))))
 
-
+(deftest recursive-kv4-edn-package-registered
+  "T8.3 ADR 0249: W4 true-kv 4-field maps under ADT depth 12."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :recursive-kv4-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "8e69b0867d3ad6fe31eda555ac4716d2b4694160e611e22663834d96246cb138" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_pair" "edn_print" "header_kv_edn" "headers_list_edn"
+               "request_kv4_edn" "result_ok_kv4_edn" "result_err_kv4_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_kv4_edn.kotoba")))))
 
 (deftest secret-request-edn-component-registered
   "T8.3 ADR 0245: Component twin of secret_request_edn (Canonical dual scan)."

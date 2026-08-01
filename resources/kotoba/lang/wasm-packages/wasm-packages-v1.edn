@@ -491,6 +491,36 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0249: W4 true-kv 4-field maps (compiler depth 12)
+  {:name :recursive-kv4-edn
+   :resource "kotoba/lang/wasm-packages/recursive-kv4-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "8e69b0867d3ad6fe31eda555ac4716d2b4694160e611e22663834d96246cb138"
+   :class :ops-http
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/recursive-kv4-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/recursive_kv4_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "9da7a60"
+            :note "ADR 0249 W4 true-kv 4-field request/result under ADT depth 12 (compiler 0196/kir 0025); main → -2404; nested records in variants + host I/O open; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "header_kv_edn" {:params [:externref :externref] :result :externref}
+             "headers_list_edn" {:params [:externref :externref :externref :externref] :result :externref}
+             "request_kv4_edn" {:params [:externref :externref :i64 :externref] :result :externref}
+             "result_ok_kv4_edn" {:params [:i64 :externref :externref] :result :externref}
+             "result_err_kv4_edn" {:params [:externref :externref :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
