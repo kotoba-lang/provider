@@ -325,3 +325,47 @@
       (do
         (is (false? (:ok r)) (pr-str r))
         (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
+(deftest http-w4-roundtrip-test-double-optional
+  "ADR 0263: guest W4 encode + host transport double + guest W4 reply encode."
+  (let [events (atom [])
+        transport (fn [{:keys [url body]}]
+                    {:status 201 :body (str "got:" body) :headers {}})
+        r (codec/http-w4-roundtrip
+           "https://ex.com/a"
+           {"Accept" "text/plain" "Host" "ex.com"}
+           "payload"
+           5000
+           transport
+           (fn [e] (swap! events conj e)))]
+    (if (false? (:ok r))
+      (if (= :browser-host-unavailable (get-in r [:request-codec :reason]))
+        (is true "skip when browser-host unavailable")
+        (is false (pr-str r)))
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:request-edn r) "https://ex.com/a"))
+        (is (str/includes? (:request-edn r) "payload"))
+        (is (str/includes? (:reply-edn r) "201"))
+        (is (str/includes? (:reply-edn r) "got:payload"))
+        (is (= 201 (get-in r [:result :status])))
+        (when (seq @events)
+          (let [e (first @events)]
+            (is (= :http (:kit e)))
+            (is (= :w4-roundtrip (:op e)))
+            (is (string? (:request-edn e)))
+            (is (string? (:reply-edn e)))))))))
+
+(deftest http-w4-roundtrip-transport-error-optional
+  (let [transport (fn [_]
+                    {:error {:code :http/timeout :message "slow" :retryable true}
+                     :error? true})
+        r (codec/http-w4-roundtrip "https://ex.com" {} "x" 1000 transport)]
+    (if (and (false? (:ok r))
+             (= :browser-host-unavailable (get-in r [:request-codec :reason])))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:reply-edn r) ":error")
+            (str "got " (:reply-edn r)))
+        (is (str/includes? (:reply-edn r) "timeout"))))))
