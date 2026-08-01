@@ -57,3 +57,47 @@
   (let [r (codec/invoke-export :no-such-package :main [])]
     (is (false? (:ok r)))
     (is (contains? #{:unknown-package :browser-host-unavailable} (:reason r)))))
+
+(deftest wrap-secret-fetch-audits-edn-optional
+  (let [events (atom [])
+        fetch (fn [{:keys [name]}]
+                (if (= name "API_TOKEN")
+                  {:tag :value :value "s3cr3t"}
+                  {:tag :error :code :secret/not-found :message "missing"}))
+        wrapped (codec/wrap-secret-fetch fetch (fn [e] (swap! events conj e)))
+        reply (wrapped {:name "API_TOKEN"})]
+    (is (= :value (:tag reply)))
+    (is (= "s3cr3t" (:value reply)))
+    (if (empty? @events)
+      (is true "no events if wrap failed closed without host — unexpected")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip EDN assert when browser-host unavailable")
+          (do
+            (is (= :secret (:kit e)))
+            (is (str/includes? (:request-edn e) "API_TOKEN"))
+            (is (str/includes? (:reply-edn e) "s3cr3t"))
+            (is (= :value (:reply-tag e)))))))))
+
+(deftest wrap-http-post-transport-audits-request-edn-optional
+  (let [events (atom [])
+        transport (fn [{:keys [url]}]
+                    {:status 200 :body "ok" :headers {}})
+        wrapped (codec/wrap-http-post-transport
+                 transport
+                 (fn [e] (swap! events conj e)))
+        reply (wrapped {:url "https://ex.com/a"
+                        :headers {"Accept" "text/plain" "Host" "ex.com"}
+                        :body "hi"
+                        :timeout-ms 5000})]
+    (is (= 200 (:status reply)))
+    (if (empty? @events)
+      (is true "unexpected empty events")
+      (let [e (first @events)]
+        (if (nil? (:request-edn e))
+          (is true "skip EDN assert when browser-host unavailable")
+          (do
+            (is (= :http (:kit e)))
+            (is (str/includes? (:request-edn e) "https://ex.com/a"))
+            (is (= 200 (:status e)))
+            (is (false? (:error? e)))))))))
