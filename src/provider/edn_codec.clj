@@ -1,5 +1,5 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256).
+  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0258).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
@@ -7,6 +7,9 @@
   This does **not** perform host I/O (network, spawn, store, CSPRNG). It only
   runs pure guest codecs so hosts can audit kit request/reply shapes without
   reimplementing EDN encode in Clojure.
+
+  ADR 0257: secret/http audit wraps. ADR 0258: process/git/entropy/scoped-fs
+  helpers + audit wraps; HTTP wrap also attaches reply EDN.
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
@@ -245,15 +248,223 @@
                                        hdrs)
            result (transport req)
            status (or (:status result) -1)
-           err? (boolean (or (:error result) (:error? result)))]
+           err? (boolean (or (:error result) (:error? result)))
+           reply-codec (if err?
+                         (http-result-err-edn
+                          (keyword-code (or (:code result) :transport-error))
+                          (str (or (:message result) (:error result) "error"))
+                          (if (:retryable result) 1 0))
+                         (http-result-ok-edn
+                          (long status)
+                          (str (or (:body result) ""))
+                          hdrs))]
        (try
          (on-call {:kit :http
                    :op :post
                    :url url
                    :request-edn (codec-value req-codec)
+                   :reply-edn (codec-value reply-codec)
                    :status status
                    :error? err?
                    :latency-ms (- (System/currentTimeMillis) started)})
          (catch Exception _))
        result))))
 
+
+;; --- ADR 0258: remaining ops-kit pure codecs + audit wraps ---
+
+(defn process-reply-ok-edn
+  [exit stdout stderr]
+  (invoke-export :process-record-kv-edn :process_reply_ok_rec_kv_edn
+                 [(long exit) (str stdout) (str stderr)]))
+
+(defn process-reply-error-edn
+  [code message]
+  (invoke-export :process-record-kv-edn :process_reply_error_rec_kv_edn
+                 [(str code) (str message)]))
+
+(defn git-request-edn
+  "args-edn is a prebuilt EDN vector string e.g. [\"status\"]."
+  [args-edn max-stdout timeout-ms]
+  (invoke-export :git-record-kv-edn :git_req_rec_kv_edn
+                 [args-edn (long max-stdout) (long timeout-ms)]))
+
+(defn git-reply-ok-edn
+  [exit stdout stderr]
+  (invoke-export :git-record-kv-edn :git_reply_ok_rec_kv_edn
+                 [(long exit) (str stdout) (str stderr)]))
+
+(defn git-reply-error-edn
+  [code message]
+  (invoke-export :git-record-kv-edn :git_reply_error_rec_kv_edn
+                 [(str code) (str message)]))
+
+(defn entropy-reply-hex-edn
+  [hex]
+  (invoke-export :entropy-record-kv-edn :entropy_reply_hex_rec_kv_edn [(str hex)]))
+
+(defn entropy-reply-error-edn
+  [code message]
+  (invoke-export :entropy-record-kv-edn :entropy_reply_error_rec_kv_edn
+                 [(str code) (str message)]))
+
+(defn fs-req-read-edn
+  [root path]
+  (invoke-export :scoped-fs-record-kv-edn :fs_req_read_rec_kv_edn
+                 [(str root) (str path)]))
+
+(defn fs-req-write-edn
+  [root path value]
+  (invoke-export :scoped-fs-record-kv-edn :fs_req_write_rec_kv_edn
+                 [(str root) (str path) (str value)]))
+
+(defn fs-reply-content-edn
+  [content]
+  (invoke-export :scoped-fs-record-kv-edn :fs_reply_content_rec_kv_edn [(str content)]))
+
+(defn fs-reply-written-edn
+  "written: 1 true, 0 false."
+  [written]
+  (invoke-export :scoped-fs-record-kv-edn :fs_reply_written_rec_kv_edn [(long written)]))
+
+(defn fs-reply-error-edn
+  [code message]
+  (invoke-export :scoped-fs-record-kv-edn :fs_reply_error_rec_kv_edn
+                 [(str code) (str message)]))
+
+(defn wrap-process-spawn
+  "Wrap process spawn `(fn [{:keys [argv max-stdout-bytes timeout-ms]}] -> reply)`.
+  Reply shapes: `{:tag :ok :exit n :stdout s :stderr s}` or
+  `{:tag :error :code c :message m}`. Audits W4 request+reply EDN."
+  ([spawn] (wrap-process-spawn spawn (fn [_])))
+  ([spawn on-call]
+   (when-not (fn? spawn)
+     (throw (ex-info "wrap-process-spawn requires a spawn fn" {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "wrap-process-spawn requires an on-call fn" {:phase :edn-codec})))
+   (fn [{:keys [argv max-stdout-bytes timeout-ms] :as req}]
+     (let [argv-edn (cond
+                      (string? argv) argv
+                      (sequential? argv)
+                      (str "[" (str/join " " (map #(str "\"" % "\"") argv)) "]")
+                      :else "[]")
+           req-codec (process-request-edn argv-edn
+                                          (long (or max-stdout-bytes 4096))
+                                          (long (or timeout-ms 5000)))
+           reply (spawn req)
+           reply-codec (case (:tag reply)
+                         :ok (process-reply-ok-edn (long (or (:exit reply) 0))
+                                                   (str (or (:stdout reply) ""))
+                                                   (str (or (:stderr reply) "")))
+                         :error (process-reply-error-edn
+                                 (keyword-code (:code reply))
+                                 (str (or (:message reply) "")))
+                         {:ok false})]
+       (try
+         (on-call {:kit :process
+                   :op :spawn
+                   :request-edn (codec-value req-codec)
+                   :reply-edn (codec-value reply-codec)
+                   :reply-tag (:tag reply)})
+         (catch Exception _))
+       reply))))
+
+(defn wrap-git-run
+  "Wrap git run `(fn [{:keys [args max-stdout-bytes timeout-ms]}] -> reply)`.
+  Same reply shape as process. Audits W4 request+reply EDN."
+  ([run] (wrap-git-run run (fn [_])))
+  ([run on-call]
+   (when-not (fn? run)
+     (throw (ex-info "wrap-git-run requires a run fn" {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "wrap-git-run requires an on-call fn" {:phase :edn-codec})))
+   (fn [{:keys [args max-stdout-bytes timeout-ms] :as req}]
+     (let [args-edn (cond
+                      (string? args) args
+                      (sequential? args)
+                      (str "[" (str/join " " (map #(str "\"" % "\"") args)) "]")
+                      :else "[]")
+           req-codec (git-request-edn args-edn
+                                      (long (or max-stdout-bytes 4096))
+                                      (long (or timeout-ms 5000)))
+           reply (run req)
+           reply-codec (case (:tag reply)
+                         :ok (git-reply-ok-edn (long (or (:exit reply) 0))
+                                               (str (or (:stdout reply) ""))
+                                               (str (or (:stderr reply) "")))
+                         :error (git-reply-error-edn
+                                 (keyword-code (:code reply))
+                                 (str (or (:message reply) "")))
+                         {:ok false})]
+       (try
+         (on-call {:kit :git
+                   :op :run
+                   :request-edn (codec-value req-codec)
+                   :reply-edn (codec-value reply-codec)
+                   :reply-tag (:tag reply)})
+         (catch Exception _))
+       reply))))
+
+(defn wrap-entropy-draw
+  "Wrap entropy draw `(fn [{:keys [n]}] -> reply)`.
+  Reply: `{:tag :hex :hex s}` or `{:tag :error :code c :message m}`."
+  ([draw] (wrap-entropy-draw draw (fn [_])))
+  ([draw on-call]
+   (when-not (fn? draw)
+     (throw (ex-info "wrap-entropy-draw requires a draw fn" {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "wrap-entropy-draw requires an on-call fn" {:phase :edn-codec})))
+   (fn [{:keys [n] :as req}]
+     (let [req-codec (entropy-request-edn (long n))
+           reply (draw req)
+           reply-codec (case (:tag reply)
+                         :hex (entropy-reply-hex-edn (str (:hex reply)))
+                         :error (entropy-reply-error-edn
+                                 (keyword-code (:code reply))
+                                 (str (or (:message reply) "")))
+                         {:ok false})]
+       (try
+         (on-call {:kit :entropy
+                   :op :draw
+                   :n n
+                   :request-edn (codec-value req-codec)
+                   :reply-edn (codec-value reply-codec)
+                   :reply-tag (:tag reply)})
+         (catch Exception _))
+       reply))))
+
+(defn wrap-scoped-fs-transact
+  "Wrap scoped-fs op `(fn [{:keys [op root path value]}] -> reply)`.
+  `op` is `:read` or `:write`. Reply tags: `:content`, `:written`, `:error`."
+  ([tx] (wrap-scoped-fs-transact tx (fn [_])))
+  ([tx on-call]
+   (when-not (fn? tx)
+     (throw (ex-info "wrap-scoped-fs-transact requires a tx fn" {:phase :edn-codec})))
+   (when-not (fn? on-call)
+     (throw (ex-info "wrap-scoped-fs-transact requires an on-call fn" {:phase :edn-codec})))
+   (fn [{:keys [op root path value] :as req}]
+     (let [req-codec (case op
+                       :read (fs-req-read-edn root path)
+                       :write (fs-req-write-edn root path (str (or value "")))
+                       {:ok false})
+           reply (tx req)
+           reply-codec (case (:tag reply)
+                         :content (fs-reply-content-edn (str (:content reply)))
+                         :written (fs-reply-written-edn
+                                   (if (or (true? (:written reply))
+                                           (= 1 (:written reply)))
+                                     1 0))
+                         :error (fs-reply-error-edn
+                                 (keyword-code (:code reply))
+                                 (str (or (:message reply) "")))
+                         {:ok false})]
+       (try
+         (on-call {:kit :scoped-fs
+                   :op op
+                   :root root
+                   :path path
+                   :request-edn (codec-value req-codec)
+                   :reply-edn (codec-value reply-codec)
+                   :reply-tag (:tag reply)})
+         (catch Exception _))
+       reply))))
