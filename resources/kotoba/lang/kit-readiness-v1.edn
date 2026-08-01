@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness (ops audit :ready ADR 0269) + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207. HTTP EDN reject path through ADR 0227 (element-bound uniqueness + multi-export). Residual: W4 recursive nested EDN ADT (headers 0246 + request/result 0247 + true-kv ≤3 0248 + 4-field 0249 + record-kv 0250 landed; secret W4 0251 + process W4 0252 + git W4 0253 + entropy W4 0254 + scoped-fs W4 0255 landed; ops-kit pure EDN codec AOT complete (0256) + audit wraps 0257–0258 + production/test factories 0259 + guest host_post 0260 + entropy prod EDN-audit 0261 + live host inject 0262 + HTTP W4 roundtrip 0263 + remaining ops W4 roundtrips 0264 + secret guest host_get 0265 + process guest host_spawn 0266 + git/entropy/fs guest host 0267 + fs write 0268; residual host authority by design (I/O/fetch/spawn/git/store/CSPRNG); multi-file project kit body CLI first slice (compiler ADR 0192). Fixtures never claim production."
+ "T8.2 readiness (ops audit :ready ADR 0269) + T8.3 packaging. Pure-allowlist (0161). Ops packaging (0164). Real-bytes+Components 0165–0170. Compiler-AOT kit body 0171–0183. Pure Component re-emit 0199–0207. HTTP EDN reject path through ADR 0227 (element-bound uniqueness + multi-export). Residual: W4 recursive nested EDN ADT (headers 0246 + request/result 0247 + true-kv ≤3 0248 + 4-field 0249 + record-kv 0250 landed; secret W4 0251 + process W4 0252 + git W4 0253 + entropy W4 0254 + scoped-fs W4 0255 landed; ops-kit pure EDN codec AOT complete (0256) + audit wraps 0257–0258 + production/test factories 0259 + guest host_post 0260 + entropy prod EDN-audit 0261 + live host inject 0262 + HTTP W4 roundtrip 0263 + remaining ops W4 roundtrips 0264 + secret guest host_get 0265 + process guest host_spawn 0266 + git/entropy/fs guest host 0267 + fs write 0268 + host inject parity git/entropy/fs-read 0270; residual host authority by design (I/O/fetch/spawn/git/store/CSPRNG); multi-file project kit body CLI first slice (compiler ADR 0192). Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -100,9 +100,10 @@
               "wasm-packages/secret-request-edn-v1.component.wasm (ADR 0245 pure Component twin)"
               "wasm-packages/secret-edn-package-v1.wasm (ADR 0237 multi-export request+reply EDN)"
               "wasm-packages/secret-record-kv-edn-v1.wasm (ADR 0251 W4 secret record-kv request/reply)"
-              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0268)"
+              "wasm-packages/secret-w4-host-edn-v1.wasm (ADR 0265 guest host_get + cap 21)"
+              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"
               "wasm-packages/secret-name-walk-v1.wasm + .component.wasm (ADR 0179 pure walk)"]
-   :note "ADR 0166 hand scan + pure gates 0173/0175/0176 + typed 0178 + walk 0179 + 0206 secret_name_ok pure Component; wasm-aot partial (ADR 0232–0237 fixed-depth request/reply EDN; ADR 0245 Component twin of request EDN; ADR 0251 W4 record-kv request/reply; ADR 0264 secret-w4-roundtrip guest+host+guest; host-fetch authority open by design)"}
+   :note "ADR 0166 hand scan + pure gates 0173/0175/0176 + typed 0178 + walk 0179 + 0206 secret_name_ok pure Component; wasm-aot partial (ADR 0232–0237 fixed-depth request/reply EDN; ADR 0245 Component twin of request EDN; ADR 0251 W4 record-kv request/reply; ADR 0264 secret-w4-roundtrip; ADR 0265 guest host_get_edn; host-fetch authority open by design)"}
 
   {:name :process
    :id 20
@@ -119,7 +120,7 @@
               "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)",
               "wasm-packages/process-edn-package-v1.wasm (ADR 0238/0239 process request/reply EDN)"
               "wasm-packages/process-w4-host-edn-v1.wasm (ADR 0266 guest host_spawn + cap 20)"
-              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0268)"
+              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"
               "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172)"
               "wasm-packages/process-spawn-walk-v1.wasm + .component.wasm (ADR 0183 multi-step)"
               "wasm-packages/process-record-kv-edn-v1.wasm (ADR 0252 W4 process record-typed recursive EDN)"]
@@ -146,8 +147,9 @@
               "wasm-packages/fs-path-walk-v1.wasm + .component.wasm (ADR 0181 multi-step walk)"
               "wasm-packages/scoped-fs-edn-package-v1.wasm (ADR 0243 scoped-fs request/reply EDN)"
               "wasm-packages/scoped-fs-record-kv-edn-v1.wasm (ADR 0255 W4 scoped-fs record-kv)"
-              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0268)"]
-   :note "ADR 0169 hand + 0174/0175/0177 gates + 0180 typed-string + 0181 multi-step walk + 0207 fs_path_ok pure Component + 0243 fixed-depth EDN package; ADR 0255 W4 record-kv main -2505; host store; wasm-aot partial (host store open)"}
+              "wasm-packages/scoped-fs-w4-host-edn-v1.wasm (ADR 0267/0268 host_read+write + ADR 0270 inject parity)"
+              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"]
+   :note "ADR 0169 hand + 0174/0175/0177 gates + 0180 typed-string + 0181 multi-step walk + 0207 fs_path_ok pure Component + 0243 fixed-depth EDN package; ADR 0255 W4 record-kv main -2505; ADR 0267/0268 guest host_read/write; ADR 0270 inject/deny parity; host store; wasm-aot partial (host store open)"}
 
   {:name :git
    :id 22
@@ -166,8 +168,9 @@
               "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"
               "wasm-packages/git-run-walk-v1.wasm + .component.wasm (ADR 0184)"
               "wasm-packages/git-record-kv-edn-v1.wasm (ADR 0253 W4 git record-typed recursive EDN)"
-              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0268)"]
-   :note "ADR 0170 Component + 0172 one-shot + 0184 multi-step walk + 0240/0241 fixed-depth EDN package; ADR 0253 W4 record-kv main -2503; git binary host-injected; wasm-aot partial (host git open)"}
+              "wasm-packages/git-w4-host-edn-v1.wasm (ADR 0267 host_run + ADR 0270 git-ok/deny)"
+              "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"]
+   :note "ADR 0170 Component + 0172 one-shot + 0184 multi-step walk + 0240/0241 fixed-depth EDN package; ADR 0253 W4 record-kv main -2503; ADR 0267 guest host_run_edn; ADR 0270 inject/deny parity; git binary host-injected; wasm-aot partial (host git open)"}
 
   {:name :entropy
    :id 23
@@ -184,8 +187,9 @@
               "wasm-packages/entropy-draw-v1.wasm + .component.wasm (ADR 0167)",
               "wasm-packages/entropy-edn-package-v1.wasm (ADR 0244 entropy request/reply EDN)"
               "wasm-packages/entropy-record-kv-edn-v1.wasm (ADR 0254 W4 entropy record-typed recursive EDN)"
+              "wasm-packages/entropy-w4-host-edn-v1.wasm (ADR 0267 host_draw + ADR 0270 entropy-hex/deny)"
               "wasm-packages/entropy-draw-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
-   :note "ADR 0167 Component + ADR 0172 compiler-AOT draw bounds; ADR 0244 fixed-depth request/reply EDN (main -2315); ADR 0254 W4 record-typed recursive EDN main -2504; CSPRNG host-injected; wasm-aot partial (host draw open)"}
+   :note "ADR 0167 Component + ADR 0172 compiler-AOT draw bounds; ADR 0244 fixed-depth request/reply EDN (main -2315); ADR 0254 W4 record-typed recursive EDN main -2504; ADR 0267 guest host_draw_edn; ADR 0270 inject/deny parity; CSPRNG host-injected; wasm-aot partial (host draw open)"}
 
   {:name :object
    :id 14
