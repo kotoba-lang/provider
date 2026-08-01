@@ -53,6 +53,16 @@
       ;; readiness gate alone is considered (unsigned receipts still noted elsewhere).
       (is (true? (:production-signed-claim-allowed? rr))))))
 
+(deftest readiness-ops-audit-ready-after-edn-wire
+  "ADR 0269: ops kits with EDN audit wire score audit :ready; entropy stays :n/a."
+  (let [table (kit/readiness-table
+               (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))]
+    (doseq [n [:http :secret :process :scoped-fs :git]]
+      (is (= :ready (get-in (kit/readiness-for table n) [:scores :audit]))
+          (str n)))
+    (is (= :n/a (get-in (kit/readiness-for table :entropy) [:scores :audit])))
+    (is (re-find #"0269|audit ready" (:kotoba.kit-readiness/summary table)))))
+
 (deftest readiness-covers-t8-critical-kits
   (let [table (kit/readiness-table
                (slurp (io/resource "kotoba/lang/kit-readiness-v1.edn")))
