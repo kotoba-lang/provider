@@ -42,4 +42,5 @@
   :ownership-check :direct-move-only
   :component-core :task-stream-handle-slice
   :restricted-esm :pending
-  :jvm-host :implemented}}
+  :jvm-host :implemented
+  :signed-content-addressed-package :ready}}

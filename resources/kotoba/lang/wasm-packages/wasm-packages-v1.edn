@@ -3003,4 +3003,78 @@
    :exports {"git_run_bounds_ok" {:params [:i32 :i64 :i64] :result :i32}}
    :fixture? false
    :signed-content-addressed-package :pending}
+
+  ;; ADR 0274: storage/object pure bounds + Components for signed-wasm flip
+  {:name :storage-value-len
+   :resource "kotoba/lang/wasm-packages/storage-value-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/storage-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "fcfde2c3fa1ffd71e45795b09e0fbc0bb12480be16d0b5cdf54ad5fe389b3b7d"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/storage-value-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/storage_value_len.kotoba"
+            :capability-id "storage/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0274 pure storage value-bytes bound (65536); host store remains authority"}
+   :exports {"storage_value_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :storage-value-len-component
+   :resource "kotoba/lang/wasm-packages/storage-value-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/storage-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "87ce9f99b094b400cdfcc9a4676be6244e92ffa80511632a8e3afb84fa847d16"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/storage-value-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/storage_value_len.kotoba"
+            :capability-id "storage/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0274 Component embeds storage value-len core; enables ops-signed-wasm gate"}
+   :exports {"storage_value_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :object-digest-len
+   :resource "kotoba/lang/wasm-packages/object-digest-len-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/stream-object-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "1978d41ffd21b620311c9e8bb28bbb560e3335662f7081a932da8148c23b091f"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/object-digest-len-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/object_digest_len.kotoba"
+            :capability-id "object/put-block"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0274 pure object digest length bound; host object store remains authority"}
+   :exports {"object_digest_len_ok" {:params [:i64] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+  {:name :object-digest-len-component
+   :resource "kotoba/lang/wasm-packages/object-digest-len-v1.component.wasm"
+   :kit-resource "kotoba/lang/capability-kits/stream-object-v1.edn"
+   :artifact-kind :wasm-component
+   :media-type "application/wasm"
+   :sha256 "4e8a3de8be355eca054094173788665675b2ccadb41da5b214e151796edad0db"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/object-digest-len-v1.component.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/object_digest_len.kotoba"
+            :capability-id "object/put-block"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :note "ADR 0274 Component embeds object digest-len core; enables ops-signed-wasm gate"}
+   :exports {"object_digest_len_ok" {:params [:s64] :result :s64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 ]}

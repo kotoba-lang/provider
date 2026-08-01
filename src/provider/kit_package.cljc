@@ -729,8 +729,10 @@
      (boolean (and base-ok? entry-ok?)))))
 
 (def ops-network-kit-names
-  "Readiness kit names on the ops packaging surface (not pure-allowlist). ADR 0164–0170: http/secret/entropy/process/scoped-fs/git."
-  #{:http :secret :entropy :process :scoped-fs :git})
+  "Readiness kit names on the ops packaging surface (not pure-allowlist).
+  ADR 0164–0170: http/secret/entropy/process/scoped-fs/git;
+  ADR 0274: storage/object (signed-wasm via pure-bounds Components)."
+  #{:http :secret :entropy :process :scoped-fs :git :storage :object})
 
 (defn ops-network-kit?
   "True when readiness row is an ops/network packaging surface (http/secret).
@@ -767,7 +769,10 @@
                        (or (= :ready (:audit s)) (= :partial (:audit s)) (= :n/a (:audit s))))
          entry-ok? (if package-entry
                      (and (false? (boolean (:fixture? package-entry)))
-                          (contains? #{:ops-network :ops} (:class package-entry))
+                          (contains? #{:ops-network :ops :ops-process :ops-git
+                                       :ops-scoped-fs :ops-entropy :ops-http
+                                       :ops-secret :ops-storage :ops-object}
+                                     (:class package-entry))
                           (string? (:sha256 package-entry))
                           (or (nil? wasm-bytes)
                               (verify-wasm-package-digest package-entry wasm-bytes)))
