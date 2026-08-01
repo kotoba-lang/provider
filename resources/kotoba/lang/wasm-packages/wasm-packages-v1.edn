@@ -697,6 +697,30 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  {:name :process-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/process-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "530fa9c5b7c166955ebc1d66080e19afae3c9f8e4afe838fd7cdede843790a98"
+   :class :ops-process
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/process-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/process_w4_host_edn.kotoba"
+            :policy "resources/kotoba/lang/wasm-packages/src/process_w4_host_edn.policy.edn"
+            :capability-id "process/spawn"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "local"
+            :note "ADR 0266 guest W4 process encode + typed-cap-call wire 20; main pure → -2508; host inject required for host_spawn_edn; wasm-aot still partial"}
+   :exports {"process_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
+             "process_reply_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
+             "host_spawn_edn" {:params [:externref :i64 :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + recursive variant + record + cap 20"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
 
   {:name :git-record-kv-edn
    :resource "kotoba/lang/wasm-packages/git-record-kv-edn-v1.wasm"

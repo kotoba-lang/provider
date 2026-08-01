@@ -1,5 +1,5 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0265).
+  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0266).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
@@ -9,7 +9,8 @@
   reimplementing EDN encode in Clojure.
 
   ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
-  factories; ADR 0262–0264 host inject/roundtrips; ADR 0265 secret guest host_get;
+  factories; ADR 0262–0264 host inject/roundtrips; ADR 0265 secret host_get;
+  ADR 0266 process host_spawn;
   ADR 0264 remaining ops W4 round-trips (secret/process/git/entropy/fs).
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
@@ -75,7 +76,8 @@
     :echo         — typedCapCall returns the request string (prove cap path)
     :ok-200       — HTTP fixed ok EDN arm (cap 4)
     :secret-value — secret fixed value arm (cap 21)
-  allow-capabilities — seq of integer cap ids (e.g. [4] http/post, [21] secret/get).
+    :process-ok   — process fixed ok arm (cap 20)
+  allow-capabilities — seq of integer cap ids (e.g. [4] http, [20] process, [21] secret).
   primary-cap-id — cap id matched in inject body (default first of allow)."
   [{:keys [allow-capabilities inject-mode primary-cap-id]}]
   (if (and (nil? inject-mode) (empty? allow-capabilities))
@@ -94,6 +96,10 @@
                                          ")return "
                                          (js-quote "{:tag :value :value \"s3cr3t\"}")
                                          ";throw new Error('unimpl '+id);}")
+                      :process-ok (str "typedCapCall(id,request){if(id===" cap-id
+                                       ")return "
+                                       (js-quote "{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}")
+                                       ";throw new Error('unimpl '+id);}")
                       nil nil
                       (throw (ex-info "unknown inject-mode"
                                       {:phase :edn-codec :inject-mode inject-mode})))]
@@ -1040,3 +1046,31 @@
   "Prove deny-by-default: host_get without allowCapabilities fails closed."
   [name]
   (invoke-export* :secret-w4-host-edn :host_get_edn [(str name)] {}))
+
+;; --- ADR 0266: guest process W4 host_spawn_edn + live inject (wire id 20) ---
+
+(defn process-w4-host-spawn-edn
+  "Invoke guest `host_spawn_edn` (ADR 0266) with browser-host capability inject.
+
+  Builds W4 process request EDN then typed-cap-call wire id 20 (process/spawn).
+  inject-mode:
+    :echo       — host returns the request EDN string (cap path proof)
+    :process-ok — host returns fixed `{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}`
+
+  argv-edn is a prebuilt EDN vector string e.g. `[\"echo\" \"hi\"]`.
+  Does not perform OS spawn — inject is the host authority boundary."
+  ([argv-edn max-stdout timeout-ms]
+   (process-w4-host-spawn-edn argv-edn max-stdout timeout-ms :echo))
+  ([argv-edn max-stdout timeout-ms inject-mode]
+   (invoke-export* :process-w4-host-edn :host_spawn_edn
+                   [(str argv-edn) (long max-stdout) (long timeout-ms)]
+                   {:allow-capabilities [20]
+                    :primary-cap-id 20
+                    :inject-mode inject-mode})))
+
+(defn process-w4-host-spawn-denied
+  "Prove deny-by-default: host_spawn without allowCapabilities fails closed."
+  [argv-edn max-stdout timeout-ms]
+  (invoke-export* :process-w4-host-edn :host_spawn_edn
+                  [(str argv-edn) (long max-stdout) (long timeout-ms)]
+                  {}))
