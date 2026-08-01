@@ -432,6 +432,34 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0247: W4 recursive headers composed into kit request map EDN
+  {:name :recursive-request-edn
+   :resource "kotoba/lang/wasm-packages/recursive-request-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "ef37c6f04864474c8e17b4f61404704152c76eeb4133140f1e7c46bdafd8091e"
+   :class :ops-network
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/recursive-request-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/recursive_request_edn.kotoba"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "b79a131a2e28e16119c8aaaa810ccd0a06ac4b00"
+            :note "ADR 0247 W4 recursive headers spine + fixed request map; main → -2402; not full result recursive identity; wasm-aot partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "headers_list_edn" {:params [:externref :externref :externref :externref] :result :externref}
+             "request_edn" {:params [:externref :externref :i64 :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
 
 
 

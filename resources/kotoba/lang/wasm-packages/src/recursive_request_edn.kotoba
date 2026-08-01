@@ -1,0 +1,125 @@
+(ns kotoba.edn.recursive-request
+  ;; T8.3 / W4 second ops slice ADR 0247: kit :request map composed from
+  ;; recursive headers EDN spine (0246 atom|pair print) + fixed outer keys.
+  ;; Dual quote/backslash reject on string leaves. Does NOT alone flip
+  ;; wasm-aot :implemented (full result recursive identity + host I/O open).
+  (:schemas {:edn/node [:variant :edn/node
+                         [[:atom :string]
+                          [:pair [:vector [[:ref :edn/node]
+                                           [:ref :edn/node]]]]]]})
+  (:export [edn_atom edn_pair edn_print headers_list_edn request_edn main]))
+
+(defn- has-forbidden [s :string] :i64
+  (let [n (string-length s)]
+    (loop [i 0]
+      (if (>= i n) 0
+        (let [c (string-code-point-at s i)]
+          (if (= c 34) 1
+            (if (= c 92) 1 (recur (+ i 1)))))))))
+
+(defn- qstr [s :string] :string
+  (string-concat (string-substring "\"x" 0 1)
+                 (string-concat s (string-substring "\"x" 0 1))))
+
+(defn edn_atom [s :string]
+  [:variant :edn/node
+    [[:atom :string]
+     [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+  (variant-new
+   [:variant :edn/node
+     [[:atom :string]
+      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+   :atom s))
+
+(defn edn_pair
+  [l [:variant :edn/node
+       [[:atom :string]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+   r [:variant :edn/node
+       [[:atom :string]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
+  [:variant :edn/node
+    [[:atom :string]
+     [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+  (variant-new
+   [:variant :edn/node
+     [[:atom :string]
+      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+   :pair
+   (hetero-vector [:vector [[:ref :edn/node] [:ref :edn/node]]] l r)))
+
+(defn edn_print
+  [n [:variant :edn/node
+       [[:atom :string]
+        [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
+  :string
+  (match-variant n
+   [:variant :edn/node
+     [[:atom :string]
+      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+    (:atom s s)
+    (:pair p
+      (string-concat
+       (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 0))
+       (string-concat " "
+                      (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 1)))))))
+
+(defn- header-atom [name :string value :string]
+  [:variant :edn/node
+    [[:atom :string]
+     [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
+  (if (or (= (string-length name) 0)
+          (= (has-forbidden name) 1)
+          (= (has-forbidden value) 1))
+    (edn_atom "")
+    (edn_atom
+     (string-concat "{:name "
+                    (string-concat (qstr name)
+                                   (string-concat " :value "
+                                                  (string-concat (qstr value) "}")))))))
+
+;; Build vector EDN of two headers via recursive pair spine + brackets
+(defn headers_list_edn
+  [name1 :string value1 :string name2 :string value2 :string]
+  :string
+  (let [a (header-atom name1 value1)
+        b (header-atom name2 value2)
+        body (edn_print (edn_pair a b))]
+    (if (or (string=? (edn_print a) "")
+            (string=? (edn_print b) ""))
+      ""
+      (string-concat "[" (string-concat body "]")))))
+
+
+(defn request_edn
+  [url :string body :string timeout :i64
+   headers-edn :string]
+  :string
+  (if (or (= (has-forbidden url) 1)
+          (= (has-forbidden body) 1)
+          (< timeout 0)
+          (= (string-length headers-edn) 0))
+    ""
+    (string-concat "{:url "
+                   (string-concat (qstr url)
+                                  (string-concat " :headers "
+                                                 (string-concat headers-edn
+                                                                (string-concat " :body "
+                                                                               (string-concat (qstr body)
+                                                                                              " :timeout-ms 0}"))))))))
+
+(defn main [] :i64
+  (let [s (headers_list_edn "Accept" "text/plain" "Host" "ex.com")
+        req (request_edn "https://x.test" "{}" 1000 s)
+        bad (request_edn "https://x.test" "{}" -1 s)
+        good (if (string-contains? req "https://x.test")
+               (if (string-contains? req "Accept")
+                 (if (string-contains? req ":headers")
+                   (if (string-contains? s "Host") 1 0)
+                   0)
+                 0)
+               0)
+        ok-bad (if (= (string-length bad) 0) 1 0)]
+    (if (= good 1)
+      (if (= ok-bad 1) -2402 -1)
+      -1)))

@@ -2288,3 +2288,22 @@
     (is (contains? (:exports comp) "secret-request-edn"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_request_edn_component.kotoba")))))
 
+
+(deftest recursive-request-edn-package-registered
+  "T8.3 ADR 0247: W4 recursive headers composed into kit request map EDN."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :recursive-request-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "ef37c6f04864474c8e17b4f61404704152c76eeb4133140f1e7c46bdafd8091e" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["edn_atom" "edn_pair" "edn_print" "headers_list_edn" "request_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/recursive_request_edn.kotoba")))))
