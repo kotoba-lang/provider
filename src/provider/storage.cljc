@@ -5,7 +5,9 @@
   `:i64` ABI fields. On `:cljs` the canonical representation is JS `bigint`
   (same rule ADR 0073 / provider#2–#4 applied to clock, log, http, state).
   `cljs.core/integer?` does not recognize bigint, so `valid-version?` and
-  host↔ABI conversion must branch by host."
+  host↔ABI conversion must branch by host.
+
+  ADR 0273: pure `validate-*` deny fixtures (stable error keywords)."
   (:require [kotoba.kir.value :as value]
             #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
@@ -72,6 +74,50 @@
   [version]
   #?(:clj version
      :cljs (js/Number (i64/->bigint version))))
+
+(defn validate-put-value
+  "Pure put value policy. Returns nil when ok, else an error keyword."
+  [text]
+  (try
+    (value/bounded-string! text max-value-bytes)
+    nil
+    (catch #?(:clj Exception :cljs :default) _
+      :storage/value-too-large)))
+
+(defn validate-expected-version
+  "Pure expected-version policy after option present?.
+  `version` is the raw option payload when present is true.
+  Returns nil when ok, else an error keyword."
+  [present? version]
+  (when present?
+    (try
+      (let [v (canonical-version version)]
+        (if (valid-version? v) nil :storage/invalid-version))
+      (catch #?(:clj Exception :cljs :default) _
+        :storage/invalid-version))))
+
+(defn validate-get
+  "Pure get policy. Keys are ABI keywords; returns nil when ok."
+  [key]
+  (when-not (keyword? key)
+    :storage/bad-key))
+
+(defn validate-put
+  "Pure put policy: key + value + optional expected version."
+  [key text present? version]
+  (or (validate-get key)
+      (validate-put-value text)
+      (validate-expected-version present? version)))
+
+(defn validate-delete
+  "Pure delete policy: key + optional expected version."
+  [key present? version]
+  (or (validate-get key)
+      (validate-expected-version present? version)))
+
+(defn- deny! [code context]
+  (throw (ex-info "storage request denied"
+                  (merge {:phase :storage-provider :code code} context))))
 
 (defn- option-version [version]
   (if (nil? version)
@@ -148,6 +194,8 @@
      (case operation
        :get
        (let [[_ key] payload]
+         (when-let [code (validate-get key)]
+           (deny! code {:operation :get :key key}))
          (typed-result key
                        (invoke-transport transport
                                          {:namespace storage-namespace
@@ -155,22 +203,26 @@
 
        :put
        (let [[_ key text version-option] payload
-             expected (expected-version version-option)]
-         (value/bounded-string! text max-value-bytes)
-         (typed-result key
-                       (invoke-transport transport
-                                         {:namespace storage-namespace
-                                          :operation :put :key key :value text
-                                          :expected-version expected})))
+             [_ present? version] version-option]
+         (when-let [code (validate-put key text present? version)]
+           (deny! code {:operation :put :key key}))
+         (let [expected (expected-version version-option)]
+           (typed-result key
+                         (invoke-transport transport
+                                           {:namespace storage-namespace
+                                            :operation :put :key key :value text
+                                            :expected-version expected}))))
 
        :delete
        (let [[_ key version-option] payload
-             expected (expected-version version-option)]
-         (typed-result key
-                       (invoke-transport transport
-                                         {:namespace storage-namespace
-                                          :operation :delete :key key
-                                          :expected-version expected})))
+             [_ present? version] version-option]
+         (when-let [code (validate-delete key present? version)]
+           (deny! code {:operation :delete :key key}))
+         (let [expected (expected-version version-option)]
+           (typed-result key
+                         (invoke-transport transport
+                                           {:namespace storage-namespace
+                                            :operation :delete :key key
+                                            :expected-version expected}))))
 
-       (throw (ex-info "unknown storage operation"
-                       {:phase :storage-provider :operation operation}))))})
+       (deny! :storage/unknown-op {:operation operation})))})
