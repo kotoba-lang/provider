@@ -509,3 +509,30 @@
       (do
         (is (false? (:ok r)) (pr-str r))
         (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
+(deftest git-w4-host-run-echo-optional
+  (let [r (codec/git-w4-host-run-edn "[\"status\"]" 4096 5000 :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":args"))
+        (is (str/includes? (:value r) "status"))))))
+
+(deftest entropy-w4-host-draw-echo-optional
+  (let [r (codec/entropy-w4-host-draw-edn 16 :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":n"))
+        (is (str/includes? (:value r) "16"))))))
+
+(deftest scoped-fs-w4-host-read-echo-optional
+  (let [r (codec/scoped-fs-w4-host-read-edn "workspace" "docs/a.txt" :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":read"))
+        (is (str/includes? (:value r) "docs/a.txt"))))))

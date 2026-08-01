@@ -467,6 +467,32 @@
    :signed-content-addressed-package :pending}
 
 
+  ;; T8.3 ADR 0267: ADR 0267 entropy host_draw_edn wire 23; main → -2510
+  {:name :entropy-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/entropy-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "efb15002c7e5f9f1061de2cce61ebacaea82b129eba1b924146cdc37e88eb80a"
+   :class :ops-entropy
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/entropy_w4_host_edn.kotoba"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "13463b5"
+            :note "ADR 0267 entropy host_draw_edn wire 23; main → -2510"}
+   :exports {
+             "entropy_req_rec_kv_edn" {:params [:i64] :result :externref}
+             "host_draw_edn" {:params [:i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + cap forward"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :recursive-headers-edn
    :resource "kotoba/lang/wasm-packages/recursive-headers-edn-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
@@ -751,6 +777,32 @@
    :signed-content-addressed-package :pending}
 
   ;; T8.3 ADR 0255: scoped-fs kit W4 record-kv request/reply EDN
+  ;; T8.3 ADR 0267: ADR 0267 git host_run_edn wire 22; main → -2509
+  {:name :git-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/git-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "e81e9de9c8864ee824451e6d4694c278e9ee8ca29d50f22f54e7b92fe97cc37e"
+   :class :ops-git
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/git-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/git_w4_host_edn.kotoba"
+            :capability-id "git/run"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "13463b5"
+            :note "ADR 0267 git host_run_edn wire 22; main → -2509"}
+   :exports {
+             "git_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
+             "host_run_edn" {:params [:externref :i64 :i64] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + cap forward"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :scoped-fs-record-kv-edn
    :resource "kotoba/lang/wasm-packages/scoped-fs-record-kv-edn-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
@@ -780,6 +832,32 @@
    :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant + record surface"}}
    :fixture? false
    :signed-content-addressed-package :pending}
+
+  ;; T8.3 ADR 0267: ADR 0267 scoped-fs host_read_edn wire 19; main → -2511
+  {:name :scoped-fs-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/scoped-fs-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "b3daa65988eb26c4c9e5d8dce9f2dec2f711345d96a249f899b48459f2679ab3"
+   :class :ops-scoped-fs
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/scoped-fs-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.kotoba"
+            :capability-id "fs/transact"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "13463b5"
+            :note "ADR 0267 scoped-fs host_read_edn wire 19; main → -2511"}
+   :exports {
+             "fs_req_read_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "host_read_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI + cap forward"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"

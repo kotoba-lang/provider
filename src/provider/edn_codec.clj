@@ -1074,3 +1074,36 @@
   (invoke-export* :process-w4-host-edn :host_spawn_edn
                   [(str argv-edn) (long max-stdout) (long timeout-ms)]
                   {}))
+
+;; --- ADR 0267: git/entropy/fs guest host surfaces + inject helpers ---
+
+(defn git-w4-host-run-edn
+  "Guest host_run_edn (wire 22) with inject. Default :echo."
+  ([args-edn max-stdout timeout-ms]
+   (git-w4-host-run-edn args-edn max-stdout timeout-ms :echo))
+  ([args-edn max-stdout timeout-ms inject-mode]
+   (invoke-export* :git-w4-host-edn :host_run_edn
+                   [(str args-edn) (long max-stdout) (long timeout-ms)]
+                   {:allow-capabilities [22]
+                    :primary-cap-id 22
+                    :inject-mode inject-mode})))
+
+(defn entropy-w4-host-draw-edn
+  "Guest host_draw_edn (wire 23) with inject. Default :echo."
+  ([n] (entropy-w4-host-draw-edn n :echo))
+  ([n inject-mode]
+   (invoke-export* :entropy-w4-host-edn :host_draw_edn
+                   [(long n)]
+                   {:allow-capabilities [23]
+                    :primary-cap-id 23
+                    :inject-mode inject-mode})))
+
+(defn scoped-fs-w4-host-read-edn
+  "Guest host_read_edn (wire 19) with inject. Default :echo."
+  ([root path] (scoped-fs-w4-host-read-edn root path :echo))
+  ([root path inject-mode]
+   (invoke-export* :scoped-fs-w4-host-edn :host_read_edn
+                   [(str root) (str path)]
+                   {:allow-capabilities [19]
+                    :primary-cap-id 19
+                    :inject-mode inject-mode})))
