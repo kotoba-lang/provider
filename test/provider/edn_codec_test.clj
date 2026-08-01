@@ -519,6 +519,25 @@
         (is (str/includes? (:value r) ":args"))
         (is (str/includes? (:value r) "status"))))))
 
+(deftest git-w4-host-run-ok-inject-optional
+  "ADR 0270: guest host_run_edn + :git-ok fixed ok arm."
+  (let [r (codec/git-w4-host-run-edn "[\"status\"]" 4096 5000 :git-ok)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":ok"))
+        (is (str/includes? (:value r) "stdout"))
+        (is (str/includes? (:value r) "ok"))))))
+
+(deftest git-w4-host-run-denied-optional
+  (let [r (codec/git-w4-host-run-denied "[\"status\"]" 4096 5000)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
 (deftest entropy-w4-host-draw-echo-optional
   (let [r (codec/entropy-w4-host-draw-edn 16 :echo)]
     (if (= :browser-host-unavailable (:reason r))
@@ -527,6 +546,24 @@
         (is (:ok r) (pr-str r))
         (is (str/includes? (:value r) ":n"))
         (is (str/includes? (:value r) "16"))))))
+
+(deftest entropy-w4-host-draw-hex-inject-optional
+  "ADR 0270: guest host_draw_edn + :entropy-hex fixed hex arm."
+  (let [r (codec/entropy-w4-host-draw-edn 16 :entropy-hex)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":hex"))
+        (is (str/includes? (:value r) "0123456789abcdef"))))))
+
+(deftest entropy-w4-host-draw-denied-optional
+  (let [r (codec/entropy-w4-host-draw-denied 16)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
 
 (deftest scoped-fs-w4-host-write-echo-optional
   "ADR 0268: guest host_write_edn + :echo returns W4 write request EDN."
@@ -564,3 +601,21 @@
         (is (:ok r) (pr-str r))
         (is (str/includes? (:value r) ":read"))
         (is (str/includes? (:value r) "docs/a.txt"))))))
+
+(deftest scoped-fs-w4-host-read-content-inject-optional
+  "ADR 0270: guest host_read_edn + :fs-content fixed content arm."
+  (let [r (codec/scoped-fs-w4-host-read-edn "workspace" "docs/a.txt" :fs-content)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":content"))
+        (is (str/includes? (:value r) "payload"))))))
+
+(deftest scoped-fs-w4-host-read-denied-optional
+  (let [r (codec/scoped-fs-w4-host-read-denied "workspace" "docs/a.txt")]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))

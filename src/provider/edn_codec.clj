@@ -1,5 +1,5 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0268).
+  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0270).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
@@ -8,8 +8,8 @@
   runs pure guest codecs so hosts can audit kit request/reply shapes without
   reimplementing EDN encode in Clojure.
 
-  ADR 0257–0259 wraps/factories; ADR 0260–0267 guest host surfaces + inject;
-  ADR 0268 scoped-fs host_write; ADR 0264 ops W4 round-trips.
+  ADR 0257–0259 wraps/factories; ADR 0260–0268 guest host surfaces + inject;
+  ADR 0270 inject parity (git/entropy/fs-read); ADR 0264 ops W4 round-trips.
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
@@ -75,7 +75,10 @@
     :ok-200       — HTTP fixed ok EDN arm (cap 4)
     :secret-value — secret fixed value arm (cap 21)
     :process-ok   — process fixed ok arm (cap 20)
-    :fs-written   — scoped-fs fixed written arm (cap 19)
+    :git-ok       — git fixed ok arm (cap 22; same shape as process ok)
+    :entropy-hex  — entropy fixed hex arm (cap 23)
+    :fs-content   — scoped-fs fixed content arm (cap 19 read)
+    :fs-written   — scoped-fs fixed written arm (cap 19 write)
   allow-capabilities — seq of integer cap ids (e.g. [4] http, [19] fs, [20] process, [21] secret).
   primary-cap-id — cap id matched in inject body (default first of allow)."
   [{:keys [allow-capabilities inject-mode primary-cap-id]}]
@@ -98,6 +101,18 @@
                       :process-ok (str "typedCapCall(id,request){if(id===" cap-id
                                        ")return "
                                        (js-quote "{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}")
+                                       ";throw new Error('unimpl '+id);}")
+                      :git-ok (str "typedCapCall(id,request){if(id===" cap-id
+                                   ")return "
+                                   (js-quote "{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}")
+                                   ";throw new Error('unimpl '+id);}")
+                      :entropy-hex (str "typedCapCall(id,request){if(id===" cap-id
+                                        ")return "
+                                        (js-quote "{:tag :hex :hex \"0123456789abcdef\"}")
+                                        ";throw new Error('unimpl '+id);}")
+                      :fs-content (str "typedCapCall(id,request){if(id===" cap-id
+                                       ")return "
+                                       (js-quote "{:tag :content :content \"payload\"}")
                                        ";throw new Error('unimpl '+id);}")
                       :fs-written (str "typedCapCall(id,request){if(id===" cap-id
                                        ")return "
@@ -1081,7 +1096,12 @@
 ;; --- ADR 0267: git/entropy/fs guest host surfaces + inject helpers ---
 
 (defn git-w4-host-run-edn
-  "Guest host_run_edn (wire 22) with inject. Default :echo."
+  "Guest host_run_edn (wire 22) with inject (ADR 0267 + 0270).
+
+  inject-mode:
+    :echo   — return request EDN (cap path proof)
+    :git-ok — fixed `{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}`
+  Does not run OS git — inject is the host authority boundary."
   ([args-edn max-stdout timeout-ms]
    (git-w4-host-run-edn args-edn max-stdout timeout-ms :echo))
   ([args-edn max-stdout timeout-ms inject-mode]
@@ -1091,8 +1111,20 @@
                     :primary-cap-id 22
                     :inject-mode inject-mode})))
 
+(defn git-w4-host-run-denied
+  "Prove deny-by-default for host_run without allowCapabilities (ADR 0270)."
+  [args-edn max-stdout timeout-ms]
+  (invoke-export* :git-w4-host-edn :host_run_edn
+                  [(str args-edn) (long max-stdout) (long timeout-ms)]
+                  {}))
+
 (defn entropy-w4-host-draw-edn
-  "Guest host_draw_edn (wire 23) with inject. Default :echo."
+  "Guest host_draw_edn (wire 23) with inject (ADR 0267 + 0270).
+
+  inject-mode:
+    :echo        — return request EDN (cap path proof)
+    :entropy-hex — fixed `{:tag :hex :hex \"0123456789abcdef\"}`
+  Does not draw CSPRNG — inject is the host authority boundary."
   ([n] (entropy-w4-host-draw-edn n :echo))
   ([n inject-mode]
    (invoke-export* :entropy-w4-host-edn :host_draw_edn
@@ -1101,8 +1133,18 @@
                     :primary-cap-id 23
                     :inject-mode inject-mode})))
 
+(defn entropy-w4-host-draw-denied
+  "Prove deny-by-default for host_draw without allowCapabilities (ADR 0270)."
+  [n]
+  (invoke-export* :entropy-w4-host-edn :host_draw_edn [(long n)] {}))
+
 (defn scoped-fs-w4-host-read-edn
-  "Guest host_read_edn (wire 19) with inject. Default :echo."
+  "Guest host_read_edn (wire 19) with inject (ADR 0267 + 0270).
+
+  inject-mode:
+    :echo       — return request EDN (cap path proof)
+    :fs-content — fixed `{:tag :content :content \"payload\"}`
+  Does not touch host store."
   ([root path] (scoped-fs-w4-host-read-edn root path :echo))
   ([root path inject-mode]
    (invoke-export* :scoped-fs-w4-host-edn :host_read_edn
@@ -1110,6 +1152,13 @@
                    {:allow-capabilities [19]
                     :primary-cap-id 19
                     :inject-mode inject-mode})))
+
+(defn scoped-fs-w4-host-read-denied
+  "Prove deny-by-default for host_read without allowCapabilities (ADR 0270)."
+  [root path]
+  (invoke-export* :scoped-fs-w4-host-edn :host_read_edn
+                  [(str root) (str path)]
+                  {}))
 
 (defn scoped-fs-w4-host-write-edn
   "Guest host_write_edn (ADR 0268, wire 19) with inject.
