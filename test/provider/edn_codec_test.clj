@@ -528,6 +528,34 @@
         (is (str/includes? (:value r) ":n"))
         (is (str/includes? (:value r) "16"))))))
 
+(deftest scoped-fs-w4-host-write-echo-optional
+  "ADR 0268: guest host_write_edn + :echo returns W4 write request EDN."
+  (let [r (codec/scoped-fs-w4-host-write-edn "workspace" "docs/a.txt" "hello" :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":write"))
+        (is (str/includes? (:value r) "docs/a.txt"))
+        (is (str/includes? (:value r) "hello"))))))
+
+(deftest scoped-fs-w4-host-write-written-inject-optional
+  (let [r (codec/scoped-fs-w4-host-write-edn "workspace" "docs/a.txt" "hello" :fs-written)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":written"))
+        (is (str/includes? (:value r) "true"))))))
+
+(deftest scoped-fs-w4-host-write-denied-optional
+  (let [r (codec/scoped-fs-w4-host-write-denied "workspace" "docs/a.txt" "hello")]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
 (deftest scoped-fs-w4-host-read-echo-optional
   (let [r (codec/scoped-fs-w4-host-read-edn "workspace" "docs/a.txt" :echo)]
     (if (= :browser-host-unavailable (:reason r))

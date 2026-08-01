@@ -839,7 +839,7 @@
    :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "b3daa65988eb26c4c9e5d8dce9f2dec2f711345d96a249f899b48459f2679ab3"
+   :sha256 "b36dda823efe109c7a172ae9beff88f33a7a8c5ad8088d404d5afe2b66983530"
    :class :ops-scoped-fs
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/scoped-fs-w4-host-edn-v1.wasm"
@@ -849,10 +849,13 @@
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
             :compiler-sha "13463b5"
-            :note "ADR 0267 scoped-fs host_read_edn wire 19; main → -2511"}
+            :note "ADR 0267 read + ADR 0268 write host_write_edn wire 19; main → -2512"}
    :exports {
              "fs_req_read_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "fs_req_write_rec_kv_edn" {:params [:externref :externref :externref] :result :externref}
+             "fs_reply_written_rec_kv_edn" {:params [:i64] :result :externref}
              "host_read_edn" {:params [:externref :externref] :result :externref}
+             "host_write_edn" {:params [:externref :externref :externref] :result :externref}
              "main" {:params [] :result :i64}}
    :imports {"kotoba:typed" {:note "typed ABI + cap forward"}}
    :fixture? false
