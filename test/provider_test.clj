@@ -522,3 +522,36 @@
       (is false "expected deny")
       (catch clojure.lang.ExceptionInfo e
         (is (= :object/empty-digest (:code (ex-data e))))))))
+
+;; --- ADR 0273: storage pure deny fixtures ---
+
+(deftest storage-validate-pure-deny-fixtures
+  (is (nil? (storage/validate-get :k)))
+  (is (= :storage/bad-key (storage/validate-get "not-a-keyword")))
+  (is (nil? (storage/validate-put-value "ok")))
+  (is (= :storage/value-too-large
+         (storage/validate-put-value (apply str (repeat (inc storage/max-value-bytes) "a")))))
+  (is (nil? (storage/validate-expected-version false nil)))
+  (is (nil? (storage/validate-expected-version true 1)))
+  (is (= :storage/invalid-version (storage/validate-expected-version true 0)))
+  (is (= :storage/invalid-version (storage/validate-expected-version true -1)))
+  (is (nil? (storage/validate-put :k "v" false nil)))
+  (is (= :storage/value-too-large
+         (storage/validate-put :k (apply str (repeat (inc storage/max-value-bytes) "x")) false nil))))
+
+(deftest storage-invoke-deny-codes
+  (let [t (storage-transport/mem-transport)
+        p (storage/provider {:storage-namespace :test/ns :transport t})
+        huge (apply str (repeat (inc storage/max-value-bytes) "z"))]
+    (try
+      ((:invoke p) [storage/request-type :put
+                    [storage/put-type :k huge [storage/expected-version-type false]]])
+      (is false "expected deny")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :storage/value-too-large (:code (ex-data e))))))
+    (try
+      ((:invoke p) [storage/request-type :put
+                    [storage/put-type :k "v" [storage/expected-version-type true 0]]])
+      (is false "expected deny")
+      (catch clojure.lang.ExceptionInfo e
+        (is (= :storage/invalid-version (:code (ex-data e))))))))
