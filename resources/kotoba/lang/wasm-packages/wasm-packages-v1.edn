@@ -614,6 +614,34 @@
 
 
   ;; T8.3 ADR 0251: secret kit W4 record-kv request/reply EDN
+  ;; T8.3 ADR 0260: W4 record-kv request + typed-cap-call :http/post host surface
+  {:name :http-w4-host-edn
+   :resource "kotoba/lang/wasm-packages/http-w4-host-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "4f22e626cee06a90610bc9bd1a3a95684a2dee519bd0bc536842b0504ec41113"
+   :class :ops-http
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/http-w4-host-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/http_w4_host_edn.kotoba"
+            :policy "resources/kotoba/lang/wasm-packages/src/http_w4_host_edn.policy.edn"
+            :capability-id "http/post"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "13463b5"
+            :note "ADR 0260 guest W4 encode + typed-cap-call http/post string→string; main pure → -2506; host inject still required for host_post_edn; wasm-aot still partial"}
+   :exports {"request_rec_kv_edn" {:params [:externref :externref :i64 :externref] :result :externref}
+             "result_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
+             "host_post_edn" {:params [:externref :externref :i64 :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 + recursive variant + record"}
+             "kotoba" {:note "capability http/post id 4 string→string"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
   {:name :secret-record-kv-edn
    :resource "kotoba/lang/wasm-packages/secret-record-kv-edn-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
