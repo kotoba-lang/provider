@@ -2527,10 +2527,13 @@
                   (is (= expected-sha (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))))]
     (check :git-w4-host-edn "e81e9de9c8864ee824451e6d4694c278e9ee8ca29d50f22f54e7b92fe97cc37e")
     (check :entropy-w4-host-edn "efb15002c7e5f9f1061de2cce61ebacaea82b129eba1b924146cdc37e88eb80a")
-    (check :scoped-fs-w4-host-edn "b3daa65988eb26c4c9e5d8dce9f2dec2f711345d96a249f899b48459f2679ab3")
+    (check :scoped-fs-w4-host-edn "b36dda823efe109c7a172ae9beff88f33a7a8c5ad8088d404d5afe2b66983530")
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_w4_host_edn.kotoba")))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_w4_host_edn.kotoba")))
-    (is (some? (io/resource "kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.kotoba")))))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.kotoba")))
+    (let [mod (get by-name :scoped-fs-w4-host-edn)]
+      (doseq [e ["fs_req_write_rec_kv_edn" "host_write_edn" "fs_reply_written_rec_kv_edn"]]
+        (is (contains? (:exports mod) e) e)))))
 
 
 

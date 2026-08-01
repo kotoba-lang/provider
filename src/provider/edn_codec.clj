@@ -1,5 +1,5 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0266).
+  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0268).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
@@ -8,10 +8,8 @@
   runs pure guest codecs so hosts can audit kit request/reply shapes without
   reimplementing EDN encode in Clojure.
 
-  ADR 0257–0259 wraps/factories; ADR 0260 guest host_post; ADR 0261 entropy
-  factories; ADR 0262–0264 host inject/roundtrips; ADR 0265 secret host_get;
-  ADR 0266 process host_spawn;
-  ADR 0264 remaining ops W4 round-trips (secret/process/git/entropy/fs).
+  ADR 0257–0259 wraps/factories; ADR 0260–0267 guest host surfaces + inject;
+  ADR 0268 scoped-fs host_write; ADR 0264 ops W4 round-trips.
 
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
@@ -77,7 +75,8 @@
     :ok-200       — HTTP fixed ok EDN arm (cap 4)
     :secret-value — secret fixed value arm (cap 21)
     :process-ok   — process fixed ok arm (cap 20)
-  allow-capabilities — seq of integer cap ids (e.g. [4] http, [20] process, [21] secret).
+    :fs-written   — scoped-fs fixed written arm (cap 19)
+  allow-capabilities — seq of integer cap ids (e.g. [4] http, [19] fs, [20] process, [21] secret).
   primary-cap-id — cap id matched in inject body (default first of allow)."
   [{:keys [allow-capabilities inject-mode primary-cap-id]}]
   (if (and (nil? inject-mode) (empty? allow-capabilities))
@@ -99,6 +98,10 @@
                       :process-ok (str "typedCapCall(id,request){if(id===" cap-id
                                        ")return "
                                        (js-quote "{:tag :ok :exit 0 :stdout \"ok\" :stderr \"\"}")
+                                       ";throw new Error('unimpl '+id);}")
+                      :fs-written (str "typedCapCall(id,request){if(id===" cap-id
+                                       ")return "
+                                       (js-quote "{:tag :written :written true}")
                                        ";throw new Error('unimpl '+id);}")
                       nil nil
                       (throw (ex-info "unknown inject-mode"
@@ -1107,3 +1110,25 @@
                    {:allow-capabilities [19]
                     :primary-cap-id 19
                     :inject-mode inject-mode})))
+
+(defn scoped-fs-w4-host-write-edn
+  "Guest host_write_edn (ADR 0268, wire 19) with inject.
+
+  inject-mode:
+    :echo       — return request EDN (cap path proof)
+    :fs-written — fixed `{:tag :written :written true}`
+  Does not touch host store."
+  ([root path value] (scoped-fs-w4-host-write-edn root path value :echo))
+  ([root path value inject-mode]
+   (invoke-export* :scoped-fs-w4-host-edn :host_write_edn
+                   [(str root) (str path) (str value)]
+                   {:allow-capabilities [19]
+                    :primary-cap-id 19
+                    :inject-mode inject-mode})))
+
+(defn scoped-fs-w4-host-write-denied
+  "Prove deny-by-default for host_write without allowCapabilities."
+  [root path value]
+  (invoke-export* :scoped-fs-w4-host-edn :host_write_edn
+                  [(str root) (str path) (str value)]
+                  {}))
