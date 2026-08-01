@@ -2493,6 +2493,27 @@
       (is (contains? (:exports mod) e)))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_w4_host_edn.kotoba")))))
 
+(deftest process-w4-host-edn-package-registered
+  "T8.3 ADR 0266: process W4 host_spawn_edn package (cap 20)."
+  (let [table (edn/read-string
+               (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
+        by-name (into {} (map (juxt :name identity) (:packages table)))
+        mod (get by-name :process-w4-host-edn)
+        sha (fn [bs]
+              (let [md (java.security.MessageDigest/getInstance "SHA-256")]
+                (.update md bs)
+                (format "%064x" (BigInteger. 1 (.digest md)))))]
+    (is (some? mod))
+    (is (= :wasm-module (:artifact-kind mod)))
+    (is (= "530fa9c5b7c166955ebc1d66080e19afae3c9f8e4afe838fd7cdede843790a98" (:sha256 mod)))
+    (is (= (:sha256 mod)
+           (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
+    (doseq [e ["process_req_rec_kv_edn" "process_reply_ok_rec_kv_edn"
+               "host_spawn_edn" "main"]]
+      (is (contains? (:exports mod) e)))
+    (is (some? (io/resource "kotoba/lang/wasm-packages/src/process_w4_host_edn.kotoba")))))
+
+
 
 
 

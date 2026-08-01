@@ -479,3 +479,33 @@
       (do
         (is (false? (:ok r)) (pr-str r))
         (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
+
+(deftest process-w4-host-spawn-echo-inject-optional
+  "ADR 0266: guest host_spawn_edn + typedCapCall :echo returns W4 request EDN."
+  (let [r (codec/process-w4-host-spawn-edn "[\"echo\" \"hi\"]" 4096 5000 :echo)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":argv"))
+        (is (str/includes? (:value r) "echo"))
+        (is (str/includes? (:value r) ":timeout-ms"))
+        (is (str/includes? (:value r) "5000"))))))
+
+(deftest process-w4-host-spawn-ok-inject-optional
+  (let [r (codec/process-w4-host-spawn-edn "[\"echo\" \"hi\"]" 4096 5000 :process-ok)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (:ok r) (pr-str r))
+        (is (str/includes? (:value r) ":ok"))
+        (is (str/includes? (:value r) "stdout"))
+        (is (str/includes? (:value r) "ok"))))))
+
+(deftest process-w4-host-spawn-denied-optional
+  (let [r (codec/process-w4-host-spawn-denied "[\"echo\" \"hi\"]" 4096 5000)]
+    (if (= :browser-host-unavailable (:reason r))
+      (is true "skip when browser-host unavailable")
+      (do
+        (is (false? (:ok r)) (pr-str r))
+        (is (contains? #{:node-exit :exception :bad-result} (:reason r)))))))
