@@ -383,6 +383,30 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0244: entropy kit fixed-depth EDN request+reply package
+  {:name :entropy-edn-package
+   :resource "kotoba/lang/wasm-packages/entropy-edn-package-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "aa2d8c8ebdab2e36f1701bbf148e410c7e50de57a4b2fefc05f385de7b8c5437"
+   :class :ops-entropy
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/entropy-edn-package-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/entropy_edn_package.kotoba"
+            :capability-id "entropy/draw"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :compiler-sha "ab504901d1af3905744df255b25365907ed6fa01"
+            :note "ADR 0244 entropy req n + hex/error reply EDN; main → -2315; CSPRNG host; W4/wasm-aot open"}
+   :exports {"entropy_req_edn" {:params [:i64] :result :externref}
+             "entropy_reply_hex_edn" {:params [:externref] :result :externref}
+             "entropy_reply_error_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
+
 
 
   {:name :git-run-walk-component
