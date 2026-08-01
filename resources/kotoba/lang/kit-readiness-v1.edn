@@ -165,8 +165,9 @@
             :signed-wasm :ready}
    :evidence ["entropy-v1.edn" "provider#33" "audit N/A for pure CSPRNG draw"
               "wasm-packages/entropy-draw-v1.wasm + .component.wasm (ADR 0167)"
-              "wasm-packages/entropy-draw-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
-   :note "ADR 0167 Component + ADR 0172 compiler-AOT draw bounds; CSPRNG host-injected; wasm-aot partial"}
+              "wasm-packages/entropy-draw-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"
+              "wasm-packages/entropy-edn-package-v1.wasm (ADR 0244 entropy request/reply EDN)"]
+   :note "ADR 0167 Component + ADR 0172 compiler-AOT draw bounds + 0244 fixed-depth EDN package; CSPRNG host-injected; wasm-aot partial (W4 open)"}
 
   {:name :object
    :id 14
