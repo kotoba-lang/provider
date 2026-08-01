@@ -553,6 +553,35 @@
    :signed-content-addressed-package :pending}
 
 
+  ;; T8.3 ADR 0251: secret kit W4 record-kv request/reply EDN
+  {:name :secret-record-kv-edn
+   :resource "kotoba/lang/wasm-packages/secret-record-kv-edn-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "0dfcb60c01eb0403543fda89dd5ec6a38e7ec3c37d44375e3863cdc5e73c7935"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-record-kv-edn-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_record_kv_edn.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "9da7a60"
+            :note "ADR 0251 secret W4 record-typed :edn/kv request/reply; main → -2406; host-fetch open; wasm-aot still partial"}
+   :exports {"edn_atom" {:params [:externref] :result :externref}
+             "edn_entry" {:params [:externref :externref] :result :externref}
+             "edn_pair" {:params [:externref :externref] :result :externref}
+             "edn_print" {:params [:externref] :result :externref}
+             "secret_request_rec_kv_edn" {:params [:externref] :result :externref}
+             "secret_reply_value_rec_kv_edn" {:params [:externref] :result :externref}
+             "secret_reply_error_rec_kv_edn" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string + recursive variant + record surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
   {:name :git-run-walk-component
    :resource "kotoba/lang/wasm-packages/git-run-walk-v1.component.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
