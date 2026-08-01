@@ -148,6 +148,57 @@
                    "default to, so the destination must be explicitly host-configured")
               {:phase :storage-transport}))))
 
+(defn mem-transport
+  "In-memory storage transport for tests + audit-hook demos (ADR 0271).
+
+  Not durable and not a production backend. Optional `:on-call` receives
+  `{:kit :storage :namespace :operation :key :reply-tag}` after each op
+  (same optional audit surface as `production-transport`). Exceptions from
+  on-call are swallowed.
+
+  Store is a map of key → `{:value string :version long}`."
+  ([] (mem-transport {}))
+  ([{:keys [initial on-call]
+     :or {initial {} on-call (fn [_])}}]
+   (let [st (atom (into {} initial))
+         audit! (fn [e]
+                  (try (on-call e)
+                       (catch #?(:clj Exception :cljs :default) _ nil)))]
+     (fn [{:keys [namespace operation key value expected-version]}]
+       (let [reply
+             (case operation
+               :get
+               (if-let [e (get @st key)]
+                 {:tag :found :key key :value (:value e) :version (:version e)}
+                 {:tag :missing})
+               :put
+               (let [cur (get @st key)
+                     cur-v (when cur (:version cur))]
+                 (if (and (some? expected-version)
+                          (not= expected-version cur-v))
+                   {:tag :conflict :current-version cur-v}
+                   (let [nv (inc (long (or cur-v 0)))]
+                     (swap! st assoc key {:value (str value) :version nv})
+                     {:tag :written :key key :value (str value) :version nv})))
+               :delete
+               (let [cur (get @st key)
+                     cur-v (when cur (:version cur))]
+                 (if (and (some? expected-version)
+                          (not= expected-version cur-v))
+                   {:tag :conflict :current-version cur-v}
+                   (do (swap! st dissoc key)
+                       {:tag :deleted})))
+               {:tag :error
+                :error {:code :storage/unsupported
+                        :message "unknown op"
+                        :retryable false}})]
+         (audit! {:kit :storage
+                  :namespace namespace
+                  :operation operation
+                  :key key
+                  :reply-tag (:tag reply)})
+         reply)))))
+
 ;; ---------------------------------------------------------------------------
 ;; keyword <-> wire string -- never used to build a URL path (see ns
 ;; docstring); only ever a JSON string value.

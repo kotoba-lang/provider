@@ -14,8 +14,8 @@
             [provider.object :as object]
             [provider.object-transport :as object-transport]
             [provider.state :as state]
-            [provider.storage]
-            [provider.storage-transport]
+            [provider.storage :as storage]
+            [provider.storage-transport :as storage-transport]
             [provider.ui]
             [provider.scoped-fs :as scoped-fs]
             [provider.scoped-fs-transport :as scoped-fs-transport]
@@ -433,3 +433,45 @@
     (is (re-matches #"[0-9a-f]{32}" (nth a 2)))
     ;; cryptographic draws should almost never collide
     (is (not= (nth a 2) (nth b 2)))))
+
+(deftest storage-mem-transport-audits-on-call
+  "ADR 0271: mem-transport fires optional on-call audit events."
+  (let [events (atom [])
+        t (storage-transport/mem-transport
+           {:on-call (fn [e] (swap! events conj e))})
+        p (storage/provider {:storage-namespace :test/ns :transport t})
+        put ((:invoke p) [storage/request-type :put
+                          [storage/put-type :k "v" [storage/expected-version-type false]]])
+        get ((:invoke p) [storage/request-type :get
+                          [storage/get-type :k]])]
+    (is (= :written (second put)))
+    (is (= :found (second get)))
+    (is (= 2 (count @events)))
+    (is (= :storage (:kit (first @events))))
+    (is (= :put (:operation (first @events))))
+    (is (= :written (:reply-tag (first @events))))
+    (is (= :get (:operation (second @events))))
+    (is (= :found (:reply-tag (second @events))))))
+
+(deftest object-mem-transport-audits-on-call
+  "ADR 0271: object mem-transport fires optional on-call audit events."
+  (let [events (atom [])
+        payload (value/utf8-string->bytes "hi")
+        t (object-transport/mem-transport
+           {:on-call (fn [e] (swap! events conj e))})
+        ps (:providers (object/create-providers
+                        {:allowed-bindings #{:example/blocks}
+                         :transport t}))
+        put-p (get ps object/put-block-capability-id)
+        get-p (get ps object/get-stream-capability-id)
+        won ((:invoke put-p)
+             [object/put-block-request-type :example/blocks "sha256:ab" payload])
+        task ((:invoke get-p)
+              [object/get-stream-request-type :example/blocks "sha256:ab"])]
+    (is (true? won))
+    (is (some? task))
+    (is (= 2 (count @events)))
+    (is (= :object (:kit (first @events))))
+    (is (= :put-block (:operation (first @events))))
+    (is (= :ok (:reply-tag (first @events))))
+    (is (= :get-stream (:operation (second @events))))))
