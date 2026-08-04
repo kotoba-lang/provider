@@ -51,7 +51,7 @@
               "wasm-packages/http-edn-set-package-v1.wasm (ADR 0229 pure multi-export EDN + true set)",
               "wasm-packages/http-request-set-record-v1.wasm (ADR 0231 pure kit-shaped request set-of-headers)",
               "wasm-packages/http-headers-edn-set-fold-v1.wasm (ADR 0233 full headers EDN typed-set-nth fold)",
-              "wasm-packages/http-request-edn-set-record-v1.wasm (ADR 0234 full request EDN kit-shaped set-record)",
+              "wasm-packages/http-request-edn-set-record-v1.wasm (ADR 0234/0277 full request EDN on nominal records)",
               "wasm-packages/http-result-edn-set-record-v1.wasm (ADR 0235 result-variant EDN kit-shaped set-record)",
               "wasm-packages/http-kit-edn-package-v1.wasm (ADR 0242/0276 multi-export request+result EDN on nominal records)"
               "wasm-packages/recursive-headers-edn-v1.wasm (ADR 0246 W4 recursive nested EDN headers ADT)"

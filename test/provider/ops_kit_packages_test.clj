@@ -1144,7 +1144,7 @@
 
 
 (deftest http-request-edn-set-record-package-registered
-  "T8.3 ADR 0234: full request EDN from kit-shaped set-record + headers fold."
+  "T8.3 ADR 0234/0277: full request EDN from nominal records + headers fold."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1155,13 +1155,19 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "c39f9973bb846d87a99c3e819d120993c2350a0aaf83cd6efbc7a99ee03433de" (:sha256 mod)))
+    (is (= "ad45dbea1d41849fc5b7301ae51925326ecc365c4fe39d359552c250f8f0d304" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["http_req_begin" "http_req_add_header" "http_req_code"
                "http_req_count" "http_req_edn" "main"]]
       (is (contains? (:exports mod) e)))
-    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_set_record.kotoba")))))
+    (let [source-resource (io/resource "kotoba/lang/wasm-packages/src/http_request_edn_set_record.kotoba")
+          source (slurp source-resource)]
+      (is (some? source-resource))
+      (doseq [declaration ["(defrecord Header" "(defrecord HttpRequest"]]
+        (is (str/includes? source declaration)))
+      (doseq [raw-surface ["(record-new" "(record-get" "(:schemas"]]
+        (is (not (str/includes? source raw-surface)))))))
 
 
 (deftest http-result-edn-set-record-package-registered
