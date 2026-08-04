@@ -507,8 +507,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "ab504901"
-            :note "ADR 0246 W4 recursive edn/node atom|pair headers list print; main → -2401; not full kit request identity; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0246/0282 W4 recursive edn/node with type-directed nth; main → -2401; not full kit request identity; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
              "edn_print" {:params [:externref] :result :externref}
@@ -533,8 +533,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "ab504901"
-            :note "ADR 0247 W4 recursive request/result entry-atom pair spine + headers list; main → -2402; nested records in variants + host I/O open; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0247/0282 W4 recursive request/result pair spine with type-directed nth; main → -2402; nested records in variants + host I/O open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
              "edn_print" {:params [:externref] :result :externref}
@@ -562,8 +562,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "ab504901"
-            :note "ADR 0248 W4 true-kv pair(k,v) maps ≤3 fields under ADT depth 8; main → -2403; nested records in variants + host I/O open; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0248/0282 W4 true-kv maps with type-directed nth under ADT depth 8; main → -2403; nested records in variants + host I/O open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
              "edn_print" {:params [:externref] :result :externref}
@@ -592,8 +592,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0249 W4 true-kv 4-field request/result under ADT depth 12 (compiler 0196/kir 0025); main → -2404; nested records in variants + host I/O open; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0249/0282 W4 true-kv 4-field request/result with type-directed nth under ADT depth 12; main → -2404; nested records in variants + host I/O open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
              "edn_print" {:params [:externref] :result :externref}

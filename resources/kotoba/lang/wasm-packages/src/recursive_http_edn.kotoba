@@ -79,9 +79,9 @@
     (:atom s s)
     (:pair p
       (string-concat
-       (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 0))
+       (edn_print (nth p 0))
        (string-concat " "
-                      (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 1)))))))
+                      (edn_print (nth p 1)))))))
 
 (defn- header-atom [name :string value :string]
   [:variant :edn/node
