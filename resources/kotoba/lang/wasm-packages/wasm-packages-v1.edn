@@ -256,13 +256,13 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; T8.3 ADR 0238/0239: process kit fixed-depth EDN request+reply package
+  ;; T8.3 ADR 0238/0239/0280: process EDN on nominal ProcessRequest
   {:name :process-edn-package
    :resource "kotoba/lang/wasm-packages/process-edn-package-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "4286ba80f7a7d8429695d56e0cd9b4ee3a24753549830907353983e73fdfbd53"
+   :sha256 "92c971e5d6b59d51c448091d45bf925ee0a87ea7808e9fa78cc697846c7d5917"
    :class :ops-process
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/process-edn-package-v1.wasm"
@@ -271,8 +271,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "4b006d05"
-            :note "ADR 0238/0239 process argv fold + reply ok/err EDN; main → -2309; OS spawn host; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0238/0239/0280 nominal ProcessRequest argv fold + reply EDN; main → -2309; OS spawn host; W4/wasm-aot open"}
    :exports {"process_req_begin" {:params [] :result :externref}
              "process_req_arg" {:params [:externref :externref] :result :externref}
              "process_req_code" {:params [:externref] :result :i64}
@@ -357,13 +357,13 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; T8.3 ADR 0240/0241: git kit fixed-depth EDN request+reply package
+  ;; T8.3 ADR 0240/0241/0280: git EDN on nominal GitRequest
   {:name :git-edn-package
    :resource "kotoba/lang/wasm-packages/git-edn-package-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "98eaaa12bf2a92829d463add4d4e98a48d8fa6ba0c8129de0f5a5e6519885cc2"
+   :sha256 "b0c8e8581f2d82b9f87beb0781708e6304f3bb91741eff70568f4e4104ef4445"
    :class :ops-git
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/git-edn-package-v1.wasm"
@@ -372,8 +372,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "4b006d05"
-            :note "ADR 0240/0241 git args fold + reply ok/err EDN; main → -2311; OS git host; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0240/0241/0280 nominal GitRequest args fold + reply EDN; main → -2311; OS git host; W4/wasm-aot open"}
    :exports {"git_req_begin" {:params [] :result :externref}
              "git_req_arg" {:params [:externref :externref] :result :externref}
              "git_req_code" {:params [:externref] :result :i64}
@@ -1588,13 +1588,13 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; T8.3 ADR 0224: pure reject-path EDN append + true set uniqueness
+  ;; T8.3 ADR 0224/0280: EDN append in nominal HeaderEdnAccumulator
   {:name :http-headers-edn-append-set
    :resource "kotoba/lang/wasm-packages/http-headers-edn-append-set-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "26f6d2aab0ba67127ba5442df699a4157bf6c3469d0e3a6fd7a18f253077562a"
+   :sha256 "5bf99a51ee63e6922c5c40dac91500fb54569f542469643ff51a09f38b63c494"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-headers-edn-append-set-v1.wasm"
@@ -1603,8 +1603,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "8952a0685a4b21397b18cec27979a4f551780188"
-            :note "ADR 0224 pure EDN append with true set uniqueness (not WAT marker scan); main → -9002; Component twin / W4 open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0224/0280 EDN append in nominal HeaderEdnAccumulator with true set uniqueness; main → -9002; Component twin / W4 open"}
    :exports {"http_headers_edn_set_begin" {:params [] :result :externref}
              "http_headers_edn_set_append" {:params [:externref :externref :externref] :result :externref}
              "http_headers_edn_set_edn" {:params [:externref] :result :externref}

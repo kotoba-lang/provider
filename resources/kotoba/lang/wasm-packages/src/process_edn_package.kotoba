@@ -1,13 +1,9 @@
 (ns kotoba.process.edn-package
-  ;; T8.3 ADR 0238/0239: pure process kit fixed-depth EDN surface.
+  ;; T8.3 ADR 0238/0239/0280: process EDN on a nominal request record.
   ;; Request: host-sequenced argv fold into EDN vector + max-stdout + timeout.
   ;; Reply: ok (exit/stdout/stderr) + error (code/message). Dual quote/backslash
   ;; scan on string leaves. Complements process walk 0183. OS spawn remains
   ;; host-injected. W4 recursive nested EDN open; wasm-aot stays :partial.
-  (:schemas {:proc/req [:record :proc/req
-                        [[:argv-edn :string]
-                         [:argc :i64]
-                         [:code :i64]]]})
   (:export [process_req_begin
             process_req_arg
             process_req_code
@@ -16,6 +12,8 @@
             process_reply_ok_edn
             process_reply_error_edn
             main]))
+
+(defrecord ProcessRequest [argv-edn :string argc :i64 code :i64])
 
 ;; Sticky codes (request path):
 ;;   0 ok
@@ -43,40 +41,46 @@
                    (digit-char (- n (* (quot n 10) 10))))))
 
 (defn process_req_begin []
-  [:ref :proc/req]
-  (record-new [:ref :proc/req] "[]" 0 0))
+  [:ref :kotoba.process.edn-package/ProcessRequest]
+  (->ProcessRequest "[]" 0 0))
 
-(defn process_req_code [st [:ref :proc/req]] :i64 (record-get st :code))
-(defn process_req_argc [st [:ref :proc/req]] :i64 (record-get st :argc))
+(defn process_req_code
+  [st [:ref :kotoba.process.edn-package/ProcessRequest]]
+  :i64
+  (:code st))
+
+(defn process_req_argc
+  [st [:ref :kotoba.process.edn-package/ProcessRequest]]
+  :i64
+  (:argc st))
 
 (defn process_req_arg
-  [st [:ref :proc/req] arg :string]
-  [:ref :proc/req]
-  (let [argv (record-get st :argv-edn)
-        argc (record-get st :argc)
-        code (record-get st :code)]
+  [st [:ref :kotoba.process.edn-package/ProcessRequest] arg :string]
+  [:ref :kotoba.process.edn-package/ProcessRequest]
+  (let [{:keys [argv-edn argc code]} st
+        argv argv-edn]
     (if (not= code 0)
-      (record-new [:ref :proc/req] argv argc code)
+      (->ProcessRequest argv argc code)
       (if (= (string-length arg) 0)
-        (record-new [:ref :proc/req] argv argc -1)
+        (->ProcessRequest argv argc -1)
         (if (= (has-forbidden arg) 1)
-          (record-new [:ref :proc/req] argv argc -3)
+          (->ProcessRequest argv argc -3)
           (if (>= argc 32)
-            (record-new [:ref :proc/req] argv argc -2)
+            (->ProcessRequest argv argc -2)
             (let [piece (string-concat "\"" (string-concat arg "\""))
                   argv2 (if (string=? argv "[]")
                           (string-concat "[" (string-concat piece "]"))
                           (string-concat
                            (string-substring argv 0 (- (string-length argv) 1))
                            (string-concat " " (string-concat piece "]"))))]
-              (record-new [:ref :proc/req] argv2 (+ argc 1) 0))))))))
+              (->ProcessRequest argv2 (+ argc 1) 0))))))))
 
 (defn process_req_edn
-  [st [:ref :proc/req] max-stdout :i64 timeout-ms :i64]
+  [st [:ref :kotoba.process.edn-package/ProcessRequest]
+   max-stdout :i64 timeout-ms :i64]
   :string
-  (let [code (record-get st :code)
-        argv (record-get st :argv-edn)
-        argc (record-get st :argc)]
+  (let [{:keys [code argv-edn argc]} st
+        argv argv-edn]
     (if (not= code 0)
       ""
       (if (<= argc 0)

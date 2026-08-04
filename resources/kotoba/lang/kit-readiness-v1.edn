@@ -47,7 +47,7 @@
               "wasm-packages/http-edn-reject-package-v1.component.wasm (ADR 0221/0222/0226/0227/0230 multi-export reject kit multi-ns + element-bound + names-add)"
               "wasm-packages/http-headers-name-set-v1.wasm (ADR 0223/0279 nominal HeaderNameSet uniqueness)"
               "wasm-packages/http-headers-names-add-v1.component.wasm (ADR 0225 Component twin true-set name list)"
-              "wasm-packages/http-headers-edn-append-set-v1.wasm (ADR 0224 pure EDN append + true set)",
+              "wasm-packages/http-headers-edn-append-set-v1.wasm (ADR 0224/0280 nominal EDN accumulator + true set)",
               "wasm-packages/http-edn-set-package-v1.wasm (ADR 0229/0279 nominal EDN accumulator + true set)",
               "wasm-packages/http-request-set-record-v1.wasm (ADR 0231/0278 request on nominal records)",
               "wasm-packages/http-headers-edn-set-fold-v1.wasm (ADR 0233/0279 nominal header typed-set-nth fold)",
@@ -118,7 +118,7 @@
             :signed-wasm :ready}
    :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
               "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)",
-              "wasm-packages/process-edn-package-v1.wasm (ADR 0238/0239 process request/reply EDN)"
+              "wasm-packages/process-edn-package-v1.wasm (ADR 0238/0239/0280 nominal process request/reply EDN)"
               "wasm-packages/process-w4-host-edn-v1.wasm (ADR 0266 guest host_spawn + cap 20)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"
               "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172)"
@@ -164,7 +164,7 @@
             :signed-wasm :ready}
    :evidence ["git-v1.edn" "provider#29+#31+#32"
               "wasm-packages/git-run-v1.wasm + .component.wasm (ADR 0170)",
-              "wasm-packages/git-edn-package-v1.wasm (ADR 0240/0241 git request/reply EDN)"
+              "wasm-packages/git-edn-package-v1.wasm (ADR 0240/0241/0280 nominal git request/reply EDN)"
               "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"
               "wasm-packages/git-run-walk-v1.wasm + .component.wasm (ADR 0184)"
               "wasm-packages/git-record-kv-edn-v1.wasm (ADR 0253 W4 git record-typed recursive EDN)"
