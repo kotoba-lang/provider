@@ -1,12 +1,16 @@
 (ns kotoba.entropy.w4-host-edn
   ;; T8.3 ADR 0267: entropy W4 request encode + typed-cap-call wire 23
-  (:schemas {:edn/kv [:record :edn/kv [[:k :string] [:v :string]]]
+  (:schemas {:kotoba.entropy.w4-host-edn/EdnKeyValue
+             [:record :kotoba.entropy.w4-host-edn/EdnKeyValue
+              [[:k :string] [:v :string]]]
              :edn/node [:variant :edn/node
                          [[:atom :string]
-                          [:entry [:ref :edn/kv]]
+                          [:entry [:ref :kotoba.entropy.w4-host-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]
                                            [:ref :edn/node]]]]]]})
   (:export [entropy_req_rec_kv_edn host_draw_edn main]))
+
+(defrecord EdnKeyValue [k :string v :string])
 
 (defn- digit-char [d :i64] :string
   (string-substring "0123456789" d (+ d 1)))
@@ -20,33 +24,33 @@
 (defn- edn_entry [k :string v :string]
   [:variant :edn/node
     [[:atom :string]
-     [:entry [:ref :edn/kv]]
+     [:entry [:ref :kotoba.entropy.w4-host-edn/EdnKeyValue]]
      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
   (variant-new
    [:variant :edn/node
      [[:atom :string]
-      [:entry [:ref :edn/kv]]
+      [:entry [:ref :kotoba.entropy.w4-host-edn/EdnKeyValue]]
       [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
    :entry
-   (record-new [:record :edn/kv [[:k :string] [:v :string]]] k v)))
+   (->EdnKeyValue k v)))
 
 (defn- edn_print
   [n [:variant :edn/node
        [[:atom :string]
-        [:entry [:ref :edn/kv]]
+        [:entry [:ref :kotoba.entropy.w4-host-edn/EdnKeyValue]]
         [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
   :string
   (match-variant n
    [:variant :edn/node
      [[:atom :string]
-      [:entry [:ref :edn/kv]]
+      [:entry [:ref :kotoba.entropy.w4-host-edn/EdnKeyValue]]
       [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
     (:atom s s)
     (:entry r
       (string-concat
-       (record-get [:record :edn/kv [[:k :string] [:v :string]]] r :k)
+       (:k r)
        (string-concat " "
-                      (record-get [:record :edn/kv [[:k :string] [:v :string]]] r :v))))
+                      (:v r))))
     (:pair p
       (string-concat
        (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 0))

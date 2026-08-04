@@ -292,7 +292,7 @@
    :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "a4d3cd960584b80f52150e4b4232698e886f5da3413a7d425ca4af37327768e7"
+   :sha256 "501deb2d2466edb8a4f7da66d6c3c2a2b947184e0fefe55e3c4dbb290d98ebee"
    :class :ops-process
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/process-record-kv-edn-v1.wasm"
@@ -301,8 +301,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0252 process W4 record-typed recursive EDN; main → -2502; OS spawn host-injected; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0252/0281 process W4 recursive EDN with nominal EdnKeyValue; main → -2502; OS spawn host-injected; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -443,7 +443,7 @@
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "712d5cc0ae04a7673821d22e2a4d2057a6efdbe1a74a618c38f2b7e3c19bc2ee"
+   :sha256 "4131cc31606f7b7be1dd3a5a27a9fecb9b890c09d3ca7ad025441946c7ac35ad"
    :class :ops-entropy
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/entropy-record-kv-edn-v1.wasm"
@@ -452,8 +452,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0254 entropy W4 record-typed recursive EDN; main → -2504; CSPRNG host-injected; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0254/0281 entropy W4 recursive EDN with nominal EdnKeyValue; main → -2504; CSPRNG host-injected; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -473,7 +473,7 @@
    :kit-resource "kotoba/lang/capability-kits/entropy-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "efb15002c7e5f9f1061de2cce61ebacaea82b129eba1b924146cdc37e88eb80a"
+   :sha256 "604fe3ff74003de8656d0726375c52b60bf5c9d52e4523a630801d8ac1f25fcb"
    :class :ops-entropy
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/entropy-w4-host-edn-v1.wasm"
@@ -482,8 +482,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "13463b5"
-            :note "ADR 0267 entropy host_draw_edn wire 23; main → -2510"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0267/0281 entropy host_draw_edn wire 23 with nominal EdnKeyValue; main → -2510"}
    :exports {
              "entropy_req_rec_kv_edn" {:params [:i64] :result :externref}
              "host_draw_edn" {:params [:i64] :result :externref}
@@ -613,7 +613,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "dfd44b0c5a6bb1323e5814db9857a94235ba670535c25d7a8962a9640bfebce7"
+   :sha256 "a6e24260014d50b8012c70706417a5341a49a65ebb42c31d31d660cc3bfb8143"
    :class :ops-http
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/recursive-record-kv-edn-v1.wasm"
@@ -622,8 +622,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0250 W4 record-typed :edn/kv entries inside recursive :edn/node (closes record-in-variant residual); main → -2405; host I/O still open; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0250/0281 W4 recursive :edn/node with nominal EdnKeyValue entries; main → -2405; host I/O still open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -646,7 +646,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "4f22e626cee06a90610bc9bd1a3a95684a2dee519bd0bc536842b0504ec41113"
+   :sha256 "a558ce394b32d6e32887a35483114b95ed08516bdf85e357ab57edca582af8b0"
    :class :ops-http
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-w4-host-edn-v1.wasm"
@@ -656,8 +656,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "13463b5"
-            :note "ADR 0260 guest W4 encode + typed-cap-call http/post string→string; main pure → -2506; host inject still required for host_post_edn; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0260/0281 guest W4 encode with nominal EdnKeyValue + typed-cap-call http/post string→string; main pure → -2506; host inject still required for host_post_edn; wasm-aot still partial"}
    :exports {"request_rec_kv_edn" {:params [:externref :externref :i64 :externref] :result :externref}
              "result_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
              "host_post_edn" {:params [:externref :externref :i64 :externref] :result :externref}
@@ -673,7 +673,7 @@
    :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "0dfcb60c01eb0403543fda89dd5ec6a38e7ec3c37d44375e3863cdc5e73c7935"
+   :sha256 "5fc25c7169a1f1fb58e9e8c010b21063fab0f4f753d4caf1c0ae0bc4498a9897"
    :class :ops
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/secret-record-kv-edn-v1.wasm"
@@ -682,8 +682,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0251 secret W4 record-typed :edn/kv request/reply; main → -2406; host-fetch open; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0251/0281 secret W4 request/reply with nominal EdnKeyValue; main → -2406; host-fetch open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -703,7 +703,7 @@
    :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "075a3d1f009410d4663b14e7943ec94a0957ae4a3edcc81d05dd9018a79e559b"
+   :sha256 "3c637641f132b570f0504e85c238a711ee3f3b892875c7e8cf02edff66c11924"
    :class :ops-secret
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/secret-w4-host-edn-v1.wasm"
@@ -713,8 +713,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "13463b5"
-            :note "ADR 0265 guest W4 secret encode + typed-cap-call wire 21; main pure → -2507; host inject required for host_get_edn; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0265/0281 guest W4 secret encode with nominal EdnKeyValue + typed-cap-call wire 21; main pure → -2507; host inject required for host_get_edn; wasm-aot still partial"}
    :exports {"secret_request_rec_kv_edn" {:params [:externref] :result :externref}
              "secret_reply_value_rec_kv_edn" {:params [:externref] :result :externref}
              "host_get_edn" {:params [:externref] :result :externref}
@@ -728,7 +728,7 @@
    :kit-resource "kotoba/lang/capability-kits/process-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "530fa9c5b7c166955ebc1d66080e19afae3c9f8e4afe838fd7cdede843790a98"
+   :sha256 "6054506551d860d92f73db49921a338f7a170d9363569162f1558f3acfe27eeb"
    :class :ops-process
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/process-w4-host-edn-v1.wasm"
@@ -738,8 +738,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "local"
-            :note "ADR 0266 guest W4 process encode + typed-cap-call wire 20; main pure → -2508; host inject required for host_spawn_edn; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0266/0281 guest W4 process encode with nominal EdnKeyValue + typed-cap-call wire 20; main pure → -2508; host inject required for host_spawn_edn; wasm-aot still partial"}
    :exports {"process_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
              "process_reply_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
              "host_spawn_edn" {:params [:externref :i64 :i64] :result :externref}
@@ -753,7 +753,7 @@
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "9fded0b63676f4fc51b377e4796a34702886c4836b01b83e9b75bdd1cd310cfc"
+   :sha256 "390b086e373ac321857511dfa70b4866801c18cf2d56e5b7791eb12b9ffd4347"
    :class :ops
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/git-record-kv-edn-v1.wasm"
@@ -762,8 +762,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0253 git W4 record-typed recursive EDN; main → -2503; OS git host-injected; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0253/0281 git W4 recursive EDN with nominal EdnKeyValue; main → -2503; OS git host-injected; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -783,7 +783,7 @@
    :kit-resource "kotoba/lang/capability-kits/git-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "e81e9de9c8864ee824451e6d4694c278e9ee8ca29d50f22f54e7b92fe97cc37e"
+   :sha256 "95152251cf0e5c7163fc831bf426da80ed2bc06ad48a19621308b207a25c1fa5"
    :class :ops-git
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/git-w4-host-edn-v1.wasm"
@@ -792,8 +792,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "13463b5"
-            :note "ADR 0267 git host_run_edn wire 22; main → -2509"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0267/0281 git host_run_edn wire 22 with nominal EdnKeyValue; main → -2509"}
    :exports {
              "git_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
              "host_run_edn" {:params [:externref :i64 :i64] :result :externref}
@@ -808,7 +808,7 @@
    :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "9121592edd3d771066afaff6302add43d33635fc922f691ce6cabc9e2ef2faaa"
+   :sha256 "2a6b08309b73d1a826616c01fcd8ac444e5bd93f21d023f99bcaa924dda27670"
    :class :ops
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/scoped-fs-record-kv-edn-v1.wasm"
@@ -817,8 +817,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "9da7a60"
-            :note "ADR 0255 scoped-fs W4 record-kv; main → -2505; host store open; wasm-aot still partial"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0255/0281 scoped-fs W4 recursive EDN with nominal EdnKeyValue; main → -2505; host store open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -839,7 +839,7 @@
    :kit-resource "kotoba/lang/capability-kits/scoped-fs-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "b36dda823efe109c7a172ae9beff88f33a7a8c5ad8088d404d5afe2b66983530"
+   :sha256 "b8339220a4e01f94e8bdc37466e9f3c9c8dfcd6931f8e8c3ffc2637c273126b9"
    :class :ops-scoped-fs
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/scoped-fs-w4-host-edn-v1.wasm"
@@ -848,8 +848,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "13463b5"
-            :note "ADR 0267 read + ADR 0268 write host_write_edn wire 19; main → -2512"}
+            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
+            :note "ADR 0267/0268/0281 read/write wire 19 with nominal EdnKeyValue; main → -2512"}
    :exports {
              "fs_req_read_rec_kv_edn" {:params [:externref :externref] :result :externref}
              "fs_req_write_rec_kv_edn" {:params [:externref :externref :externref] :result :externref}
