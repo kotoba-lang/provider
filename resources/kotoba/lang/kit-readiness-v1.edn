@@ -49,10 +49,10 @@
               "wasm-packages/http-headers-names-add-v1.component.wasm (ADR 0225 Component twin true-set name list)"
               "wasm-packages/http-headers-edn-append-set-v1.wasm (ADR 0224 pure EDN append + true set)",
               "wasm-packages/http-edn-set-package-v1.wasm (ADR 0229 pure multi-export EDN + true set)",
-              "wasm-packages/http-request-set-record-v1.wasm (ADR 0231 pure kit-shaped request set-of-headers)",
+              "wasm-packages/http-request-set-record-v1.wasm (ADR 0231/0278 request on nominal records)",
               "wasm-packages/http-headers-edn-set-fold-v1.wasm (ADR 0233 full headers EDN typed-set-nth fold)",
               "wasm-packages/http-request-edn-set-record-v1.wasm (ADR 0234/0277 full request EDN on nominal records)",
-              "wasm-packages/http-result-edn-set-record-v1.wasm (ADR 0235 result-variant EDN kit-shaped set-record)",
+              "wasm-packages/http-result-edn-set-record-v1.wasm (ADR 0235/0278 result EDN on nominal records)",
               "wasm-packages/http-kit-edn-package-v1.wasm (ADR 0242/0276 multi-export request+result EDN on nominal records)"
               "wasm-packages/recursive-headers-edn-v1.wasm (ADR 0246 W4 recursive nested EDN headers ADT)"
               "wasm-packages/recursive-http-edn-v1.wasm (ADR 0247 W4 recursive request/result EDN ADT)"

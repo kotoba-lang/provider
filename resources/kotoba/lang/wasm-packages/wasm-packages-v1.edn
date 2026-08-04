@@ -1738,13 +1738,13 @@
 
 
 
-;; T8.3 ADR 0231: pure kit-shaped request with set-of-header-records + name-set
+;; T8.3 ADR 0231/0278: pure request with nominal Header/HttpRequest records
   {:name :http-request-set-record
    :resource "kotoba/lang/wasm-packages/http-request-set-record-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "59a182cc61e8c227ac43cc0c46441ee3b6b18373be7f23c0cf711187325acc1b"
+   :sha256 "ba9b54f779cc60b1b381b56fe20033eec99e7880edd7854649d5ea444f946cbb"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-request-set-record-v1.wasm"
@@ -1753,8 +1753,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "20f2104601544095d2b0a14a7f5b5ce308128124"
-            :note "ADR 0231 pure kit-shaped :headers [:set [:ref header]] + name-set uniqueness; EDN skeleton headers-n; main → -9002; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0231/0278 nominal Header/HttpRequest records + name-set uniqueness; EDN skeleton headers-n; main → -9002; W4/wasm-aot open"}
    :exports {"http_req_begin" {:params [:externref :externref :i64] :result :externref}
              "http_req_add_header" {:params [:externref :externref :externref] :result :externref}
              "http_req_code" {:params [:externref] :result :i64}
@@ -1822,13 +1822,13 @@
    :signed-content-addressed-package :pending}
 
 
-  ;; T8.3 ADR 0235: result-variant EDN kit-shaped set-record
+  ;; T8.3 ADR 0235/0278: result EDN on nominal Header/HttpResponse records
   {:name :http-result-edn-set-record
    :resource "kotoba/lang/wasm-packages/http-result-edn-set-record-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "954b1bff61758ee93762d06b4455b19f3204fd3e69f1859ee33b7c06f988c7c0"
+   :sha256 "4962953a64acd40856e648bddae6e7c64ee017822938edefb65cc9c34219ffe0"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-result-edn-set-record-v1.wasm"
@@ -1837,8 +1837,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "4b006d05"
-            :note "ADR 0235 result ok set-of-headers fold + err fixed-depth; main → -9002; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0235/0278 nominal Header/HttpResponse result ok headers fold + fixed-depth err; main → -9002; W4/wasm-aot open"}
    :exports {"http_res_ok_begin" {:params [:i64 :externref] :result :externref}
              "http_res_ok_add_header" {:params [:externref :externref :externref] :result :externref}
              "http_res_ok_code" {:params [:externref] :result :i64}
