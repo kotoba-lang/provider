@@ -18,7 +18,8 @@ fields, so the previous five-argument callable limit also prevented an honest
 2. Use generated qualified schema refs, `->Header`, `map->HttpRequest`,
    `map->HttpResponse`, keyword projection, and map destructuring.
 3. Keep all twelve exports and the `main` result (`-9242`) unchanged.
-4. Build with compiler commit `5e0e2564a5244393f42b5bcac199f42afe299a87`,
+4. Build from the tree merged as compiler commit
+   `3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c`,
    which admits records up to 32 fields while keeping the callable function ABI
    bounded at five parameters.
 

@@ -1865,7 +1865,7 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "5e0e2564a5244393f42b5bcac199f42afe299a87"
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
             :note "ADR 0242/0276 multi-export HTTP kit EDN on nominal Header/HttpRequest/HttpResponse records; main → -9242; W4/wasm-aot open"}
    :exports {"http_req_begin" {:params [:externref :externref :i64] :result :externref}
              "http_req_add_header" {:params [:externref :externref :externref] :result :externref}
