@@ -1,12 +1,13 @@
 (ns provider.edn-codec
-  "Host-side pure EDN codec wire for ops-kit W4 packages (ADR 0256–0270).
+  "Host-side W4 guest codec and bounded canonical audit wire (ADR 0256–0284).
 
   Loads content-addressed typed wasm packages from the classpath registry and
   invokes pure request/reply EDN exports via Node + kotoba browser-host.
 
   This does **not** perform host I/O (network, spawn, store, CSPRNG). It only
   runs pure guest codecs so hosts can audit kit request/reply shapes without
-  reimplementing EDN encode in Clojure.
+  reimplementing EDN encode in Clojure. Audit events expose bounded
+  `kotoba.value.v1` bytes; EDN fields remain compatibility evidence.
 
   ADR 0257–0259 wraps/factories; ADR 0260–0268 guest host surfaces + inject;
   ADR 0270 inject parity (git/entropy/fs-read); ADR 0264 ops W4 round-trips.
@@ -26,7 +27,8 @@
             [provider.entropy :as entropy]
             [provider.entropy-transport :as entropy-t]
             [provider.scoped-fs-transport :as fs-t]
-            [provider.secret-transport :as secret-t])
+            [provider.secret-transport :as secret-t]
+            [provider.value-codec :as value-codec])
   (:import (java.io File)))
 
 (defn- browser-host-path
@@ -225,6 +227,22 @@
   (when (and (map? result) (:ok result) (string? (:value result)))
     (:value result)))
 
+(defn- codec-audit-bytes [kit direction result]
+  (when-let [text (codec-value result)]
+    (try
+      (value-codec/legacy-edn->audit-bytes kit direction text)
+      (catch Exception _ nil))))
+
+(defn- codec-audit-fields [kit request-result reply-result]
+  {:value-format value-codec/audit-format
+   :request-value-bytes (codec-audit-bytes kit :request request-result)
+   :reply-value-bytes (codec-audit-bytes kit :reply reply-result)})
+
+(defn- complete-audit-wire? [request-edn reply-edn wire]
+  (and request-edn reply-edn
+       (:request-value-bytes wire)
+       (:reply-value-bytes wire)))
+
 (defn http-headers-list-edn
   "Build 2-header EDN list for recursive-record-kv (exactly two pairs)."
   [name1 value1 name2 value2]
@@ -279,6 +297,9 @@
                    :name name
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
+                   :value-format value-codec/audit-format
+                   :request-value-bytes (codec-audit-bytes :secret :request req-codec)
+                   :reply-value-bytes (codec-audit-bytes :secret :reply reply-codec)
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))
@@ -342,6 +363,9 @@
                    :url url
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
+                   :value-format value-codec/audit-format
+                   :request-value-bytes (codec-audit-bytes :http :request req-codec)
+                   :reply-value-bytes (codec-audit-bytes :http :reply reply-codec)
                    :status status
                    :error? err?
                    :latency-ms (- (System/currentTimeMillis) started)})
@@ -443,6 +467,9 @@
                    :op :spawn
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
+                   :value-format value-codec/audit-format
+                   :request-value-bytes (codec-audit-bytes :process :request req-codec)
+                   :reply-value-bytes (codec-audit-bytes :process :reply reply-codec)
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))
@@ -479,6 +506,9 @@
                    :op :run
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
+                   :value-format value-codec/audit-format
+                   :request-value-bytes (codec-audit-bytes :git :request req-codec)
+                   :reply-value-bytes (codec-audit-bytes :git :reply reply-codec)
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))
@@ -526,6 +556,9 @@
                    :n n
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
+                   :value-format value-codec/audit-format
+                   :request-value-bytes (codec-audit-bytes :entropy :request req-codec)
+                   :reply-value-bytes (codec-audit-bytes :entropy :reply reply-codec)
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))
@@ -565,6 +598,9 @@
                    :path path
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
+                   :value-format value-codec/audit-format
+                   :request-value-bytes (codec-audit-bytes :scoped-fs :request req-codec)
+                   :reply-value-bytes (codec-audit-bytes :scoped-fs :reply reply-codec)
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))
@@ -745,20 +781,23 @@
                                        (str (or (:body result) ""))
                                        hdrs))
          reply-edn (codec-value reply-r)
-         event {:kit :http
-                :op :w4-roundtrip
-                :url url
-                :request-edn req-edn
-                :reply-edn reply-edn
-                :status status
-                :error? err?
-                :latency-ms (- (System/currentTimeMillis) started)}]
+         wire (codec-audit-fields :http req-r reply-r)
+         event (merge {:kit :http
+                       :op :w4-roundtrip
+                       :url url
+                       :request-edn req-edn
+                       :reply-edn reply-edn
+                       :status status
+                       :error? err?
+                       :latency-ms (- (System/currentTimeMillis) started)}
+                      wire)]
      (try (on-call event) (catch Exception _))
-     (if (and req-edn reply-edn)
-       {:ok true
-        :request-edn req-edn
-        :reply-edn reply-edn
-        :result result}
+     (if (complete-audit-wire? req-edn reply-edn wire)
+       (merge {:ok true
+               :request-edn req-edn
+               :reply-edn reply-edn
+               :result result}
+              wire)
        {:ok false
         :reason :codec-failed
         :request-codec req-r
@@ -803,16 +842,19 @@
                            (str (or (:message reply) "")))
                    {:ok false})
          reply-edn (codec-value reply-r)
-         event {:kit :secret
-                :op :w4-roundtrip
-                :name name
-                :request-edn req-edn
-                :reply-edn reply-edn
-                :reply-tag (:tag reply)
-                :latency-ms (- (System/currentTimeMillis) started)}]
+         wire (codec-audit-fields :secret req-r reply-r)
+         event (merge {:kit :secret
+                       :op :w4-roundtrip
+                       :name name
+                       :request-edn req-edn
+                       :reply-edn reply-edn
+                       :reply-tag (:tag reply)
+                       :latency-ms (- (System/currentTimeMillis) started)}
+                      wire)]
      (try (on-call event) (catch Exception _))
-     (if (and req-edn reply-edn)
-       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+     (if (complete-audit-wire? req-edn reply-edn wire)
+       (merge {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+              wire)
        {:ok false
         :reason :codec-failed
         :request-codec req-r
@@ -861,15 +903,18 @@
                            (str (or (:message reply) "")))
                    {:ok false})
          reply-edn (codec-value reply-r)
-         event {:kit :process
-                :op :w4-roundtrip
-                :request-edn req-edn
-                :reply-edn reply-edn
-                :reply-tag (:tag reply)
-                :latency-ms (- (System/currentTimeMillis) started)}]
+         wire (codec-audit-fields :process req-r reply-r)
+         event (merge {:kit :process
+                       :op :w4-roundtrip
+                       :request-edn req-edn
+                       :reply-edn reply-edn
+                       :reply-tag (:tag reply)
+                       :latency-ms (- (System/currentTimeMillis) started)}
+                      wire)]
      (try (on-call event) (catch Exception _))
-     (if (and req-edn reply-edn)
-       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+     (if (complete-audit-wire? req-edn reply-edn wire)
+       (merge {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+              wire)
        {:ok false
         :reason :codec-failed
         :request-codec req-r
@@ -915,15 +960,18 @@
                            (str (or (:message reply) "")))
                    {:ok false})
          reply-edn (codec-value reply-r)
-         event {:kit :git
-                :op :w4-roundtrip
-                :request-edn req-edn
-                :reply-edn reply-edn
-                :reply-tag (:tag reply)
-                :latency-ms (- (System/currentTimeMillis) started)}]
+         wire (codec-audit-fields :git req-r reply-r)
+         event (merge {:kit :git
+                       :op :w4-roundtrip
+                       :request-edn req-edn
+                       :reply-edn reply-edn
+                       :reply-tag (:tag reply)
+                       :latency-ms (- (System/currentTimeMillis) started)}
+                      wire)]
      (try (on-call event) (catch Exception _))
-     (if (and req-edn reply-edn)
-       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+     (if (complete-audit-wire? req-edn reply-edn wire)
+       (merge {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+              wire)
        {:ok false
         :reason :codec-failed
         :request-codec req-r
@@ -966,16 +1014,19 @@
                            (str (or (:message reply) "")))
                    {:ok false})
          reply-edn (codec-value reply-r)
-         event {:kit :entropy
-                :op :w4-roundtrip
-                :n n
-                :request-edn req-edn
-                :reply-edn reply-edn
-                :reply-tag (:tag reply)
-                :latency-ms (- (System/currentTimeMillis) started)}]
+         wire (codec-audit-fields :entropy req-r reply-r)
+         event (merge {:kit :entropy
+                       :op :w4-roundtrip
+                       :n n
+                       :request-edn req-edn
+                       :reply-edn reply-edn
+                       :reply-tag (:tag reply)
+                       :latency-ms (- (System/currentTimeMillis) started)}
+                      wire)]
      (try (on-call event) (catch Exception _))
-     (if (and req-edn reply-edn)
-       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+     (if (complete-audit-wire? req-edn reply-edn wire)
+       (merge {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+              wire)
        {:ok false
         :reason :codec-failed
         :request-codec req-r
@@ -1022,18 +1073,21 @@
                            (str (or (:message reply) "")))
                    {:ok false})
          reply-edn (codec-value reply-r)
-         event {:kit :scoped-fs
-                :op :w4-roundtrip
-                :fs-op op
-                :root root
-                :path path
-                :request-edn req-edn
-                :reply-edn reply-edn
-                :reply-tag (:tag reply)
-                :latency-ms (- (System/currentTimeMillis) started)}]
+         wire (codec-audit-fields :scoped-fs req-r reply-r)
+         event (merge {:kit :scoped-fs
+                       :op :w4-roundtrip
+                       :fs-op op
+                       :root root
+                       :path path
+                       :request-edn req-edn
+                       :reply-edn reply-edn
+                       :reply-tag (:tag reply)
+                       :latency-ms (- (System/currentTimeMillis) started)}
+                      wire)]
      (try (on-call event) (catch Exception _))
-     (if (and req-edn reply-edn)
-       {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+     (if (complete-audit-wire? req-edn reply-edn wire)
+       (merge {:ok true :request-edn req-edn :reply-edn reply-edn :result reply}
+              wire)
        {:ok false
         :reason :codec-failed
         :request-codec req-r
