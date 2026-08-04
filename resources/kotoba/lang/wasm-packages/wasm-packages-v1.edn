@@ -301,8 +301,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0252/0281 process W4 recursive EDN with nominal EdnKeyValue; main → -2502; OS spawn host-injected; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0252/0281/0283 process W4 recursive EDN with nominal EdnKeyValue and implicit defrecord schema; main → -2502; OS spawn host-injected; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -452,8 +452,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0254/0281 entropy W4 recursive EDN with nominal EdnKeyValue; main → -2504; CSPRNG host-injected; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0254/0281/0283 entropy W4 recursive EDN with nominal EdnKeyValue and implicit defrecord schema; main → -2504; CSPRNG host-injected; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -482,8 +482,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0267/0281 entropy host_draw_edn wire 23 with nominal EdnKeyValue; main → -2510"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0267/0281/0283 entropy host_draw_edn wire 23 with nominal EdnKeyValue and implicit defrecord schema; main → -2510"}
    :exports {
              "entropy_req_rec_kv_edn" {:params [:i64] :result :externref}
              "host_draw_edn" {:params [:i64] :result :externref}
@@ -622,8 +622,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0250/0281 W4 recursive :edn/node with nominal EdnKeyValue entries; main → -2405; host I/O still open; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0250/0281/0283 W4 recursive :edn/node with nominal EdnKeyValue entries and implicit defrecord schema; main → -2405; host I/O still open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -656,8 +656,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0260/0281 guest W4 encode with nominal EdnKeyValue + typed-cap-call http/post string→string; main pure → -2506; host inject still required for host_post_edn; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0260/0281/0283 guest W4 encode with nominal EdnKeyValue, implicit defrecord schema, and typed-cap-call http/post string→string; main pure → -2506; host inject still required for host_post_edn; wasm-aot still partial"}
    :exports {"request_rec_kv_edn" {:params [:externref :externref :i64 :externref] :result :externref}
              "result_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
              "host_post_edn" {:params [:externref :externref :i64 :externref] :result :externref}
@@ -682,8 +682,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0251/0281 secret W4 request/reply with nominal EdnKeyValue; main → -2406; host-fetch open; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0251/0281/0283 secret W4 request/reply with nominal EdnKeyValue and implicit defrecord schema; main → -2406; host-fetch open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -713,8 +713,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0265/0281 guest W4 secret encode with nominal EdnKeyValue + typed-cap-call wire 21; main pure → -2507; host inject required for host_get_edn; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0265/0281/0283 guest W4 secret encode with nominal EdnKeyValue, implicit defrecord schema, and typed-cap-call wire 21; main pure → -2507; host inject required for host_get_edn; wasm-aot still partial"}
    :exports {"secret_request_rec_kv_edn" {:params [:externref] :result :externref}
              "secret_reply_value_rec_kv_edn" {:params [:externref] :result :externref}
              "host_get_edn" {:params [:externref] :result :externref}
@@ -738,8 +738,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0266/0281 guest W4 process encode with nominal EdnKeyValue + typed-cap-call wire 20; main pure → -2508; host inject required for host_spawn_edn; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0266/0281/0283 guest W4 process encode with nominal EdnKeyValue, implicit defrecord schema, and typed-cap-call wire 20; main pure → -2508; host inject required for host_spawn_edn; wasm-aot still partial"}
    :exports {"process_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
              "process_reply_ok_rec_kv_edn" {:params [:i64 :externref :externref] :result :externref}
              "host_spawn_edn" {:params [:externref :i64 :i64] :result :externref}
@@ -762,8 +762,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0253/0281 git W4 recursive EDN with nominal EdnKeyValue; main → -2503; OS git host-injected; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0253/0281/0283 git W4 recursive EDN with nominal EdnKeyValue and implicit defrecord schema; main → -2503; OS git host-injected; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -792,8 +792,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0267/0281 git host_run_edn wire 22 with nominal EdnKeyValue; main → -2509"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0267/0281/0283 git host_run_edn wire 22 with nominal EdnKeyValue and implicit defrecord schema; main → -2509"}
    :exports {
              "git_req_rec_kv_edn" {:params [:externref :i64 :i64] :result :externref}
              "host_run_edn" {:params [:externref :i64 :i64] :result :externref}
@@ -817,8 +817,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0255/0281 scoped-fs W4 recursive EDN with nominal EdnKeyValue; main → -2505; host store open; wasm-aot still partial"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0255/0281/0283 scoped-fs W4 recursive EDN with nominal EdnKeyValue and implicit defrecord schema; main → -2505; host store open; wasm-aot still partial"}
    :exports {"edn_atom" {:params [:externref] :result :externref}
              "edn_entry" {:params [:externref :externref] :result :externref}
              "edn_pair" {:params [:externref :externref] :result :externref}
@@ -848,8 +848,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "92b9bb87b80fa2242ec724099faa65f7ece217ad"
-            :note "ADR 0267/0268/0281 read/write wire 19 with nominal EdnKeyValue; main → -2512"}
+            :compiler-sha "fbc436a57a8c5750a8848d17cbac79ceec52f3e3"
+            :note "ADR 0267/0268/0281/0283 read/write wire 19 with nominal EdnKeyValue and implicit defrecord schema; main → -2512"}
    :exports {
              "fs_req_read_rec_kv_edn" {:params [:externref :externref] :result :externref}
              "fs_req_write_rec_kv_edn" {:params [:externref :externref :externref] :result :externref}

@@ -3,9 +3,7 @@
   ;; Ports nominal EdnKeyValue recursive EDN to entropy request/reply
   ;; (closes entropy "W4 open" residual). CSPRNG stays host-injected;
   ;; does NOT flip wasm-aot :implemented.
-  (:schemas {:kotoba.entropy.record-kv-edn/EdnKeyValue
-             [:record :kotoba.entropy.record-kv-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.entropy.record-kv-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

@@ -5,9 +5,7 @@
   ;; remeasured 2026-08-01: closed schema admits an EdnKeyValue record in the
   ;; :entry arm; construct/match/print works on wasm32 typed host.
   ;; Does NOT alone flip wasm-aot :implemented (host I/O still open).
-  (:schemas {:kotoba.edn.recursive-record-kv/EdnKeyValue
-             [:record :kotoba.edn.recursive-record-kv/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.edn.recursive-record-kv/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

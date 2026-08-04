@@ -3,9 +3,7 @@
   ;; Ports nominal EdnKeyValue recursive EDN to scoped-fs request/reply
   ;; (closes scoped-fs "W4 open" residual). Path policy matches 0243.
   ;; Host store stays host-injected; does NOT flip wasm-aot.
-  (:schemas {:kotoba.scoped-fs.record-kv-edn/EdnKeyValue
-             [:record :kotoba.scoped-fs.record-kv-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.scoped-fs.record-kv-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

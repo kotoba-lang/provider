@@ -1,9 +1,6 @@
 (ns kotoba.entropy.w4-host-edn
   ;; T8.3 ADR 0267: entropy W4 request encode + typed-cap-call wire 23
-  (:schemas {:kotoba.entropy.w4-host-edn/EdnKeyValue
-             [:record :kotoba.entropy.w4-host-edn/EdnKeyValue
-              [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.entropy.w4-host-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

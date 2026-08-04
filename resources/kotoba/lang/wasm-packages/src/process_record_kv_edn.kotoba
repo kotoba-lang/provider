@@ -4,9 +4,7 @@
   ;; identity (closes process "W4 open" residual). Argv multi-step fold
   ;; remains on fixed-depth package 0238; this surface takes prebuilt
   ;; argv-edn string. OS spawn stays host-injected; does NOT flip wasm-aot.
-  (:schemas {:kotoba.process.record-kv-edn/EdnKeyValue
-             [:record :kotoba.process.record-kv-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]
