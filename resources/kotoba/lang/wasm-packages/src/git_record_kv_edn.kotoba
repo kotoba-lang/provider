@@ -4,9 +4,7 @@
   ;; (closes git "W4 open" residual). Args multi-step fold remains on
   ;; fixed-depth package 0240; this surface takes prebuilt args-edn string.
   ;; OS git binary stays host-injected; does NOT flip wasm-aot.
-  (:schemas {:kotoba.git.record-kv-edn/EdnKeyValue
-             [:record :kotoba.git.record-kv-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.git.record-kv-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

@@ -1,8 +1,6 @@
 (ns kotoba.git.w4-host-edn
   ;; T8.3 ADR 0267: git W4 request encode + typed-cap-call wire 22
-  (:schemas {:kotoba.git.w4-host-edn/EdnKeyValue
-             [:record :kotoba.git.w4-host-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.git.w4-host-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

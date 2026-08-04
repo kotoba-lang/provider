@@ -2,9 +2,7 @@
   ;; T8.3 / host-I/O first slice: W4 record-kv request EDN + typed-cap-call
   ;; :http/post string→string forward (host inject). Main stays pure encode
   ;; proof (no live network). Does NOT flip wasm-aot :implemented.
-  (:schemas {:kotoba.http.w4-host-edn/EdnKeyValue
-             [:record :kotoba.http.w4-host-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.http.w4-host-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

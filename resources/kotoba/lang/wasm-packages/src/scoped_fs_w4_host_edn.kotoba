@@ -1,9 +1,7 @@
 (ns kotoba.scoped-fs.w4-host-edn
   ;; T8.3 ADR 0267 read + ADR 0268 write: scoped-fs W4 request encode +
   ;; typed-cap-call wire 19 (fs/transact). Main pure → -2512 after write slice.
-  (:schemas {:kotoba.scoped-fs.w4-host-edn/EdnKeyValue
-             [:record :kotoba.scoped-fs.w4-host-edn/EdnKeyValue [[:k :string] [:v :string]]]
-             :edn/node [:variant :edn/node
+  (:schemas {:edn/node [:variant :edn/node
                          [[:atom :string]
                           [:entry [:ref :kotoba.scoped-fs.w4-host-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]

@@ -2621,6 +2621,7 @@
                            (str "kotoba/lang/wasm-packages/src/" stem ".kotoba")))]
         (is (str/includes? source "(defrecord EdnKeyValue"))
         (is (str/includes? source "/EdnKeyValue"))
+        (is (not (re-find #"\(:schemas \{:\S+/EdnKeyValue" source)))
         (doseq [raw-surface ["(record-new" "(record-get"]]
           (is (not (str/includes? source raw-surface))))))))
 
