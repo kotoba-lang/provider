@@ -45,12 +45,12 @@
               "wasm-packages/http-request-edn0-v1.component.wasm (ADR 0219 0-header request EDN reject-path)"
               "wasm-packages/http-request-edn-reject-v1.component.wasm (ADR 0220 multi-header request EDN reject-path)"
               "wasm-packages/http-edn-reject-package-v1.component.wasm (ADR 0221/0222/0226/0227/0230 multi-export reject kit multi-ns + element-bound + names-add)"
-              "wasm-packages/http-headers-name-set-v1.wasm (ADR 0223 true set uniqueness via [:set :string])"
+              "wasm-packages/http-headers-name-set-v1.wasm (ADR 0223/0279 nominal HeaderNameSet uniqueness)"
               "wasm-packages/http-headers-names-add-v1.component.wasm (ADR 0225 Component twin true-set name list)"
               "wasm-packages/http-headers-edn-append-set-v1.wasm (ADR 0224 pure EDN append + true set)",
-              "wasm-packages/http-edn-set-package-v1.wasm (ADR 0229 pure multi-export EDN + true set)",
+              "wasm-packages/http-edn-set-package-v1.wasm (ADR 0229/0279 nominal EDN accumulator + true set)",
               "wasm-packages/http-request-set-record-v1.wasm (ADR 0231/0278 request on nominal records)",
-              "wasm-packages/http-headers-edn-set-fold-v1.wasm (ADR 0233 full headers EDN typed-set-nth fold)",
+              "wasm-packages/http-headers-edn-set-fold-v1.wasm (ADR 0233/0279 nominal header typed-set-nth fold)",
               "wasm-packages/http-request-edn-set-record-v1.wasm (ADR 0234/0277 full request EDN on nominal records)",
               "wasm-packages/http-result-edn-set-record-v1.wasm (ADR 0235/0278 result EDN on nominal records)",
               "wasm-packages/http-kit-edn-package-v1.wasm (ADR 0242/0276 multi-export request+result EDN on nominal records)"
