@@ -2,7 +2,16 @@
   (:require [clojure.java.io :as io]
             [clojure.string :as str]
             [clojure.test :refer [deftest is testing]]
-            [provider.edn-codec :as codec]))
+            [provider.edn-codec :as codec]
+            [provider.value-codec :as value-codec]))
+
+(defn- assert-canonical-audit [event kit]
+  (is (= :provider.ops-audit/v1 (:value-format event)))
+  (doseq [[field direction] [[:request-value-bytes :request]
+                             [:reply-value-bytes :reply]]]
+    (let [decoded (value-codec/decode-audit-value (get event field))]
+      (is (= kit (:kit decoded)))
+      (is (= direction (:direction decoded))))))
 
 (deftest codec-aot-complete-flag
   (is (true? (codec/codec-aot-complete?))))
@@ -75,6 +84,7 @@
           (is true "skip EDN assert when browser-host unavailable")
           (do
             (is (= :secret (:kit e)))
+            (assert-canonical-audit e :secret)
             (is (str/includes? (:request-edn e) "API_TOKEN"))
             (is (str/includes? (:reply-edn e) "s3cr3t"))
             (is (= :value (:reply-tag e)))))))))
@@ -98,6 +108,7 @@
           (is true "skip EDN assert when browser-host unavailable")
           (do
             (is (= :http (:kit e)))
+            (assert-canonical-audit e :http)
             (is (str/includes? (:request-edn e) "https://ex.com/a"))
             (is (= 200 (:status e)))
             (is (false? (:error? e)))))))))
@@ -135,6 +146,7 @@
           (is true "skip when browser-host unavailable")
           (do
             (is (= :process (:kit e)))
+            (assert-canonical-audit e :process)
             (is (str/includes? (:request-edn e) "echo"))
             (is (str/includes? (:reply-edn e) "hi"))))))))
 
@@ -151,6 +163,7 @@
           (is true "skip when browser-host unavailable")
           (do
             (is (= :git (:kit e)))
+            (assert-canonical-audit e :git)
             (is (str/includes? (:request-edn e) "status"))))))))
 
 (deftest wrap-entropy-draw-audits-optional
@@ -166,6 +179,7 @@
           (is true "skip when browser-host unavailable")
           (do
             (is (= :entropy (:kit e)))
+            (assert-canonical-audit e :entropy)
             (is (str/includes? (:request-edn e) "8"))
             (is (str/includes? (:reply-edn e) "deadbeefcafebabe"))))))))
 
@@ -185,6 +199,7 @@
           (is true "skip when browser-host unavailable")
           (do
             (is (= :scoped-fs (:kit e)))
+            (assert-canonical-audit e :scoped-fs)
             (is (str/includes? (:request-edn e) "docs/a.txt"))
             (is (str/includes? (:reply-edn e) "hello"))))))))
 
@@ -344,6 +359,7 @@
         (is false (pr-str r)))
       (do
         (is (:ok r) (pr-str r))
+        (assert-canonical-audit r :http)
         (is (str/includes? (:request-edn r) "https://ex.com/a"))
         (is (str/includes? (:request-edn r) "payload"))
         (is (str/includes? (:reply-edn r) "201"))
@@ -353,6 +369,7 @@
           (let [e (first @events)]
             (is (= :http (:kit e)))
             (is (= :w4-roundtrip (:op e)))
+            (assert-canonical-audit e :http)
             (is (string? (:request-edn e)))
             (is (string? (:reply-edn e)))))))))
 
@@ -382,6 +399,7 @@
       (is true "skip when browser-host unavailable")
       (do
         (is (:ok r) (pr-str r))
+        (assert-canonical-audit r :secret)
         (is (str/includes? (:request-edn r) "API_TOKEN"))
         (is (str/includes? (:reply-edn r) "s3cr3t"))
         (is (= :value (get-in r [:result :tag])))
@@ -410,6 +428,7 @@
       (is true "skip when browser-host unavailable")
       (do
         (is (:ok r) (pr-str r))
+        (assert-canonical-audit r :process)
         (is (str/includes? (:request-edn r) "echo"))
         (is (= :ok (get-in r [:result :tag])))
         (when (seq @events)
@@ -422,6 +441,7 @@
       (is true "skip when browser-host unavailable")
       (do
         (is (:ok r) (pr-str r))
+        (assert-canonical-audit r :git)
         (is (str/includes? (:request-edn r) "status"))
         (is (= :ok (get-in r [:result :tag])))))))
 
@@ -433,6 +453,7 @@
       (is true "skip when browser-host unavailable")
       (do
         (is (:ok r) (pr-str r))
+        (assert-canonical-audit r :entropy)
         (is (str/includes? (:request-edn r) "8"))
         (is (= :bytes (get-in r [:result :tag])))
         (is (str/includes? (:reply-edn r) ":hex"))
@@ -449,6 +470,7 @@
       (is true "skip when browser-host unavailable")
       (do
         (is (:ok r) (pr-str r))
+        (assert-canonical-audit r :scoped-fs)
         (is (str/includes? (:request-edn r) "docs/a.txt"))
         (is (str/includes? (:reply-edn r) "hello"))
         (is (= :content (get-in r [:result :tag])))))))
