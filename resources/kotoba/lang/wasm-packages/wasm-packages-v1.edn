@@ -1794,13 +1794,13 @@
    :signed-content-addressed-package :pending}
 
 
-  ;; T8.3 ADR 0234: full request EDN from kit-shaped set-record + headers fold
+  ;; T8.3 ADR 0234/0277: full request EDN from nominal records + headers fold
   {:name :http-request-edn-set-record
    :resource "kotoba/lang/wasm-packages/http-request-edn-set-record-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "c39f9973bb846d87a99c3e819d120993c2350a0aaf83cd6efbc7a99ee03433de"
+   :sha256 "ad45dbea1d41849fc5b7301ae51925326ecc365c4fe39d359552c250f8f0d304"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-request-edn-set-record-v1.wasm"
@@ -1809,8 +1809,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "97c17f54269e6665629aafcf8160e1172fc6aa26"
-            :note "ADR 0234 full request EDN (url+headers fold+body+timeout) from kit-shaped set-record; main → -9002; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0234/0277 full request EDN from nominal Header/HttpRequest records; main → -9002; W4/wasm-aot open"}
    :exports {"http_req_begin" {:params [:externref :externref :i64] :result :externref}
              "http_req_add_header" {:params [:externref :externref :externref] :result :externref}
              "http_req_code" {:params [:externref] :result :i64}
