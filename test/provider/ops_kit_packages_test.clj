@@ -2395,7 +2395,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "dfd44b0c5a6bb1323e5814db9857a94235ba670535c25d7a8962a9640bfebce7" (:sha256 mod)))
+    (is (= "a6e24260014d50b8012c70706417a5341a49a65ebb42c31d31d660cc3bfb8143" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print" "header_rec_kv_edn"
@@ -2416,7 +2416,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "0dfcb60c01eb0403543fda89dd5ec6a38e7ec3c37d44375e3863cdc5e73c7935" (:sha256 mod)))
+    (is (= "5fc25c7169a1f1fb58e9e8c010b21063fab0f4f753d4caf1c0ae0bc4498a9897" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
@@ -2437,7 +2437,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "a4d3cd960584b80f52150e4b4232698e886f5da3413a7d425ca4af37327768e7" (:sha256 mod)))
+    (is (= "501deb2d2466edb8a4f7da66d6c3c2a2b947184e0fefe55e3c4dbb290d98ebee" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
@@ -2458,7 +2458,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "9fded0b63676f4fc51b377e4796a34702886c4836b01b83e9b75bdd1cd310cfc" (:sha256 mod)))
+    (is (= "390b086e373ac321857511dfa70b4866801c18cf2d56e5b7791eb12b9ffd4347" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
@@ -2479,7 +2479,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "712d5cc0ae04a7673821d22e2a4d2057a6efdbe1a74a618c38f2b7e3c19bc2ee" (:sha256 mod)))
+    (is (= "4131cc31606f7b7be1dd3a5a27a9fecb9b890c09d3ca7ad025441946c7ac35ad" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
@@ -2500,7 +2500,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "9121592edd3d771066afaff6302add43d33635fc922f691ce6cabc9e2ef2faaa" (:sha256 mod)))
+    (is (= "2a6b08309b73d1a826616c01fcd8ac444e5bd93f21d023f99bcaa924dda27670" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["edn_atom" "edn_entry" "edn_pair" "edn_print"
@@ -2521,7 +2521,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "4f22e626cee06a90610bc9bd1a3a95684a2dee519bd0bc536842b0504ec41113" (:sha256 mod)))
+    (is (= "a558ce394b32d6e32887a35483114b95ed08516bdf85e357ab57edca582af8b0" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["request_rec_kv_edn" "result_ok_rec_kv_edn" "host_post_edn" "main"]]
@@ -2541,7 +2541,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "075a3d1f009410d4663b14e7943ec94a0957ae4a3edcc81d05dd9018a79e559b" (:sha256 mod)))
+    (is (= "3c637641f132b570f0504e85c238a711ee3f3b892875c7e8cf02edff66c11924" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["secret_request_rec_kv_edn" "secret_reply_value_rec_kv_edn"
@@ -2561,7 +2561,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "530fa9c5b7c166955ebc1d66080e19afae3c9f8e4afe838fd7cdede843790a98" (:sha256 mod)))
+    (is (= "6054506551d860d92f73db49921a338f7a170d9363569162f1558f3acfe27eeb" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["process_req_rec_kv_edn" "process_reply_ok_rec_kv_edn"
@@ -2581,9 +2581,9 @@
                 (let [mod (get by-name kw)]
                   (is (some? mod) (str kw))
                   (is (= expected-sha (:sha256 mod) (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))))]
-    (check :git-w4-host-edn "e81e9de9c8864ee824451e6d4694c278e9ee8ca29d50f22f54e7b92fe97cc37e")
-    (check :entropy-w4-host-edn "efb15002c7e5f9f1061de2cce61ebacaea82b129eba1b924146cdc37e88eb80a")
-    (check :scoped-fs-w4-host-edn "b36dda823efe109c7a172ae9beff88f33a7a8c5ad8088d404d5afe2b66983530")
+    (check :git-w4-host-edn "95152251cf0e5c7163fc831bf426da80ed2bc06ad48a19621308b207a25c1fa5")
+    (check :entropy-w4-host-edn "604fe3ff74003de8656d0726375c52b60bf5c9d52e4523a630801d8ac1f25fcb")
+    (check :scoped-fs-w4-host-edn "b8339220a4e01f94e8bdc37466e9f3c9c8dfcd6931f8e8c3ffc2637c273126b9")
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/git_w4_host_edn.kotoba")))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/entropy_w4_host_edn.kotoba")))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/scoped_fs_w4_host_edn.kotoba")))
@@ -2601,6 +2601,28 @@
 
 
 
+
+(deftest recursive-edn-packages-use-nominal-key-value-records
+  "ADR 0281: recursive EDN variants use exact-forward-declared EdnKeyValue."
+  (doseq [stem ["entropy_record_kv_edn"
+                "entropy_w4_host_edn"
+                "git_record_kv_edn"
+                "git_w4_host_edn"
+                "http_w4_host_edn"
+                "process_record_kv_edn"
+                "process_w4_host_edn"
+                "recursive_record_kv_edn"
+                "scoped_fs_record_kv_edn"
+                "scoped_fs_w4_host_edn"
+                "secret_record_kv_edn"
+                "secret_w4_host_edn"]]
+    (testing stem
+      (let [source (slurp (io/resource
+                           (str "kotoba/lang/wasm-packages/src/" stem ".kotoba")))]
+        (is (str/includes? source "(defrecord EdnKeyValue"))
+        (is (str/includes? source "/EdnKeyValue"))
+        (doseq [raw-surface ["(record-new" "(record-get"]]
+          (is (not (str/includes? source raw-surface))))))))
 
 (deftest secret-request-edn-component-registered
   "T8.3 ADR 0245: Component twin of secret_request_edn (Canonical dual scan)."

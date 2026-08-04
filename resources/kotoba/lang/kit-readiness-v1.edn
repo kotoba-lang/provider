@@ -58,8 +58,8 @@
               "wasm-packages/recursive-http-edn-v1.wasm (ADR 0247 W4 recursive request/result EDN ADT)"
               "wasm-packages/recursive-kv-edn-v1.wasm (ADR 0248 W4 true-kv recursive map EDN)"
               "wasm-packages/recursive-kv4-edn-v1.wasm (ADR 0249 W4 true-kv 4-field maps depth 12)"
-              "wasm-packages/recursive-record-kv-edn-v1.wasm (ADR 0250 W4 record-typed kv in recursive ADT)"
-              "wasm-packages/http-w4-host-edn-v1.wasm (ADR 0260 W4 encode + typed-cap-call http/post)"
+              "wasm-packages/recursive-record-kv-edn-v1.wasm (ADR 0250/0281 nominal kv in recursive ADT)"
+              "wasm-packages/http-w4-host-edn-v1.wasm (ADR 0260/0281 nominal W4 encode + typed-cap-call http/post)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0268)"
               "wasm-packages/http-url-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
               "wasm-packages/http-post-request-ok-v1.component.wasm (ADR 0199 pure Component re-emit)"
@@ -99,8 +99,8 @@
               "wasm-packages/secret-request-edn-v1.wasm (ADR 0236 fixed-depth request EDN)"
               "wasm-packages/secret-request-edn-v1.component.wasm (ADR 0245 pure Component twin)"
               "wasm-packages/secret-edn-package-v1.wasm (ADR 0237 multi-export request+reply EDN)"
-              "wasm-packages/secret-record-kv-edn-v1.wasm (ADR 0251 W4 secret record-kv request/reply)"
-              "wasm-packages/secret-w4-host-edn-v1.wasm (ADR 0265 guest host_get + cap 21)"
+              "wasm-packages/secret-record-kv-edn-v1.wasm (ADR 0251/0281 nominal W4 request/reply)"
+              "wasm-packages/secret-w4-host-edn-v1.wasm (ADR 0265/0281 nominal host_get + cap 21)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"
               "wasm-packages/secret-name-walk-v1.wasm + .component.wasm (ADR 0179 pure walk)"]
    :note "ADR 0166 hand scan + pure gates 0173/0175/0176 + typed 0178 + walk 0179 + 0206 secret_name_ok pure Component; wasm-aot partial (ADR 0232–0237 fixed-depth request/reply EDN; ADR 0245 Component twin of request EDN; ADR 0251 W4 record-kv request/reply; ADR 0264 secret-w4-roundtrip; ADR 0265 guest host_get_edn; host-fetch authority open by design)"}
@@ -119,11 +119,11 @@
    :evidence ["process-v1.edn" "provider#24+#25+#28 os-spawn"
               "wasm-packages/process-spawn-v1.wasm + .component.wasm (ADR 0168)",
               "wasm-packages/process-edn-package-v1.wasm (ADR 0238/0239/0280 nominal process request/reply EDN)"
-              "wasm-packages/process-w4-host-edn-v1.wasm (ADR 0266 guest host_spawn + cap 20)"
+              "wasm-packages/process-w4-host-edn-v1.wasm (ADR 0266/0281 nominal host_spawn + cap 20)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"
               "wasm-packages/process-spawn-bounds-v1.wasm + .component.wasm (ADR 0172)"
               "wasm-packages/process-spawn-walk-v1.wasm + .component.wasm (ADR 0183 multi-step)"
-              "wasm-packages/process-record-kv-edn-v1.wasm (ADR 0252 W4 process record-typed recursive EDN)"]
+              "wasm-packages/process-record-kv-edn-v1.wasm (ADR 0252/0281 nominal recursive EDN)"]
    :note "ADR 0168/0172 bounds + 0183 multi-step argv walk; OS spawn host-injected; ADR 0252 W4 record-typed recursive EDN main -2502; ADR 0266 guest host_spawn_edn cap 20; wasm-aot partial (host spawn open by design)"}
 
   {:name :scoped-fs
@@ -146,8 +146,8 @@
               "wasm-packages/fs-path-ok-v1.component.wasm (ADR 0207 pure Component re-emit; path state machine)"
               "wasm-packages/fs-path-walk-v1.wasm + .component.wasm (ADR 0181 multi-step walk)"
               "wasm-packages/scoped-fs-edn-package-v1.wasm (ADR 0243 scoped-fs request/reply EDN)"
-              "wasm-packages/scoped-fs-record-kv-edn-v1.wasm (ADR 0255 W4 scoped-fs record-kv)"
-              "wasm-packages/scoped-fs-w4-host-edn-v1.wasm (ADR 0267/0268 host_read+write + ADR 0270 inject parity)"
+              "wasm-packages/scoped-fs-record-kv-edn-v1.wasm (ADR 0255/0281 nominal W4 kv)"
+              "wasm-packages/scoped-fs-w4-host-edn-v1.wasm (ADR 0267/0268/0281 nominal host read/write + ADR 0270 inject parity)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"]
    :note "ADR 0169 hand + 0174/0175/0177 gates + 0180 typed-string + 0181 multi-step walk + 0207 fs_path_ok pure Component + 0243 fixed-depth EDN package; ADR 0255 W4 record-kv main -2505; ADR 0267/0268 guest host_read/write; ADR 0270 inject/deny parity; host store; wasm-aot partial (host store open)"}
 
@@ -167,8 +167,8 @@
               "wasm-packages/git-edn-package-v1.wasm (ADR 0240/0241/0280 nominal git request/reply EDN)"
               "wasm-packages/git-run-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"
               "wasm-packages/git-run-walk-v1.wasm + .component.wasm (ADR 0184)"
-              "wasm-packages/git-record-kv-edn-v1.wasm (ADR 0253 W4 git record-typed recursive EDN)"
-              "wasm-packages/git-w4-host-edn-v1.wasm (ADR 0267 host_run + ADR 0270 git-ok/deny)"
+              "wasm-packages/git-record-kv-edn-v1.wasm (ADR 0253/0281 nominal recursive EDN)"
+              "wasm-packages/git-w4-host-edn-v1.wasm (ADR 0267/0281 nominal host_run + ADR 0270 git-ok/deny)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"]
    :note "ADR 0170 Component + 0172 one-shot + 0184 multi-step walk + 0240/0241 fixed-depth EDN package; ADR 0253 W4 record-kv main -2503; ADR 0267 guest host_run_edn; ADR 0270 inject/deny parity; git binary host-injected; wasm-aot partial (host git open)"}
 
@@ -186,8 +186,8 @@
    :evidence ["entropy-v1.edn" "provider#33" "audit N/A for pure CSPRNG draw"
               "wasm-packages/entropy-draw-v1.wasm + .component.wasm (ADR 0167)",
               "wasm-packages/entropy-edn-package-v1.wasm (ADR 0244 entropy request/reply EDN)"
-              "wasm-packages/entropy-record-kv-edn-v1.wasm (ADR 0254 W4 entropy record-typed recursive EDN)"
-              "wasm-packages/entropy-w4-host-edn-v1.wasm (ADR 0267 host_draw + ADR 0270 entropy-hex/deny)"
+              "wasm-packages/entropy-record-kv-edn-v1.wasm (ADR 0254/0281 nominal recursive EDN)"
+              "wasm-packages/entropy-w4-host-edn-v1.wasm (ADR 0267/0281 nominal host_draw + ADR 0270 entropy-hex/deny)"
               "wasm-packages/entropy-draw-bounds-v1.wasm + .component.wasm (ADR 0172 compiler-AOT)"]
    :note "ADR 0167 Component + ADR 0172 compiler-AOT draw bounds; ADR 0244 fixed-depth request/reply EDN (main -2315); ADR 0254 W4 record-typed recursive EDN main -2504; ADR 0267 guest host_draw_edn; ADR 0270 inject/deny parity; CSPRNG host-injected; wasm-aot partial (host draw open)"}
 

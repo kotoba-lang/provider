@@ -1,13 +1,14 @@
 (ns kotoba.process.record-kv-edn
   ;; T8.3 / W4 process kit first recursive ADT slice ADR 0252.
-  ;; Ports record-typed :edn/kv recursive EDN to process request/reply
+  ;; Ports nominal EdnKeyValue recursive EDN to process request/reply
   ;; identity (closes process "W4 open" residual). Argv multi-step fold
   ;; remains on fixed-depth package 0238; this surface takes prebuilt
   ;; argv-edn string. OS spawn stays host-injected; does NOT flip wasm-aot.
-  (:schemas {:edn/kv [:record :edn/kv [[:k :string] [:v :string]]]
+  (:schemas {:kotoba.process.record-kv-edn/EdnKeyValue
+             [:record :kotoba.process.record-kv-edn/EdnKeyValue [[:k :string] [:v :string]]]
              :edn/node [:variant :edn/node
                          [[:atom :string]
-                          [:entry [:ref :edn/kv]]
+                          [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
                           [:pair [:vector [[:ref :edn/node]
                                            [:ref :edn/node]]]]]]})
   (:export [edn_atom
@@ -18,6 +19,8 @@
             process_reply_ok_rec_kv_edn
             process_reply_error_rec_kv_edn
             main]))
+
+(defrecord EdnKeyValue [k :string v :string])
 
 (defn- has-forbidden [s :string] :i64
   (let [n (string-length s)]
@@ -43,45 +46,45 @@
 (defn edn_atom [s :string]
   [:variant :edn/node
     [[:atom :string]
-     [:entry [:ref :edn/kv]]
+     [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
   (variant-new
    [:variant :edn/node
      [[:atom :string]
-      [:entry [:ref :edn/kv]]
+      [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
       [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
    :atom s))
 
 (defn edn_entry [k :string v :string]
   [:variant :edn/node
     [[:atom :string]
-     [:entry [:ref :edn/kv]]
+     [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
   (variant-new
    [:variant :edn/node
      [[:atom :string]
-      [:entry [:ref :edn/kv]]
+      [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
       [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
    :entry
-   (record-new [:record :edn/kv [[:k :string] [:v :string]]] k v)))
+   (->EdnKeyValue k v)))
 
 (defn edn_pair
   [l [:variant :edn/node
        [[:atom :string]
-        [:entry [:ref :edn/kv]]
+        [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
         [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
    r [:variant :edn/node
        [[:atom :string]
-        [:entry [:ref :edn/kv]]
+        [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
         [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
   [:variant :edn/node
     [[:atom :string]
-     [:entry [:ref :edn/kv]]
+     [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
      [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
   (variant-new
    [:variant :edn/node
      [[:atom :string]
-      [:entry [:ref :edn/kv]]
+      [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
       [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
    :pair
    (hetero-vector [:vector [[:ref :edn/node] [:ref :edn/node]]] l r)))
@@ -89,20 +92,20 @@
 (defn edn_print
   [n [:variant :edn/node
        [[:atom :string]
-        [:entry [:ref :edn/kv]]
+        [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
         [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
   :string
   (match-variant n
    [:variant :edn/node
      [[:atom :string]
-      [:entry [:ref :edn/kv]]
+      [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
       [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]
     (:atom s s)
     (:entry r
       (string-concat
-       (record-get [:record :edn/kv [[:k :string] [:v :string]]] r :k)
+       (:k r)
        (string-concat " "
-                      (record-get [:record :edn/kv [[:k :string] [:v :string]]] r :v))))
+                      (:v r))))
     (:pair p
       (string-concat
        (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 0))
@@ -112,7 +115,7 @@
 (defn- brace-print
   [n [:variant :edn/node
        [[:atom :string]
-        [:entry [:ref :edn/kv]]
+        [:entry [:ref :kotoba.process.record-kv-edn/EdnKeyValue]]
         [:pair [:vector [[:ref :edn/node] [:ref :edn/node]]]]]]]
   :string
   (string-concat "{" (string-concat (edn_print n) "}")))
