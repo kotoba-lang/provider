@@ -2207,7 +2207,7 @@
 
 
 (deftest http-kit-edn-package-registered
-  "T8.3 ADR 0242: multi-export HTTP kit request+result set-record EDN."
+  "T8.3 ADR 0242/0276: HTTP kit EDN uses the nominal Kotoba record surface."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -2218,7 +2218,7 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "b3b734ed9dd62cc1eb008cdcd4c00dd0904bdc7a99ef8a1e80c6bc1ceb0732d1" (:sha256 mod)))
+    (is (= "05e0ffaea4d3df1ed63842ce52755d6c154e65ef78232a24f442ad783c36ede9" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["http_req_begin" "http_req_add_header" "http_req_code"
@@ -2226,7 +2226,14 @@
                "http_res_ok_begin" "http_res_ok_add_header" "http_res_ok_code"
                "http_res_ok_count" "http_res_ok_edn" "http_res_err_edn" "main"]]
       (is (contains? (:exports mod) e)))
-    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_kit_edn_package.kotoba")))))
+    (let [source-resource (io/resource "kotoba/lang/wasm-packages/src/http_kit_edn_package.kotoba")
+          source (slurp source-resource)]
+      (is (some? source-resource))
+      (doseq [declaration ["(defrecord Header" "(defrecord HttpRequest"
+                           "(defrecord HttpResponse"]]
+        (is (str/includes? source declaration)))
+      (doseq [raw-surface ["(record-new" "(record-get" "(:schemas"]]
+        (is (not (str/includes? source raw-surface)))))))
 
 
 (deftest entropy-edn-package-registered
@@ -2565,4 +2572,3 @@
            (sha (-> (io/resource (:resource comp)) io/input-stream .readAllBytes))))
     (is (contains? (:exports comp) "secret-request-edn"))
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/secret_request_edn_component.kotoba")))))
-

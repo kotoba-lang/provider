@@ -1856,7 +1856,7 @@
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "b3b734ed9dd62cc1eb008cdcd4c00dd0904bdc7a99ef8a1e80c6bc1ceb0732d1"
+   :sha256 "05e0ffaea4d3df1ed63842ce52755d6c154e65ef78232a24f442ad783c36ede9"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-kit-edn-package-v1.wasm"
@@ -1865,8 +1865,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "4b006d05d714be81a6148ceebab227510f368554"
-            :note "ADR 0242 multi-export HTTP kit request+result set-record EDN; main → -9242; W4/wasm-aot open"}
+            :compiler-sha "5e0e2564a5244393f42b5bcac199f42afe299a87"
+            :note "ADR 0242/0276 multi-export HTTP kit EDN on nominal Header/HttpRequest/HttpResponse records; main → -9242; W4/wasm-aot open"}
    :exports {"http_req_begin" {:params [:externref :externref :i64] :result :externref}
              "http_req_add_header" {:params [:externref :externref :externref] :result :externref}
              "http_req_code" {:params [:externref] :result :i64}
