@@ -53,9 +53,9 @@
                       (:v r))))
     (:pair p
       (string-concat
-       (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 0))
+       (edn_print (nth p 0))
        (string-concat " "
-                      (edn_print (hetero-vector-at [:vector [[:ref :edn/node] [:ref :edn/node]]] p 1)))))))
+                      (edn_print (nth p 1)))))))
 
 (defn entropy_req_rec_kv_edn [n :i64] :string
   (if (or (< n 1) (> n 64))

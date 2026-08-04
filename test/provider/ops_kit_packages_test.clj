@@ -2624,6 +2624,31 @@
         (doseq [raw-surface ["(record-new" "(record-get"]]
           (is (not (str/includes? source raw-surface))))))))
 
+(deftest recursive-edn-packages-use-type-directed-nth
+  "ADR 0282: recursive pair projections retain their inferred descriptor."
+  (doseq [stem ["entropy_record_kv_edn"
+                "entropy_w4_host_edn"
+                "git_record_kv_edn"
+                "git_w4_host_edn"
+                "http_w4_host_edn"
+                "process_record_kv_edn"
+                "process_w4_host_edn"
+                "recursive_headers_edn"
+                "recursive_http_edn"
+                "recursive_kv_edn"
+                "recursive_kv4_edn"
+                "recursive_record_kv_edn"
+                "scoped_fs_record_kv_edn"
+                "scoped_fs_w4_host_edn"
+                "secret_record_kv_edn"
+                "secret_w4_host_edn"]]
+    (testing stem
+      (let [source (slurp (io/resource
+                           (str "kotoba/lang/wasm-packages/src/" stem ".kotoba")))]
+        (is (str/includes? source "(nth p 0)"))
+        (is (str/includes? source "(nth p 1)"))
+        (is (not (str/includes? source "(hetero-vector-at")))))))
+
 (deftest secret-request-edn-component-registered
   "T8.3 ADR 0245: Component twin of secret_request_edn (Canonical dual scan)."
   (let [table (edn/read-string
