@@ -1024,7 +1024,7 @@
     (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_set_ok.kotoba")))))
 
 (deftest http-headers-name-set-true-uniqueness-package-registered
-  "T8.3 ADR 0223: true header-name uniqueness via [:set :string] (set-in-record)."
+  "T8.3 ADR 0223/0279: true name uniqueness in nominal HeaderNameSet."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1038,14 +1038,19 @@
     (is (= :wasm-module (:artifact-kind mod)))
     (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
     (is (= :kotoba.typed (get-in mod [:source :typed-host])))
-    (is (= "5b61d1783818a825762d5373914b395747eaa136c4dd62733122003db89b0d74"
+    (is (= "85dd13bda2c801753d88025dce913bac4a2d5c3e80acf4648130ea2a022200d2"
            (:sha256 mod) (sha mod-bytes)))
     (doseq [e ["http_headers_names_begin" "http_headers_names_add"
                "http_headers_names_pair" "http_headers_names_code"
                "http_headers_names_count" "main"]]
       (is (contains? (:exports mod) e)))
     (is (contains? (:imports mod) "kotoba:typed"))
-    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_name_set.kotoba")))))
+    (let [source-resource (io/resource "kotoba/lang/wasm-packages/src/http_headers_name_set.kotoba")
+          source (slurp source-resource)]
+      (is (some? source-resource))
+      (is (str/includes? source "(defrecord HeaderNameSet"))
+      (doseq [raw-surface ["(record-new" "(record-get" "(:schemas"]]
+        (is (not (str/includes? source raw-surface)))))))
 
 (deftest http-headers-edn-append-set-true-uniqueness-package-registered
   "T8.3 ADR 0224: pure reject-path EDN append with true set uniqueness."
@@ -1073,7 +1078,7 @@
 
 
 (deftest http-edn-set-package-true-set-multi-export-registered
-  "T8.3 ADR 0229: pure multi-export EDN kit body + true set uniqueness."
+  "T8.3 ADR 0229/0279: EDN kit body in nominal accumulator."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1086,7 +1091,7 @@
     (is (= :wasm-module (:artifact-kind mod)))
     (is (= :kotoba-compiler/v1 (get-in mod [:source :builder])))
     (is (= :kotoba.typed (get-in mod [:source :typed-host])))
-    (is (= "f6dd4b1b07addeef66dd40e3ea7488aeca3d2727f6ce38fbe83b2d535360c44b"
+    (is (= "366a0ee5e2a34150ddf213e1bf073ed60485ba95d5266f1881fa6f1517cae906"
            (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
@@ -1095,7 +1100,12 @@
                "http_headers_edn_set_count" "http_request_edn_set"
                "http_result_ok_edn" "http_result_err_edn" "main"]]
       (is (contains? (:exports mod) e)))
-    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_edn_set_package.kotoba")))))
+    (let [source-resource (io/resource "kotoba/lang/wasm-packages/src/http_edn_set_package.kotoba")
+          source (slurp source-resource)]
+      (is (some? source-resource))
+      (is (str/includes? source "(defrecord HeaderEdnAccumulator"))
+      (doseq [raw-surface ["(record-new" "(record-get" "(:schemas"]]
+        (is (not (str/includes? source raw-surface)))))))
 
 
 (deftest http-request-set-record-kit-shaped-package-registered
@@ -1129,7 +1139,7 @@
 
 
 (deftest http-headers-edn-set-fold-package-registered
-  "T8.3 ADR 0233: full headers EDN via typed-set-nth fold."
+  "T8.3 ADR 0233/0279: full headers EDN over nominal records."
   (let [table (edn/read-string
                (slurp (io/resource "kotoba/lang/wasm-packages/wasm-packages-v1.edn")))
         by-name (into {} (map (juxt :name identity) (:packages table)))
@@ -1140,13 +1150,19 @@
                 (format "%064x" (BigInteger. 1 (.digest md)))))]
     (is (some? mod))
     (is (= :wasm-module (:artifact-kind mod)))
-    (is (= "530f9936e91ae14f3973a3c873ebebd092bd3562c794627e9832635e27d36f7a" (:sha256 mod)))
+    (is (= "83e436b0674ceec5a85cd0a771e42b52d5b4e2a2286d708deee723afdceb8e98" (:sha256 mod)))
     (is (= (:sha256 mod)
            (sha (-> (io/resource (:resource mod)) io/input-stream .readAllBytes))))
     (doseq [e ["http_hdr_begin" "http_hdr_add" "http_hdr_code"
                "http_hdr_count" "http_hdr_edn" "main"]]
       (is (contains? (:exports mod) e)))
-    (is (some? (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_set_fold.kotoba")))))
+    (let [source-resource (io/resource "kotoba/lang/wasm-packages/src/http_headers_edn_set_fold.kotoba")
+          source (slurp source-resource)]
+      (is (some? source-resource))
+      (doseq [declaration ["(defrecord Header" "(defrecord HeaderBag"]]
+        (is (str/includes? source declaration)))
+      (doseq [raw-surface ["(record-new" "(record-get" "(:schemas"]]
+        (is (not (str/includes? source raw-surface)))))))
 
 
 (deftest http-request-edn-set-record-package-registered

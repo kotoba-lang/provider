@@ -1539,13 +1539,13 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
-  ;; T8.3 ADR 0223: true header-name uniqueness via [:set :string] (set-in-record)
+  ;; T8.3 ADR 0223/0279: true header-name uniqueness in nominal HeaderNameSet
   {:name :http-headers-name-set
    :resource "kotoba/lang/wasm-packages/http-headers-name-set-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "5b61d1783818a825762d5373914b395747eaa136c4dd62733122003db89b0d74"
+   :sha256 "85dd13bda2c801753d88025dce913bac4a2d5c3e80acf4648130ea2a022200d2"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-headers-name-set-v1.wasm"
@@ -1554,8 +1554,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "8952a0685a4b21397b18cec27979a4f551780188"
-            :note "ADR 0223 true set uniqueness via [:set :string] guest record (set-in-record); main → -9002; W4 recursive EDN / wasm-aot still open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0223/0279 true set uniqueness in nominal HeaderNameSet; main → -9002; W4 recursive EDN / wasm-aot still open"}
    :exports {"http_headers_names_begin" {:params [:i64] :result :externref}
              "http_headers_names_add" {:params [:externref :externref] :result :externref}
              "http_headers_names_pair" {:params [:externref :externref :externref] :result :externref}
@@ -1616,13 +1616,13 @@
    :signed-content-addressed-package :pending}
 
   ;; T8.3 ADR 0190: typed-string response surface (status + headers-n + body)
-  ;; T8.3 ADR 0229: pure multi-export EDN kit body + true set uniqueness
+  ;; T8.3 ADR 0229/0279: EDN kit body in nominal HeaderEdnAccumulator
   {:name :http-edn-set-package
    :resource "kotoba/lang/wasm-packages/http-edn-set-package-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "f6dd4b1b07addeef66dd40e3ea7488aeca3d2727f6ce38fbe83b2d535360c44b"
+   :sha256 "366a0ee5e2a34150ddf213e1bf073ed60485ba95d5266f1881fa6f1517cae906"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-edn-set-package-v1.wasm"
@@ -1631,8 +1631,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "8952a0685a4b21397b18cec27979a4f551780188"
-            :note "ADR 0229 pure multi-export EDN kit body (set-append + request + results); true-set uniqueness; main → -9002; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0229/0279 EDN kit body in nominal HeaderEdnAccumulator; true-set uniqueness; main → -9002; W4/wasm-aot open"}
    :exports {"http_headers_edn_set_begin" {:params [] :result :externref}
              "http_headers_edn_set_append" {:params [:externref :externref :externref] :result :externref}
              "http_headers_edn_set_edn" {:params [:externref] :result :externref}
@@ -1766,13 +1766,13 @@
    :signed-content-addressed-package :pending}
 
 
-  ;; T8.3 ADR 0233: full headers EDN fold via typed-set-nth
+  ;; T8.3 ADR 0233/0279: full headers EDN fold over nominal Header/HeaderBag
   {:name :http-headers-edn-set-fold
    :resource "kotoba/lang/wasm-packages/http-headers-edn-set-fold-v1.wasm"
    :kit-resource "kotoba/lang/capability-kits/http-v1.edn"
    :artifact-kind :wasm-module
    :media-type "application/wasm"
-   :sha256 "530f9936e91ae14f3973a3c873ebebd092bd3562c794627e9832635e27d36f7a"
+   :sha256 "83e436b0674ceec5a85cd0a771e42b52d5b4e2a2286d708deee723afdceb8e98"
    :class :ops-network
    :source {:repository "kotoba-lang/provider"
             :path "resources/kotoba/lang/wasm-packages/http-headers-edn-set-fold-v1.wasm"
@@ -1781,8 +1781,8 @@
             :provider-status :reference-partial
             :builder :kotoba-compiler/v1
             :typed-host :kotoba.typed
-            :compiler-sha "97c17f54269e6665629aafcf8160e1172fc6aa26"
-            :note "ADR 0233 full headers EDN via typed-set-nth fold; main → -9002; W4/wasm-aot open"}
+            :compiler-sha "3ebb7ffa0cfa91463fbe75d0f0bfc7e77d95d94c"
+            :note "ADR 0233/0279 full headers EDN via typed-set-nth over nominal Header/HeaderBag; main → -9002; W4/wasm-aot open"}
    :exports {"http_hdr_begin" {:params [] :result :externref}
              "http_hdr_add" {:params [:externref :externref :externref] :result :externref}
              "http_hdr_code" {:params [:externref] :result :i64}

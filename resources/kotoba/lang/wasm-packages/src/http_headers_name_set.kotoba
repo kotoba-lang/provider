@@ -1,17 +1,17 @@
 (ns kotoba.http.headers-name-set
-  ;; T8.3 ADR 0223: true header-name uniqueness via bounded typed-set
+  ;; T8.3 ADR 0223/0279: true header-name uniqueness via bounded typed-set
   ;; `[:set :string]` (max 32). Composes ADR 0187 name policy + 0188 value
   ;; policy with set membership — not substring `:name` marker scan.
   ;; Guest record state carries names + sticky error code.
   ;; W4 recursive nested EDN ADT still open; wasm-aot stays :partial.
-  (:schemas {:hdr/name-set [:record :hdr/name-set
-                            [[:names [:set :string]] [:code :i64]]]})
   (:export [http_headers_names_begin
             http_headers_names_add
             http_headers_names_pair
             http_headers_names_code
             http_headers_names_count
             main]))
+
+(defrecord HeaderNameSet [names [:set :string] code :i64])
 
 ;; Codes (sticky once non-zero):
 ;;   0 ok
@@ -67,59 +67,55 @@
 
 (defn http_headers_names_begin
   [n :i64]
-  [:ref :hdr/name-set]
+  [:ref :kotoba.http.headers-name-set/HeaderNameSet]
   (if (or (< n 0) (> n 32))
-    (record-new [:ref :hdr/name-set] (typed-set-new [:set :string]) -4)
-    (record-new [:ref :hdr/name-set] (typed-set-new [:set :string]) 0)))
+    (->HeaderNameSet (typed-set-new [:set :string]) -4)
+    (->HeaderNameSet (typed-set-new [:set :string]) 0)))
 
 (defn http_headers_names_code
-  [st [:ref :hdr/name-set]]
+  [st [:ref :kotoba.http.headers-name-set/HeaderNameSet]]
   :i64
-  (record-get st :code))
+  (:code st))
 
 (defn http_headers_names_count
-  [st [:ref :hdr/name-set]]
+  [st [:ref :kotoba.http.headers-name-set/HeaderNameSet]]
   :i64
-  (typed-set-count [:set :string] (record-get st :names)))
+  (typed-set-count [:set :string] (:names st)))
 
 (defn http_headers_names_add
-  [st [:ref :hdr/name-set] name :string]
-  [:ref :hdr/name-set]
-  (let [names (record-get st :names)
-        code (record-get st :code)]
+  [st [:ref :kotoba.http.headers-name-set/HeaderNameSet] name :string]
+  [:ref :kotoba.http.headers-name-set/HeaderNameSet]
+  (let [{:keys [names code]} st]
     (if (= code 0)
       (let [nr (header-name-ok name)]
         (if (not= nr 0)
-          (record-new [:ref :hdr/name-set] names nr)
+          (->HeaderNameSet names nr)
           (if (typed-set-contains [:set :string] names name)
-            (record-new [:ref :hdr/name-set] names -9)
+            (->HeaderNameSet names -9)
             (if (>= (typed-set-count [:set :string] names) 32)
-              (record-new [:ref :hdr/name-set] names -4)
-              (record-new [:ref :hdr/name-set]
-                          (typed-set-conj [:set :string] names name)
-                          0)))))
-      (record-new [:ref :hdr/name-set] names code))))
+              (->HeaderNameSet names -4)
+              (->HeaderNameSet (typed-set-conj [:set :string] names name) 0)))))
+      (->HeaderNameSet names code))))
 
 (defn http_headers_names_pair
-  [st [:ref :hdr/name-set] name :string value :string]
-  [:ref :hdr/name-set]
-  (let [names (record-get st :names)
-        code (record-get st :code)]
+  [st [:ref :kotoba.http.headers-name-set/HeaderNameSet]
+   name :string value :string]
+  [:ref :kotoba.http.headers-name-set/HeaderNameSet]
+  (let [{:keys [names code]} st]
     (if (= code 0)
       (let [nr (header-name-ok name)]
         (if (not= nr 0)
-          (record-new [:ref :hdr/name-set] names nr)
+          (->HeaderNameSet names nr)
           (let [vr (header-value-ok value)]
             (if (not= vr 0)
-              (record-new [:ref :hdr/name-set] names vr)
+              (->HeaderNameSet names vr)
               (if (typed-set-contains [:set :string] names name)
-                (record-new [:ref :hdr/name-set] names -9)
+                (->HeaderNameSet names -9)
                 (if (>= (typed-set-count [:set :string] names) 32)
-                  (record-new [:ref :hdr/name-set] names -4)
-                  (record-new [:ref :hdr/name-set]
-                              (typed-set-conj [:set :string] names name)
-                              0)))))))
-      (record-new [:ref :hdr/name-set] names code))))
+                  (->HeaderNameSet names -4)
+                  (->HeaderNameSet
+                   (typed-set-conj [:set :string] names name) 0)))))))
+      (->HeaderNameSet names code))))
 
 ;; Prove: two distinct names + duplicate reject via true set membership.
 ;; Returns -9 * 1000 - count after successful pair path encoding, or sticky code.
