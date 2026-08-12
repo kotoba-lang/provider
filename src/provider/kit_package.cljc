@@ -254,7 +254,8 @@
      :kit-name (:kotoba.capability-kit/name kit)
      :kit-version (:kotoba.capability-kit/version kit)
      :package dig
-     :qualification (select-keys q [:reference :wasm-aot :codec-aot :signed-content-addressed-package
+     :qualification (select-keys q [:reference :wasm-aot :codec-aot :guest-value-wire
+                                    :signed-content-addressed-package
                                     :dual-runtime-os-transport :host-transports])
      :production-signed-claim?
      false

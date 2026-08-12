@@ -233,6 +233,32 @@
       (value-codec/legacy-edn->audit-bytes kit direction text)
       (catch Exception _ nil))))
 
+;; --- ADR 0285: guest-decided canonical bytes (secret kit first) -------------
+
+(defn secret-request-value-hex
+  "Canonical `kotoba.value.v1` audit bytes for a secret request, as hex, chosen
+  by the guest rather than re-encoded by the host."
+  [name]
+  (invoke-export :secret-value-wire :secret_request_audit_hex [name]))
+
+(defn secret-reply-value-value-hex
+  [value]
+  (invoke-export :secret-value-wire :secret_reply_value_audit_hex [value]))
+
+(defn secret-reply-error-value-hex
+  [code message]
+  (invoke-export :secret-value-wire :secret_reply_error_audit_hex [code message]))
+
+(defn- guest-audit-bytes
+  "Admit guest-decided bytes. Returns nil when the guest rejected the input
+  (empty hex) or when the bytes are not this envelope in canonical form."
+  [kit direction result]
+  (when-let [hex (codec-value result)]
+    (when (seq hex)
+      (try
+        (value-codec/guest-hex->audit-bytes kit direction hex)
+        (catch Exception _ nil)))))
+
 (defn- codec-audit-fields [kit request-result reply-result]
   {:value-format value-codec/audit-format
    :request-value-bytes (codec-audit-bytes kit :request request-result)
@@ -266,14 +292,33 @@
   (invoke-export :recursive-record-kv-edn :result_err_rec_kv_edn
                  [(str code) (str message) (long retryable)]))
 
+(defn- secret-audit-bytes
+  "Prefer the bytes the guest decided; fall back to host re-encode of the EDN.
+
+  Returns `[bytes source]` where source is `:guest` (ADR 0285), `:host-legacy`
+  (ADR 0284), or nil when neither produced admitted bytes. The source travels
+  with the event because the two paths are not the same claim: `:guest` means
+  the guest chose the byte sequence, `:host-legacy` means the host did."
+  [direction guest-result edn-result]
+  (if-let [g (guest-audit-bytes :secret direction guest-result)]
+    [g :guest]
+    (if-let [h (codec-audit-bytes :secret direction edn-result)]
+      [h :host-legacy]
+      [nil nil])))
+
 (defn wrap-secret-fetch
-  "Wrap a secret `:fetch` transport so each call audits pure W4 request/reply EDN.
+  "Wrap a secret `:fetch` transport so each call audits pure W4 request/reply.
 
   `on-call` receives a map:
-  `{:kit :secret :op :get :name n :request-edn s :reply-edn s :reply-tag t}`
+  `{:kit :secret :op :get :name n :request-edn s :reply-edn s :reply-tag t
+    :request-value-bytes b :reply-value-bytes b
+    :request-value-source :guest|:host-legacy :reply-value-source …}`
 
-  Does not change fetch semantics. Codec/on-call failures are swallowed.
-  Underlying fetch is still the only secret authority exercised."
+  Costs four guest invocations per audited fetch (request/reply x EDN/value),
+  up from two before ADR 0285. This is evidence machinery on the audit path,
+  not the secret authority path; the underlying fetch is still the only secret
+  authority exercised. Does not change fetch semantics. Codec/on-call failures
+  are swallowed."
   ([fetch] (wrap-secret-fetch fetch (fn [_])))
   ([fetch on-call]
    (when-not (fn? fetch)
@@ -284,13 +329,21 @@
                      {:phase :edn-codec})))
    (fn [{:keys [name] :as req}]
      (let [req-codec (secret-request-edn name)
+           req-wire (secret-request-value-hex name)
            reply (fetch req)
+           reply-value (str (:value reply))
+           reply-code (keyword-code (:code reply))
+           reply-message (str (or (:message reply) ""))
            reply-codec (case (:tag reply)
-                         :value (secret-reply-value-edn (str (:value reply)))
-                         :error (secret-reply-error-edn
-                                 (keyword-code (:code reply))
-                                 (str (or (:message reply) "")))
-                         {:ok false})]
+                         :value (secret-reply-value-edn reply-value)
+                         :error (secret-reply-error-edn reply-code reply-message)
+                         {:ok false})
+           reply-wire (case (:tag reply)
+                        :value (secret-reply-value-value-hex reply-value)
+                        :error (secret-reply-error-value-hex reply-code reply-message)
+                        {:ok false})
+           [req-bytes req-source] (secret-audit-bytes :request req-wire req-codec)
+           [rep-bytes rep-source] (secret-audit-bytes :reply reply-wire reply-codec)]
        (try
          (on-call {:kit :secret
                    :op :get
@@ -298,8 +351,10 @@
                    :request-edn (codec-value req-codec)
                    :reply-edn (codec-value reply-codec)
                    :value-format value-codec/audit-format
-                   :request-value-bytes (codec-audit-bytes :secret :request req-codec)
-                   :reply-value-bytes (codec-audit-bytes :secret :reply reply-codec)
+                   :request-value-bytes req-bytes
+                   :reply-value-bytes rep-bytes
+                   :request-value-source req-source
+                   :reply-value-source rep-source
                    :reply-tag (:tag reply)})
          (catch Exception _))
        reply))))

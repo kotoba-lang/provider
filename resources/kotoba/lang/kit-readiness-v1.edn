@@ -1,7 +1,7 @@
 {:kotoba.kit-readiness/version 1
  :kotoba.kit-readiness/checklist-adr "docs/adr/0153-w6-kit-ready-checklist.md"
  :kotoba.kit-readiness/summary
- "T8.2 readiness COMPLETE for scored kits: ops audit 0269; object/storage audit+deny 0271–0273 (deny 0272/0273); object/storage signed-wasm 0275 (pure-bounds Components). T8.3 packaging includes pure Component re-emit 0199–0207 (secret-name-ok 0206 / fs-path-ok 0207) + guest host+EDN 0256–0270; residual host I/O wasm-aot :partial by design. Fixtures never claim production."
+ "T8.2 readiness COMPLETE for scored kits: ops audit 0269; object/storage audit+deny 0271–0273 (deny 0272/0273); object/storage signed-wasm 0275 (pure-bounds Components). T8.3 packaging includes pure Component re-emit 0199–0207 (secret-name-ok 0206 / fs-path-ok 0207) + guest host+EDN 0256–0270; residual host I/O wasm-aot :partial by design. ADR 0285 moves the SECRET kit's canonical audit bytes into the guest (:secret-value-wire, main -2407): the host un-hexes and admits instead of parsing EDN and re-encoding. The other five ops kits still go through the ADR 0284 legacy-EDN bridge — guest-value-wire is a per-kit claim, not a kit-set one. Fixtures never claim production."
 
  :dimensions
  [:schema :dual-runtime :deny-fixtures :quota :audit :host-parity :package :signed-wasm]
@@ -99,6 +99,7 @@
               "wasm-packages/secret-request-edn-v1.wasm (ADR 0236 fixed-depth request EDN)"
               "wasm-packages/secret-request-edn-v1.component.wasm (ADR 0245 pure Component twin)"
               "wasm-packages/secret-edn-package-v1.wasm (ADR 0237 multi-export request+reply EDN)"
+              "wasm-packages/secret-value-wire-v1.wasm (ADR 0285 guest-decided canonical kotoba.value.v1 audit bytes; byte-for-byte vs provider.value-codec)"
               "wasm-packages/secret-record-kv-edn-v1.wasm (ADR 0251/0281/0282/0283 nominal W4 request/reply with typed nth + implicit defrecord schema)"
               "wasm-packages/secret-w4-host-edn-v1.wasm (ADR 0265/0281/0282/0283 nominal host_get with typed nth + implicit defrecord schema + cap 21)"
               "provider.edn-codec W4 audit wraps/factories/roundtrips (ADR 0257–0264) + guest host surfaces (0260–0270)"

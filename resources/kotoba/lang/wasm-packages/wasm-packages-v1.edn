@@ -3077,4 +3077,33 @@
    :fixture? false
    :signed-content-addressed-package :pending}
 
+  ;; T8.3 ADR 0285: guest-decided canonical kotoba.value.v1 audit bytes (secret)
+  {:name :secret-value-wire
+   :resource "kotoba/lang/wasm-packages/secret-value-wire-v1.wasm"
+   :kit-resource "kotoba/lang/capability-kits/secret-v1.edn"
+   :artifact-kind :wasm-module
+   :media-type "application/wasm"
+   :sha256 "b99d3436918cafc4e17897c5500a0a90034444227371d3bd5caab434f2ac276c"
+   :class :ops
+   :source {:repository "kotoba-lang/provider"
+            :path "resources/kotoba/lang/wasm-packages/secret-value-wire-v1.wasm"
+            :source-kotoba "resources/kotoba/lang/wasm-packages/src/secret_value_wire.kotoba"
+            :capability-id "secret/get"
+            :provider-status :reference-partial
+            :builder :kotoba-compiler/v1
+            :typed-host :kotoba.typed
+            :compiler-sha "806f5cef7d5bc11ad8ec8514ad6121efc73be6c7"
+            :note "ADR 0285 guest emits the canonical kotoba.value.v1 bytes of the ops-audit envelope as hex; host un-hexes instead of parsing EDN and re-encoding; main -> -2407; host-fetch open; wasm-aot still partial"}
+   :exports {"hex_byte" {:params [:i64] :result :externref}
+             "cbor_text" {:params [:externref] :result :externref}
+             "kw_form" {:params [:externref] :result :externref}
+             "str_form" {:params [:externref] :result :externref}
+             "secret_request_audit_hex" {:params [:externref] :result :externref}
+             "secret_reply_value_audit_hex" {:params [:externref] :result :externref}
+             "secret_reply_error_audit_hex" {:params [:externref :externref] :result :externref}
+             "main" {:params [] :result :i64}}
+   :imports {"kotoba:typed" {:note "typed ABI v1 string surface"}}
+   :fixture? false
+   :signed-content-addressed-package :pending}
+
 ]}
