@@ -3,14 +3,22 @@
         org.clojure/data.json {:mvn/version "2.5.1"}
         io.github.kotoba-lang/kotoba-kir
         {:git/url "https://github.com/kotoba-lang/kotoba-kir.git"
-         :git/sha "767f2f2fcb6c2c8f9288b24bef24caedb0486333"}
-        io.github.kotoba-lang/io-ipld
-        {:git/url "https://github.com/kotoba-lang/io-ipld.git"
-         :git/sha "a3c62aed7fb281648372807e93a36e342f2cceb3"}}
+         :git/sha "767f2f2fcb6c2c8f9288b24bef24caedb0486333"}}
  :aliases {:test {:extra-paths ["test"]
                   :extra-deps {io.github.cognitect-labs/test-runner
                                {:git/url "https://github.com/cognitect-labs/test-runner.git"
                                 :git/sha "dfb30dd6605cb6c0efc275e1df1736f6e90d4d73"}
+                               ;; `ipld.value` is the independent oracle the
+                               ;; canonical value wire is compared AGAINST --
+                               ;; `provider/value_wire_test.clj` is the only
+                               ;; file in this repository that names it, and no
+                               ;; namespace under `src` does. It belongs here
+                               ;; for the same reason org-ietf-ed25519 below
+                               ;; does: a second implementation used to check
+                               ;; ours is evidence, not shipped code.
+                               io.github.kotoba-lang/io-ipld
+                               {:git/url "https://github.com/kotoba-lang/io-ipld.git"
+                                :git/sha "a3c62aed7fb281648372807e93a36e342f2cceb3"}
                                io.github.kotoba-lang/org-ietf-ed25519
                                {:git/url "https://github.com/kotoba-lang/org-ietf-ed25519.git"
                                 :git/sha "c1ba8322a33b668da1311ca69a8cdde3c7981b52"}}
