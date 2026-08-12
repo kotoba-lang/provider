@@ -1,10 +1,16 @@
 (ns provider.value-codec
   "Bounded canonical value wire for provider ops-kit audit events.
 
-  The old W4 guest packages emit EDN text. `legacy-edn->audit-bytes` is the
-  bounded compatibility bridge: it parses that closed EDN value on the host,
-  then immediately moves it onto `kotoba.value.v1` bytes. New provider paths
-  should call `encode-audit-value` with domain values directly."
+  Three ways bytes reach this boundary, in descending order of what the host
+  decides:
+
+  - `guest-hex->audit-bytes` (ADR 0285) — the GUEST decided the bytes and the
+    host only un-hexes and admits them. `:secret-value-wire` is the first
+    package on this path.
+  - `encode-audit-value` — the host encodes a domain value it already holds.
+  - `legacy-edn->audit-bytes` (ADR 0284) — the bounded compatibility bridge for
+    W4 packages that still export EDN text: the host parses that closed EDN
+    value and re-encodes it canonically. Every kit except secret is still here."
   (:require #?(:clj [clojure.edn :as edn]
                :cljs [cljs.reader :as edn])
             [kotoba.value.codec :as value]))
@@ -47,6 +53,62 @@
       (throw (ex-info "invalid provider audit envelope"
                       {:type :provider.value-codec/invalid-envelope})))
     decoded))
+
+(defn- hex-nibble [ch]
+  (let [c #?(:clj (int ch) :cljs ch)]
+    (cond
+      (and (>= c 48) (<= c 57)) (- c 48)     ; 0-9
+      (and (>= c 97) (<= c 102)) (- c 87)    ; a-f
+      :else nil)))
+
+(defn hex->bytes
+  "Decode lowercase hex to bytes. Uppercase is rejected so one byte sequence
+  has one spelling on this boundary."
+  [text]
+  (when-not (string? text)
+    (throw (ex-info "guest audit hex must be a string"
+                    {:type :provider.value-codec/invalid-hex})))
+  (let [n (count text)]
+    (when (odd? n)
+      (throw (ex-info "guest audit hex has an odd length"
+                      {:type :provider.value-codec/invalid-hex :length n})))
+    (when (> (quot n 2) max-audit-value-bytes)
+      (throw (ex-info "guest audit hex exceeds byte limit"
+                      {:type :provider.value-codec/limit-exceeded
+                       :limit max-audit-value-bytes})))
+    (let [out #?(:clj (byte-array (quot n 2))
+                 :cljs (js/Uint8Array. (quot n 2)))]
+      (dotimes [i (quot n 2)]
+        (let [hi (hex-nibble #?(:clj (.charAt ^String text (* 2 i))
+                                :cljs (.charCodeAt text (* 2 i))))
+              lo (hex-nibble #?(:clj (.charAt ^String text (inc (* 2 i)))
+                                :cljs (.charCodeAt text (inc (* 2 i)))))]
+          (when (or (nil? hi) (nil? lo))
+            (throw (ex-info "guest audit hex has a non-hex character"
+                            {:type :provider.value-codec/invalid-hex :at i})))
+          (aset out i #?(:clj (unchecked-byte (+ (* 16 hi) lo))
+                         :cljs (+ (* 16 hi) lo)))))
+      out)))
+
+(defn guest-hex->audit-bytes
+  "Bytes the GUEST decided, admitted only after they decode as this envelope.
+
+  Unlike `legacy-edn->audit-bytes` the host makes no encoding choice here: hex
+  is transport over the typed string export ABI, and `decode-audit-value` is
+  what admits the result. A guest that emits non-canonical bytes is rejected,
+  not silently re-encoded into canonical ones."
+  [kit direction text]
+  (let [bytes (hex->bytes text)
+        decoded (decode-audit-value bytes)]
+    (when-not (= kit (:kit decoded))
+      (throw (ex-info "guest audit envelope names a different kit"
+                      {:type :provider.value-codec/kit-mismatch
+                       :expected kit :actual (:kit decoded)})))
+    (when-not (= direction (:direction decoded))
+      (throw (ex-info "guest audit envelope names a different direction"
+                      {:type :provider.value-codec/direction-mismatch
+                       :expected direction :actual (:direction decoded)})))
+    bytes))
 
 (defn legacy-edn->audit-bytes
   "Bounded bridge from a W4 guest EDN string to canonical typed bytes.
