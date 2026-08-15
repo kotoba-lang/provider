@@ -26,7 +26,9 @@
             [provider.git :as git]
             [provider.git-transport :as git-transport]
             [provider.entropy :as entropy]
-            [provider.entropy-transport :as entropy-transport]))
+            [provider.entropy-transport :as entropy-transport]
+            [provider.dataspace]
+            [provider.dataspace-match]))
 
 ;; Load gate: the split must not break namespace resolution. Each extracted
 ;; namespace must load standalone from this repo's own dependency closure.
@@ -55,7 +57,9 @@
   (is (some? (find-ns 'provider.git)) "provider.git must load")
   (is (some? (find-ns 'provider.git-transport)) "provider.git-transport must load")
   (is (some? (find-ns 'provider.entropy)) "provider.entropy must load")
-  (is (some? (find-ns 'provider.entropy-transport)) "provider.entropy-transport must load"))
+  (is (some? (find-ns 'provider.entropy-transport)) "provider.entropy-transport must load")
+  (is (some? (find-ns 'provider.dataspace)) "provider.dataspace must load")
+  (is (some? (find-ns 'provider.dataspace-match)) "provider.dataspace-match must load"))
 
 (deftest state-provider-and-conformance-are-owned-here
   (let [provider (state/provider {:message "one"})

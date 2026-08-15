@@ -12,6 +12,7 @@ checkable from outside.
 
 - `provider.conformance (the shared provider contract)`
 - `provider.clock / .http / .llm / .log / .state / .storage / .ui`
+- `provider.dataspace` (Syndicate-style EDN tuple space; not in the 9-kit closed set)
 - `their -transport backings`
 
 ## Does not own
