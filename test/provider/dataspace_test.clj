@@ -2,36 +2,50 @@
   "Direct host tests for the dataspace reference provider.
 
   KIR grant-deny stays in amu (compiler injects this host). This suite proves
-  the host contract itself: isolation, facet retract, #cap fail-closed, and
-  that dataspace qualifies *alone* without joining the 9-kit closed set."
+  the host contract itself: isolation, facet retract, non-document fail-closed,
+  and that dataspace is in the provider-conformance inventory (closed set of
+  10 application capabilities in amu; this inventory is the larger host set)."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.test :refer [deftest is]]
+            [kotoba.kir.value :as value]
             [provider.conformance :as conformance]
             [provider.dataspace :as dataspace]))
 
 (defn- invoke [p request]
   ((:invoke p) request))
 
+(defn- edn-doc [form]
+  (value/document-edn-read (if (string? form) form (pr-str form))))
+
+(defn- doc-edn [doc]
+  (edn/read-string (value/document-edn-print doc)))
+
 (defn- assert-req [edn facet]
-  [dataspace/request-type :assert [dataspace/assert-type edn facet]])
+  [dataspace/request-type :assert [dataspace/assert-type (edn-doc edn) facet]])
 
 (defn- observe-req [edn facet]
-  [dataspace/request-type :observe [dataspace/observe-type edn facet]])
+  [dataspace/request-type :observe [dataspace/observe-type (edn-doc edn) facet]])
 
 (defn- retract-req [edn facet]
-  [dataspace/request-type :retract [dataspace/retract-type edn facet]])
+  [dataspace/request-type :retract [dataspace/retract-type (edn-doc edn) facet]])
+
+(deftest abi-assertions-are-documents-not-edn-strings
+  (is (= :document (second (first (nth dataspace/assert-type 2)))))
+  (is (= :document (second (first (nth dataspace/observe-type 2)))))
+  (is (= :document (second (second (nth dataspace/asserted-type 2)))))
+  (is (= :document (second (first (nth dataspace/matches-type 2))))))
 
 (deftest observe-pattern-binds-and-fires-on-matching-assert
   (let [p (dataspace/provider)
         observed (invoke p (observe-req "[:temperature :room/a ?t]" 0))
         asserted (invoke p (assert-req "[:temperature :room/a 21]" 0))]
     (is (= :matches (second observed)))
-    (is (= "[]" (last (nth observed 2))))
+    (is (= [] (doc-edn (last (nth observed 2)))))
     (is (= :asserted (second asserted)))
-    (is (= [{'?t 21}] (edn/read-string (last (nth asserted 2)))))
+    (is (= [{'?t 21}] (doc-edn (last (nth asserted 2)))))
     (let [again (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
-      (is (= [{'?t 21}] (edn/read-string (last (nth again 2))))))))
+      (is (= [{'?t 21}] (doc-edn (last (nth again 2))))))))
 
 (deftest facet-exit-retracts-owned-assertions-and-drops-observations
   (let [p (dataspace/provider)
@@ -44,7 +58,7 @@
           remaining (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= :retracted (second left)))
       (is (= 1 (last (nth left 2))))
-      (is (= [] (edn/read-string (last (nth remaining 2))))))))
+      (is (= [] (doc-edn (last (nth remaining 2))))))))
 
 (deftest equal-assertions-have-distinct-facet-ownership
   (let [p (dataspace/provider)
@@ -57,10 +71,10 @@
           left (invoke p [dataspace/request-type :facet-leave left-id])
           after (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= [{'?t 21} {'?t 21}]
-             (edn/read-string (last (nth before 2)))))
+             (doc-edn (last (nth before 2)))))
       (is (= 1 (last (nth left 2))))
       (is (= [{'?t 21}]
-             (edn/read-string (last (nth after 2)))))
+             (doc-edn (last (nth after 2)))))
       (is (= 1 (last (nth (invoke p [dataspace/request-type
                                       :facet-leave right-id]) 2)))))))
 
@@ -73,29 +87,38 @@
     (is (= 0 (last (nth (invoke p (retract-req assertion other-id)) 2))))
     (is (= 0 (last (nth (invoke p (retract-req assertion 0)) 2))))
     (is (= [{'?t 21}]
-           (edn/read-string
+           (doc-edn
             (last (nth (invoke p (observe-req
                                   "[:temperature :room/a ?t]" 0)) 2)))))
     (is (= 1 (last (nth (invoke p (retract-req assertion owner-id)) 2))))
     (is (= 0 (last (nth (invoke p [dataspace/request-type
                                     :facet-leave owner-id]) 2))))))
 
-(deftest copied-assertion-edn-does-not-grant-observe
+(deftest copied-assertion-document-does-not-grant-observe
   (let [left (dataspace/provider)
         right (dataspace/provider)
-        assertion "[:temperature :room/a 21]"]
-    (invoke left (assert-req assertion 0))
-    (let [stolen (vec (edn/read-string assertion))
-          other (invoke right (observe-req (pr-str stolen) 0))]
-      (is (= [:temperature :room/a 21] stolen))
-      (is (= [] (edn/read-string (last (nth other 2))))))))
+        assertion (edn-doc "[:temperature :room/a 21]")]
+    (invoke left (assert-req "[:temperature :room/a 21]" 0))
+    (let [other (invoke right (observe-req assertion 0))]
+      (is (= [:temperature :room/a 21] (doc-edn assertion)))
+      (is (= [] (doc-edn (last (nth other 2))))))))
 
-(deftest tagged-cap-literal-cannot-mint-authority
+(deftest non-document-assertion-is-rejected
   (let [p (dataspace/provider)
-        tagged (invoke p (assert-req "#cap \"dataspace\"" 0))
-        observed (invoke p (observe-req "#cap-ref \"dataspace\"" 0))]
-    (is (= :dataspace/tagged-rejected (second (nth tagged 2))))
-    (is (= :dataspace/tagged-rejected (second (nth observed 2))))))
+        tagged (invoke p [dataspace/request-type :assert
+                          [dataspace/assert-type "#cap \"dataspace\"" 0]])
+        observed (invoke p [dataspace/request-type :observe
+                            [dataspace/observe-type "#cap-ref \"dataspace\"" 0]])]
+    (is (= :dataspace/document-invalid (second (nth tagged 2))))
+    (is (= :dataspace/document-invalid (second (nth observed 2))))))
+
+(deftest document-edn-read-rejects-tagged-cap
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo #"document-edn-read"
+       (value/document-edn-read "#cap \"dataspace\"")))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo #"document-edn-read"
+       (value/document-edn-read "#cap-ref \"dataspace\""))))
 
 (deftest forged-facet-handle-is-rejected
   (let [p (dataspace/provider)
@@ -110,17 +133,17 @@
         stored (invoke p (assert-req forged-map 0))
         seen (invoke p (observe-req "{:cap/kind :dataspace/transact}" 0))]
     (is (= :asserted (second stored)))
-    (is (= [{}] (edn/read-string (last (nth seen 2)))))))
+    (is (= [{}] (doc-edn (last (nth seen 2)))))))
 
 (deftest instances-are-isolated
   (let [left (dataspace/provider)
         right (dataspace/provider)]
     (invoke left (assert-req "[:temperature :room/a 21]" 0))
     (is (= [{'?t 21}]
-           (edn/read-string
+           (doc-edn
             (last (nth (invoke left (observe-req "[:temperature :room/a ?t]" 0)) 2)))))
     (is (= []
-           (edn/read-string
+           (doc-edn
             (last (nth (invoke right (observe-req "[:temperature :room/a ?t]" 0)) 2)))))))
 
 (deftest contract-mismatch-is-refused
@@ -129,7 +152,7 @@
          clojure.lang.ExceptionInfo #"dataspace request contract mismatch"
          (invoke p [[:record :wrong/type [[:x :i64]]] 0])))))
 
-(deftest dataspace-qualifies-alone-without-joining-the-9-kit-set
+(deftest dataspace-is-in-provider-conformance-inventory
   (let [p (dataspace/provider)
         receipt (conformance/validate-suite!
                  {:dataspace/transact dataspace/capability-id}
@@ -138,9 +161,15 @@
         inventory (edn/read-string
                    (slurp (io/resource
                            "kotoba/lang/provider-conformance-v1.edn")))
-        names (set (map :name (:kits inventory)))]
+        names (set (map :name (:kits inventory)))
+        kit (edn/read-string
+             (slurp (io/resource
+                     "kotoba/lang/capability-kits/dataspace-v1.edn")))]
     (is (= 24 dataspace/capability-id))
     (is (= 1 (:capability-count receipt)))
     (is (= [{:name :dataspace/transact :id 24}] (:capabilities receipt)))
-    (is (not (contains? names :dataspace))
-        "dataspace must not fold into provider-conformance inventory this slice")))
+    (is (contains? names :dataspace)
+        "dataspace is in provider-conformance inventory")
+    (is (= :document (get-in kit [:limits :assertion])))
+    (is (= :document
+           (second (first (nth (second (first (nth (:request kit) 2))) 2)))))))
