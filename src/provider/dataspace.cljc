@@ -1,5 +1,5 @@
 (ns provider.dataspace
-  "In-memory reference host for :dataspace/transact v1 (root ADR-2608154100).
+  "Reference host for :dataspace/transact v1 (root ADR-2608154100).
 
   One provider instance is one dataspace. Guest code observes it only through
   the typed request/result contract after the runtime has admitted capability
@@ -7,15 +7,18 @@
   Facet leave retracts assertions published in that facet and drops its
   observations.
 
-  kgraph is not the backing store this slice: kgraph-assert! is an i64 EAV
-  triple host op, not an EDN tuple space. Incidence (kotoba-lang) is the
-  CID-addressed fact projection. This provider is the Syndicate tuple space.
+  Persistence is a swappable `{:q :transact!}` store (provider.dataspace-store).
+  Default is the in-memory reference. Hosts may inject provider.dataspace-kgraph
+  (kgraph EAV + incidence indexes) without changing guest ABI. kgraph-assert!
+  the i64 guest host-op is not this kit; incidence CID blocks are not this
+  kit. D1 is not a premise.
 
   Kit EDN stays in kotoba-lang/amu (`dataspace-v1.edn`). This ns is the host
   other runtimes inject. It IS a member of the provider-conformance
   application closed set (`:capability-count` 10)."
   (:require [clojure.edn :as edn]
             [provider.dataspace-match :as match]
+            [provider.dataspace-store :as store]
             [kotoba.kir.value :as value]
             #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
@@ -98,182 +101,114 @@
 (defn- encode-bindings [bindings]
   (value/document-edn-read (pr-str (mapv #(into {} %) bindings))))
 
-(defn- live-assertions [state]
-  (map :value (:assertions state)))
-
-(defn- match-observers [state assertion]
-  (into []
-        (keep (fn [observer]
-                (match/match (:pattern observer) assertion)))
-        (:observers state)))
-
-(defn- retract-owned-value
-  "Remove VALUE only from the exact FACET-ID that published it. Return the
-  retained cells and the provider-local assertion IDs removed. Equal EDN
-  asserted by another facet is a distinct publication and remains live."
-  [assertions facet-id value]
-  (reduce (fn [[kept removed] cell]
-            (if (and (= facet-id (:facet cell))
-                     (= value (:value cell)))
-              [kept (conj removed (:id cell))]
-              [(conj kept cell) removed]))
-          [[] #{}]
-          assertions))
-
 (defn- facet-id-or-root [facet-id]
   (if (nil? facet-id) 0 (i64->long facet-id)))
 
+(defn- live-facet? [q facet-id]
+  (or (zero? facet-id) (q {:op :facet-live? :id facet-id})))
+
 (defn provider
-  "Creates one isolated in-memory dataspace. No ambient process dataspace."
-  []
-  (let [state (atom {:assertions []
-                     :observers []
-                     :facets {}
-                     :next-assertion 1
-                     :next-facet 1
-                     :next-observer 1})]
-    {:request-type request-type
-     :result-type result-type
-     :invoke
-     (fn [request]
-       (when-not (and (vector? request) (= request-type (first request)))
-         (throw (ex-info "dataspace request contract mismatch"
-                         {:phase :dataspace-provider})))
-       (let [operation (second request)
-             payload (nth request 2 nil)]
-         (case operation
-           :assert
-           (let [[_ assertion-doc raw-facet] payload
-                 assertion (try (decode-document assertion-doc)
-                                (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
-                                  ::invalid))
-                 facet-id (facet-id-or-root raw-facet)]
-             (cond
-               (or (= assertion ::invalid) (= assertion ::eof))
-               (err :dataspace/document-invalid "assertion is not a document")
+  "Creates one isolated dataspace. No ambient process dataspace.
 
-               (and (pos? facet-id) (not (contains? (:facets @state) facet-id)))
-               (err :dataspace/unknown-facet "facet handle is not live")
+  Optional `:store` is a `{:q :transact!}` map (see provider.dataspace-store).
+  Default is the in-memory reference host."
+  ([] (provider {}))
+  ([{:keys [store]}]
+   (let [store (or store (store/memory-store))]
+     (when-not (store/store? store)
+       (throw (ex-info "dataspace store requires :q and :transact!"
+                       {:phase :dataspace-provider})))
+     (let [q (:q store)
+           tx! (:transact! store)]
+       {:request-type request-type
+        :result-type result-type
+        :invoke
+        (fn [request]
+          (when-not (and (vector? request) (= request-type (first request)))
+            (throw (ex-info "dataspace request contract mismatch"
+                            {:phase :dataspace-provider})))
+          (let [operation (second request)
+                payload (nth request 2 nil)]
+            (case operation
+              :assert
+              (let [[_ assertion-doc raw-facet] payload
+                    assertion (try (decode-document assertion-doc)
+                                   (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+                                     ::invalid))
+                    facet-id (facet-id-or-root raw-facet)
+                    counts (q {:op :counts})]
+                (cond
+                  (or (= assertion ::invalid) (= assertion ::eof))
+                  (err :dataspace/document-invalid "assertion is not a document")
 
-               (>= (count (:assertions @state)) max-assertions)
-               (err :dataspace/capacity "assertion limit reached")
+                  (not (live-facet? q facet-id))
+                  (err :dataspace/unknown-facet "facet handle is not live")
 
-               :else
-               (let [notices (match-observers @state assertion)]
-                 (swap! state
-                        (fn [s]
-                          (let [assertion-id (:next-assertion s)]
-                            (-> s
-                                (update :assertions conj
-                                        {:id assertion-id
-                                         :value assertion
-                                         :facet facet-id})
-                                (update :next-assertion inc)
-                                (cond-> (pos? facet-id)
-                                  (update-in [:facets facet-id :assertions]
-                                             (fnil conj #{}) assertion-id))))))
-                 (result :asserted
-                         [asserted-type (->i64 1) (encode-bindings notices)]))))
+                  (>= (:assertions counts) max-assertions)
+                  (err :dataspace/capacity "assertion limit reached")
 
-           :retract
-           (let [[_ assertion-doc raw-facet] payload
-                 assertion (try (decode-document assertion-doc)
-                                (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
-                                  ::invalid))
-                 facet-id (facet-id-or-root raw-facet)]
-             (cond
-               (or (= assertion ::invalid) (= assertion ::eof))
-               (err :dataspace/document-invalid "assertion is not a document")
+                  :else
+                  (let [notices (store/match-observers
+                                 (q {:op :observers}) assertion)]
+                    (tx! {:op :assert :value assertion :facet facet-id})
+                    (result :asserted
+                            [asserted-type (->i64 1) (encode-bindings notices)]))))
 
-               (and (pos? facet-id) (not (contains? (:facets @state) facet-id)))
-               (err :dataspace/unknown-facet "facet handle is not live")
+              :retract
+              (let [[_ assertion-doc raw-facet] payload
+                    assertion (try (decode-document assertion-doc)
+                                   (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+                                     ::invalid))
+                    facet-id (facet-id-or-root raw-facet)]
+                (cond
+                  (or (= assertion ::invalid) (= assertion ::eof))
+                  (err :dataspace/document-invalid "assertion is not a document")
 
-               :else
-               (let [removed (atom 0)]
-                 (swap! state
-                        (fn [s]
-                          (let [[kept removed-ids]
-                                (retract-owned-value (:assertions s)
-                                                     facet-id assertion)]
-                            (reset! removed (count removed-ids))
-                            (cond-> (assoc s :assertions kept)
-                              (pos? facet-id)
-                              (update-in [:facets facet-id :assertions]
-                                         #(apply disj (or % #{}) removed-ids))))))
-                 (result :retracted [retracted-type (->i64 @removed)]))))
+                  (not (live-facet? q facet-id))
+                  (err :dataspace/unknown-facet "facet handle is not live")
 
-           :observe
-           (let [[_ pattern-doc raw-facet] payload
-                 pattern (try (decode-document pattern-doc)
-                              (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
-                                ::invalid))
-                 facet-id (facet-id-or-root raw-facet)]
-             (cond
-               (or (= pattern ::invalid) (= pattern ::eof))
-               (err :dataspace/document-invalid "pattern is not a document")
+                  :else
+                  (let [{:keys [removed]} (tx! {:op :retract
+                                                :value assertion
+                                                :facet facet-id})]
+                    (result :retracted [retracted-type (->i64 removed)]))))
 
-               (and (pos? facet-id) (not (contains? (:facets @state) facet-id)))
-               (err :dataspace/unknown-facet "facet handle is not live")
+              :observe
+              (let [[_ pattern-doc raw-facet] payload
+                    pattern (try (decode-document pattern-doc)
+                                 (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+                                   ::invalid))
+                    facet-id (facet-id-or-root raw-facet)
+                    counts (q {:op :counts})]
+                (cond
+                  (or (= pattern ::invalid) (= pattern ::eof))
+                  (err :dataspace/document-invalid "pattern is not a document")
 
-               (>= (count (:observers @state)) max-observers)
-               (err :dataspace/capacity "observer limit reached")
+                  (not (live-facet? q facet-id))
+                  (err :dataspace/unknown-facet "facet handle is not live")
 
-               :else
-               (let [bindings (into []
-                                    (keep #(match/match pattern %))
-                                    (live-assertions @state))]
-                 (swap! state
-                        (fn [s]
-                          (let [oid (:next-observer s)
-                                observer {:id oid :pattern pattern :facet facet-id}]
-                            (-> s
-                                (update :observers conj observer)
-                                (update :next-observer inc)
-                                (cond-> (pos? facet-id)
-                                  (update-in [:facets facet-id :observers]
-                                             (fnil conj []) oid))))))
-                 (result :matches [matches-type (encode-bindings bindings)]))))
+                  (>= (:observers counts) max-observers)
+                  (err :dataspace/capacity "observer limit reached")
 
-           :facet-enter
-           (let [n (count (:facets @state))]
-             (if (>= n max-facets)
-               (err :dataspace/capacity "facet limit reached")
-               (let [id (atom 0)]
-                 (swap! state
-                        (fn [s]
-                          (let [fid (:next-facet s)]
-                            (reset! id fid)
-                            (-> s
-                                (assoc-in [:facets fid]
-                                          {:assertions #{} :observers []})
-                                (update :next-facet inc)))))
-                 (result :facet [facet-type (->i64 @id)]))))
+                  :else
+                  (let [bindings (into []
+                                       (keep #(match/match pattern (:value %)))
+                                       (q {:op :assertions}))]
+                    (tx! {:op :observe :pattern pattern :facet facet-id})
+                    (result :matches [matches-type (encode-bindings bindings)]))))
 
-           :facet-leave
-           (let [facet-id (i64->long payload)]
-             (if-not (contains? (:facets @state) facet-id)
-               (err :dataspace/unknown-facet "facet handle is not live")
-               (let [removed (atom 0)]
-                 (swap! state
-                        (fn [s]
-                          (let [facet (get-in s [:facets facet-id])
-                                owned (:assertions facet)
-                                obs-ids (set (:observers facet))
-                                [kept n]
-                                (reduce (fn [[acc n] cell]
-                                          (if (contains? owned (:id cell))
-                                            [acc (inc n)]
-                                            [(conj acc cell) n]))
-                                        [[] 0]
-                                        (:assertions s))]
-                            (reset! removed n)
-                            (-> s
-                                (assoc :assertions kept)
-                                (update :observers
-                                        (fn [obs]
-                                          (into [] (remove #(contains? obs-ids (:id %)))
-                                                obs)))
-                                (update :facets dissoc facet-id)))))
-                 (result :retracted [retracted-type (->i64 @removed)]))))
+              :facet-enter
+              (let [counts (q {:op :counts})]
+                (if (>= (:facets counts) max-facets)
+                  (err :dataspace/capacity "facet limit reached")
+                  (let [{:keys [id]} (tx! {:op :facet-enter})]
+                    (result :facet [facet-type (->i64 id)]))))
 
-           (err :dataspace/unknown-op "unknown dataspace operation"))))}))
+              :facet-leave
+              (let [facet-id (i64->long payload)]
+                (if-not (q {:op :facet-live? :id facet-id})
+                  (err :dataspace/unknown-facet "facet handle is not live")
+                  (let [{:keys [removed]} (tx! {:op :facet-leave :id facet-id})]
+                    (result :retracted [retracted-type (->i64 removed)]))))
+
+              (err :dataspace/unknown-op "unknown dataspace operation"))))}))))

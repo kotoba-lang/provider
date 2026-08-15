@@ -10,7 +10,9 @@
             [clojure.test :refer [deftest is]]
             [kotoba.kir.value :as value]
             [provider.conformance :as conformance]
-            [provider.dataspace :as dataspace]))
+            [provider.dataspace :as dataspace]
+            [provider.dataspace-kgraph :as kgraph-store]
+            [provider.dataspace-store :as store]))
 
 (defn- invoke [p request]
   ((:invoke p) request))
@@ -173,3 +175,62 @@
     (is (= :document (get-in kit [:limits :assertion])))
     (is (= :document
            (second (first (nth (second (first (nth (:request kit) 2))) 2)))))))
+
+(defn- dropping-facet-leave-store
+  "Broken store: facet-leave drops observers and the facet, not assertions."
+  []
+  (let [inner (store/memory-store)
+        q (:q inner)
+        tx! (:transact! inner)]
+    {:q q
+     :transact!
+     (fn [tx]
+       (if (not= :facet-leave (:op tx))
+         (tx! tx)
+         (let [owned (filterv #(= (:id tx) (:facet %)) (q {:op :assertions}))
+               result (tx! tx)]
+           (doseq [cell owned]
+             (tx! {:op :assert :value (:value cell) :facet 0}))
+           result)))}))
+
+(defn- facet-leave-retracts?
+  [p]
+  (let [entered (invoke p [dataspace/request-type :facet-enter true])
+        fid (last (nth entered 2))]
+    (invoke p (observe-req "[:temperature :room/a ?t]" fid))
+    (invoke p (assert-req "[:temperature :room/a 21]" fid))
+    (let [left (invoke p [dataspace/request-type :facet-leave fid])
+          remaining (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (and (= :retracted (second left))
+           (= 1 (last (nth left 2)))
+           (= [] (doc-edn (last (nth remaining 2))))))))
+
+(defn- assert-retract-observe-hold?
+  [p]
+  (invoke p (assert-req "[:temperature :room/a 21]" 0))
+  (let [seen (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+        retracted (invoke p (retract-req "[:temperature :room/a 21]" 0))
+        after (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+    (and (= [{'?t 21}] (doc-edn (last (nth seen 2))))
+         (= 1 (last (nth retracted 2)))
+         (= [] (doc-edn (last (nth after 2)))))))
+
+(deftest default-memory-store-is-the-inject-boundary
+  (is (store/store? (store/memory-store)))
+  (is (store/store? (kgraph-store/store)))
+  (is (thrown-with-msg?
+       clojure.lang.ExceptionInfo #"dataspace store requires :q and :transact!"
+       (dataspace/provider {:store {:q identity}}))))
+
+(deftest injected-kgraph-store-honors-assert-retract-observe-facet-leave
+  (let [p (dataspace/provider {:store (kgraph-store/store)})]
+    (is (assert-retract-observe-hold? p))
+    (is (facet-leave-retracts? p))))
+
+(deftest default-memory-store-still-honors-facet-leave
+  (is (facet-leave-retracts? (dataspace/provider)))
+  (is (assert-retract-observe-hold? (dataspace/provider))))
+
+(deftest store-that-drops-facet-leave-retracts-fails-closed
+  (is (not (facet-leave-retracts?
+            (dataspace/provider {:store (dropping-facet-leave-store)})))))
