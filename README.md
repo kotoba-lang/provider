@@ -12,7 +12,10 @@ checkable from outside.
 
 - `provider.conformance (the shared provider contract)`
 - `provider.clock / .http / .llm / .log / .state / .storage / .ui`
-- `provider.dataspace` (Syndicate-style EDN tuple space; not in the 9-kit closed set)
+- `provider.dataspace` (Syndicate-style EDN tuple space; not in the 9-kit closed set).
+  Each assertion is a distinct provider-local publication: explicit retract
+  and facet leave affect only the facet that published it, even when another
+  facet asserted structurally equal EDN.
 - `their -transport backings`
 
 ## Does not own

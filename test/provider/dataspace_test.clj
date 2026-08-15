@@ -19,6 +19,9 @@
 (defn- observe-req [edn facet]
   [dataspace/request-type :observe [dataspace/observe-type edn facet]])
 
+(defn- retract-req [edn facet]
+  [dataspace/request-type :retract [dataspace/retract-type edn facet]])
+
 (deftest observe-pattern-binds-and-fires-on-matching-assert
   (let [p (dataspace/provider)
         observed (invoke p (observe-req "[:temperature :room/a ?t]" 0))
@@ -42,6 +45,40 @@
       (is (= :retracted (second left)))
       (is (= 1 (last (nth left 2))))
       (is (= [] (edn/read-string (last (nth remaining 2))))))))
+
+(deftest equal-assertions-have-distinct-facet-ownership
+  (let [p (dataspace/provider)
+        left-id (last (nth (invoke p [dataspace/request-type :facet-enter true]) 2))
+        right-id (last (nth (invoke p [dataspace/request-type :facet-enter true]) 2))
+        assertion "[:temperature :room/a 21]"]
+    (invoke p (assert-req assertion left-id))
+    (invoke p (assert-req assertion right-id))
+    (let [before (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+          left (invoke p [dataspace/request-type :facet-leave left-id])
+          after (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [{'?t 21} {'?t 21}]
+             (edn/read-string (last (nth before 2)))))
+      (is (= 1 (last (nth left 2))))
+      (is (= [{'?t 21}]
+             (edn/read-string (last (nth after 2)))))
+      (is (= 1 (last (nth (invoke p [dataspace/request-type
+                                      :facet-leave right-id]) 2)))))))
+
+(deftest retract-is-confined-to-the-requested-facet
+  (let [p (dataspace/provider)
+        owner-id (last (nth (invoke p [dataspace/request-type :facet-enter true]) 2))
+        other-id (last (nth (invoke p [dataspace/request-type :facet-enter true]) 2))
+        assertion "[:temperature :room/a 21]"]
+    (invoke p (assert-req assertion owner-id))
+    (is (= 0 (last (nth (invoke p (retract-req assertion other-id)) 2))))
+    (is (= 0 (last (nth (invoke p (retract-req assertion 0)) 2))))
+    (is (= [{'?t 21}]
+           (edn/read-string
+            (last (nth (invoke p (observe-req
+                                  "[:temperature :room/a ?t]" 0)) 2)))))
+    (is (= 1 (last (nth (invoke p (retract-req assertion owner-id)) 2))))
+    (is (= 0 (last (nth (invoke p [dataspace/request-type
+                                    :facet-leave owner-id]) 2))))))
 
 (deftest copied-assertion-edn-does-not-grant-observe
   (let [left (dataspace/provider)
