@@ -112,15 +112,18 @@
                 (match/match (:pattern observer) assertion)))
         (:observers state)))
 
-(defn- retract-value [assertions value]
-  (let [[kept n]
-        (reduce (fn [[acc n] cell]
-                  (if (= value (:value cell))
-                    [acc (inc n)]
-                    [(conj acc cell) n]))
-                [[] 0]
-                assertions)]
-    [kept n]))
+(defn- retract-owned-value
+  "Remove VALUE only from the exact FACET-ID that published it. Return the
+  retained cells and the provider-local assertion IDs removed. Equal EDN
+  asserted by another facet is a distinct publication and remains live."
+  [assertions facet-id value]
+  (reduce (fn [[kept removed] cell]
+            (if (and (= facet-id (:facet cell))
+                     (= value (:value cell)))
+              [kept (conj removed (:id cell))]
+              [(conj kept cell) removed]))
+          [[] #{}]
+          assertions))
 
 (defn- facet-id-or-root [facet-id]
   (if (nil? facet-id) 0 (i64->long facet-id)))
@@ -131,6 +134,7 @@
   (let [state (atom {:assertions []
                      :observers []
                      :facets {}
+                     :next-assertion 1
                      :next-facet 1
                      :next-observer 1})]
     {:request-type request-type
@@ -168,11 +172,16 @@
                (let [notices (match-observers @state assertion)]
                  (swap! state
                         (fn [s]
-                          (cond-> (update s :assertions conj
-                                          {:value assertion :facet facet-id})
-                            (pos? facet-id)
-                            (update-in [:facets facet-id :assertions]
-                                       (fnil conj []) assertion))))
+                          (let [assertion-id (:next-assertion s)]
+                            (-> s
+                                (update :assertions conj
+                                        {:id assertion-id
+                                         :value assertion
+                                         :facet facet-id})
+                                (update :next-assertion inc)
+                                (cond-> (pos? facet-id)
+                                  (update-in [:facets facet-id :assertions]
+                                             (fnil conj #{}) assertion-id))))))
                  (result :asserted
                          [asserted-type (->i64 1) (encode-bindings notices)]))))
 
@@ -193,9 +202,14 @@
                (let [removed (atom 0)]
                  (swap! state
                         (fn [s]
-                          (let [[kept n] (retract-value (:assertions s) assertion)]
-                            (reset! removed n)
-                            (assoc s :assertions kept))))
+                          (let [[kept removed-ids]
+                                (retract-owned-value (:assertions s)
+                                                     facet-id assertion)]
+                            (reset! removed (count removed-ids))
+                            (cond-> (assoc s :assertions kept)
+                              (pos? facet-id)
+                              (update-in [:facets facet-id :assertions]
+                                         #(apply disj (or % #{}) removed-ids))))))
                  (result :retracted [retracted-type (->i64 @removed)]))))
 
            :observe
@@ -246,7 +260,7 @@
                             (reset! id fid)
                             (-> s
                                 (assoc-in [:facets fid]
-                                          {:assertions [] :observers []})
+                                          {:assertions #{} :observers []})
                                 (update :next-facet inc)))))
                  (result :facet [facet-type (->i64 @id)]))))
 
@@ -258,11 +272,11 @@
                  (swap! state
                         (fn [s]
                           (let [facet (get-in s [:facets facet-id])
-                                owned (set (:assertions facet))
+                                owned (:assertions facet)
                                 obs-ids (set (:observers facet))
                                 [kept n]
                                 (reduce (fn [[acc n] cell]
-                                          (if (contains? owned (:value cell))
+                                          (if (contains? owned (:id cell))
                                             [acc (inc n)]
                                             [(conj acc cell) n]))
                                         [[] 0]
