@@ -1,0 +1,151 @@
+(ns provider.dataspace-store
+  "Injectable persistence for provider.dataspace.
+
+  Smallest host inject: `{:q :transact!}` (capability host, not an actor).
+  Default is this in-memory reference. A second store (kgraph EAV) must
+  honour the same ops so guest `:dataspace/transact` ABI does not change.
+
+  `:q` requests:
+    {:op :counts}
+    {:op :facet-live? :id n}
+    {:op :assertions}  ; [{:id :value :facet} ...]
+    {:op :observers}   ; [{:id :pattern :facet} ...]
+
+  `:transact!` requests:
+    {:op :assert :value v :facet f} -> {:id n}
+    {:op :retract :value v :facet f} -> {:removed n}
+    {:op :observe :pattern p :facet f} -> {:id n}
+    {:op :facet-enter} -> {:id n}
+    {:op :facet-leave :id n} -> {:removed n}
+
+  Facet 0 is the implicit root and is always live. Positive facet ids are
+  created by :facet-enter. :facet-leave retracts that facet's assertions
+  and drops its observers."
+  (:require [provider.dataspace-match :as match]))
+
+(def store-keys #{:q :transact!})
+
+(defn store?
+  [x]
+  (and (map? x)
+       (= store-keys (set (keys x)))
+       (ifn? (:q x))
+       (ifn? (:transact! x))))
+
+(defn match-observers
+  "Bindings for observers whose pattern matches ASSERTION."
+  [observers assertion]
+  (into []
+        (keep (fn [observer]
+                (match/match (:pattern observer) assertion)))
+        observers))
+
+(defn- empty-state []
+  {:assertions []
+   :observers []
+   :facets {}
+   :next-assertion 1
+   :next-facet 1
+   :next-observer 1})
+
+(defn- retract-owned-value
+  "Remove VALUE only from the exact FACET-ID that published it."
+  [assertions facet-id value]
+  (reduce (fn [[kept removed] cell]
+            (if (and (= facet-id (:facet cell))
+                     (= value (:value cell)))
+              [kept (conj removed (:id cell))]
+              [(conj kept cell) removed]))
+          [[] #{}]
+          assertions))
+
+(defn- apply-tx [state tx]
+  (case (:op tx)
+    :assert
+    (let [assertion-id (:next-assertion state)
+          facet-id (:facet tx)
+          cell {:id assertion-id :value (:value tx) :facet facet-id}]
+      {:state (-> state
+                  (update :assertions conj cell)
+                  (update :next-assertion inc)
+                  (cond-> (pos? facet-id)
+                    (update-in [:facets facet-id :assertions]
+                               (fnil conj #{}) assertion-id)))
+       :result {:id assertion-id}})
+
+    :retract
+    (let [[kept removed-ids]
+          (retract-owned-value (:assertions state) (:facet tx) (:value tx))]
+      {:state (cond-> (assoc state :assertions kept)
+                (pos? (:facet tx))
+                (update-in [:facets (:facet tx) :assertions]
+                           #(apply disj (or % #{}) removed-ids)))
+       :result {:removed (count removed-ids)}})
+
+    :observe
+    (let [oid (:next-observer state)
+          facet-id (:facet tx)
+          observer {:id oid :pattern (:pattern tx) :facet facet-id}]
+      {:state (-> state
+                  (update :observers conj observer)
+                  (update :next-observer inc)
+                  (cond-> (pos? facet-id)
+                    (update-in [:facets facet-id :observers]
+                               (fnil conj []) oid)))
+       :result {:id oid}})
+
+    :facet-enter
+    (let [fid (:next-facet state)]
+      {:state (-> state
+                  (assoc-in [:facets fid] {:assertions #{} :observers []})
+                  (update :next-facet inc))
+       :result {:id fid}})
+
+    :facet-leave
+    (let [facet-id (:id tx)
+          facet (get-in state [:facets facet-id])
+          owned (:assertions facet)
+          obs-ids (set (:observers facet))
+          [kept n]
+          (reduce (fn [[acc n] cell]
+                    (if (contains? owned (:id cell))
+                      [acc (inc n)]
+                      [(conj acc cell) n]))
+                  [[] 0]
+                  (:assertions state))]
+      {:state (-> state
+                  (assoc :assertions kept)
+                  (update :observers
+                          (fn [obs]
+                            (into [] (remove #(contains? obs-ids (:id %)))
+                                  obs)))
+                  (update :facets dissoc facet-id))
+       :result {:removed n}})
+
+    (throw (ex-info "dataspace store unknown tx"
+                    {:phase :dataspace-store :op (:op tx)}))))
+
+(defn- apply-q [state request]
+  (case (:op request)
+    :counts {:assertions (count (:assertions state))
+             :observers (count (:observers state))
+             :facets (count (:facets state))}
+    :facet-live? (contains? (:facets state) (:id request))
+    :assertions (:assertions state)
+    :observers (:observers state)
+    (throw (ex-info "dataspace store unknown q"
+                    {:phase :dataspace-store :op (:op request)}))))
+
+(defn memory-store
+  "In-memory reference store. Default backing of provider.dataspace."
+  []
+  (let [state (atom (empty-state))]
+    {:q (fn [request] (apply-q @state request))
+     :transact! (fn [tx]
+                  (let [out (atom nil)]
+                    (swap! state
+                           (fn [s]
+                             (let [{:keys [state result]} (apply-tx s tx)]
+                               (reset! out result)
+                               state)))
+                    @out))}))
