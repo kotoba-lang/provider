@@ -28,6 +28,9 @@
   {:name :log :version 1
    :resource "kotoba/lang/capability-kits/log-v1.edn"
    :capabilities [{:name :log/read :id 5} {:name :log/append :id 6}]}
+  {:name :dataspace :version 1
+   :resource "kotoba/lang/capability-kits/dataspace-v1.edn"
+   :capabilities [{:name :dataspace/transact :id 24}]}
 
   {:name :secret :version 1
    :resource "kotoba/lang/capability-kits/secret-v1.edn"

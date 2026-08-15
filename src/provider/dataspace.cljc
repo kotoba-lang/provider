@@ -3,7 +3,7 @@
 
   One provider instance is one dataspace. Guest code observes it only through
   the typed request/result contract after the runtime has admitted capability
-  id 24. Assertions are inert EDN; copying them does not grant observe.
+  id 24. Assertions are inert documents; copying them does not grant observe.
   Facet leave retracts assertions published in that facet and drops its
   observations.
 
@@ -12,8 +12,8 @@
   CID-addressed fact projection. This provider is the Syndicate tuple space.
 
   Kit EDN stays in kotoba-lang/amu (`dataspace-v1.edn`). This ns is the host
-  other runtimes inject. It is NOT a member of the provider-conformance 9-kit
-  closed set (`:capability-count` 9)."
+  other runtimes inject. It IS a member of the provider-conformance
+  application closed set (`:capability-count` 10)."
   (:require [clojure.edn :as edn]
             [provider.dataspace-match :as match]
             [kotoba.kir.value :as value]
@@ -26,11 +26,11 @@
 (def max-edn-bytes 4096)
 
 (def assert-type
-  [:record :kotoba.dataspace/assert [[:assertion :string] [:facet :i64]]])
+  [:record :kotoba.dataspace/assert [[:assertion :document] [:facet :i64]]])
 (def retract-type
-  [:record :kotoba.dataspace/retract [[:assertion :string] [:facet :i64]]])
+  [:record :kotoba.dataspace/retract [[:assertion :document] [:facet :i64]]])
 (def observe-type
-  [:record :kotoba.dataspace/observe [[:pattern :string] [:facet :i64]]])
+  [:record :kotoba.dataspace/observe [[:pattern :document] [:facet :i64]]])
 (def request-type
   [:variant :kotoba.dataspace/request
    [[:assert assert-type]
@@ -40,11 +40,11 @@
     [:facet-leave :i64]]])
 
 (def asserted-type
-  [:record :kotoba.dataspace/asserted [[:count :i64] [:notices :string]]])
+  [:record :kotoba.dataspace/asserted [[:count :i64] [:notices :document]]])
 (def retracted-type
   [:record :kotoba.dataspace/retracted [[:count :i64]]])
 (def matches-type
-  [:record :kotoba.dataspace/matches [[:bindings :string]]])
+  [:record :kotoba.dataspace/matches [[:bindings :document]]])
 (def facet-type
   [:record :kotoba.dataspace/facet [[:id :i64]]])
 (def error-type
@@ -78,30 +78,25 @@
 (defn- err [code message]
   (result :error [error-type code message]))
 
-(defn- parse-edn
-  "Read one EDN value. Unknown tagged literals (#cap, #cap-ref, …) fail closed
-  and do not mint authority."
-  [s]
-  (when-not (string? s)
-    (throw (ex-info "dataspace edn must be a string" {:phase :dataspace-provider})))
-  (value/bounded-string! s max-edn-bytes)
+(defn- decode-document
+  "Admit only a tagged document node. Convert to a Clojure value for the
+  in-memory matcher. Documents cannot represent tagged literals, so #cap
+  cannot arrive as a document; a raw string is not a document."
+  [node]
   (try
-    (edn/read-string
-     {:eof ::eof
-      :readers {}
-      :default (fn [tag _value]
-                 (throw (ex-info "tagged literal rejected"
-                                 {:tag tag :phase :dataspace-provider})))}
-     s)
+    (let [doc (value/bounded-document! node)
+          text (value/document-edn-print doc)]
+      (value/bounded-string! text max-edn-bytes)
+      (edn/read-string {:readers {} :eof ::eof} text))
     (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
       (throw e))
     (catch #?(:clj Throwable :cljs :default) e
-      (throw (ex-info "dataspace edn is invalid"
+      (throw (ex-info "dataspace document is invalid"
                       {:phase :dataspace-provider
                        :message (ex-message e)})))))
 
 (defn- encode-bindings [bindings]
-  (pr-str (mapv #(into {} %) bindings)))
+  (value/document-edn-read (pr-str (mapv #(into {} %) bindings))))
 
 (defn- live-assertions [state]
   (map :value (:assertions state)))
@@ -148,19 +143,14 @@
              payload (nth request 2 nil)]
          (case operation
            :assert
-           (let [[_ assertion-edn raw-facet] payload
-                 assertion (try (parse-edn assertion-edn)
-                                (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
-                                  (if (= "tagged literal rejected" (ex-message e))
-                                    ::tagged
-                                    ::invalid)))
+           (let [[_ assertion-doc raw-facet] payload
+                 assertion (try (decode-document assertion-doc)
+                                (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+                                  ::invalid))
                  facet-id (facet-id-or-root raw-facet)]
              (cond
-               (= assertion ::tagged)
-               (err :dataspace/tagged-rejected "tagged literal cannot mint a dataspace cap")
-
-               (= assertion ::invalid)
-               (err :dataspace/edn-invalid "assertion is not valid EDN")
+               (or (= assertion ::invalid) (= assertion ::eof))
+               (err :dataspace/document-invalid "assertion is not a document")
 
                (and (pos? facet-id) (not (contains? (:facets @state) facet-id)))
                (err :dataspace/unknown-facet "facet handle is not live")
@@ -186,14 +176,14 @@
                          [asserted-type (->i64 1) (encode-bindings notices)]))))
 
            :retract
-           (let [[_ assertion-edn raw-facet] payload
-                 assertion (try (parse-edn assertion-edn)
+           (let [[_ assertion-doc raw-facet] payload
+                 assertion (try (decode-document assertion-doc)
                                 (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
                                   ::invalid))
                  facet-id (facet-id-or-root raw-facet)]
              (cond
-               (= assertion ::invalid)
-               (err :dataspace/edn-invalid "assertion is not valid EDN")
+               (or (= assertion ::invalid) (= assertion ::eof))
+               (err :dataspace/document-invalid "assertion is not a document")
 
                (and (pos? facet-id) (not (contains? (:facets @state) facet-id)))
                (err :dataspace/unknown-facet "facet handle is not live")
@@ -213,19 +203,14 @@
                  (result :retracted [retracted-type (->i64 @removed)]))))
 
            :observe
-           (let [[_ pattern-edn raw-facet] payload
-                 pattern (try (parse-edn pattern-edn)
-                              (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) e
-                                (if (= "tagged literal rejected" (ex-message e))
-                                  ::tagged
-                                  ::invalid)))
+           (let [[_ pattern-doc raw-facet] payload
+                 pattern (try (decode-document pattern-doc)
+                              (catch #?(:clj clojure.lang.ExceptionInfo :cljs :default) _
+                                ::invalid))
                  facet-id (facet-id-or-root raw-facet)]
              (cond
-               (= pattern ::tagged)
-               (err :dataspace/tagged-rejected "tagged literal cannot mint a dataspace cap")
-
-               (= pattern ::invalid)
-               (err :dataspace/edn-invalid "pattern is not valid EDN")
+               (or (= pattern ::invalid) (= pattern ::eof))
+               (err :dataspace/document-invalid "pattern is not a document")
 
                (and (pos? facet-id) (not (contains? (:facets @state) facet-id)))
                (err :dataspace/unknown-facet "facet handle is not live")
