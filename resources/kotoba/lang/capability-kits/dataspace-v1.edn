@@ -11,8 +11,8 @@
              :pattern-bindings "?symbol-or-:?keyword"
              :wildcard #{_ :_}
              :maps :keys-present-extra-ok
-             :observe-model :host-owned-match-returns-inert-bindings
-             :facet-exit :retracts-owned-assertions-and-drops-observations
+             :observe-model :host-owned-in-process-notice-delivery
+             :facet-exit :retracts-owned-assertions-and-drops-observations-and-undelivered-notices
              :authority "Lexical/argument possession of this capability. Serializing an assertion or writing #cap does not restore authority."
              :encoding :in-process-document
              :wire :kotoba.value.v1
@@ -37,7 +37,8 @@
   [[:asserted [:record :kotoba.dataspace/asserted
                [[:count :i64] [:notices :document]]]]
    [:retracted [:record :kotoba.dataspace/retracted [[:count :i64]]]]
-   [:matches [:record :kotoba.dataspace/matches [[:bindings :document]]]]
+   [:matches [:record :kotoba.dataspace/matches
+              [[:bindings :document] [:notices :document]]]]
    [:facet [:record :kotoba.dataspace/facet [[:id :i64]]]]
    [:error [:record :kotoba.dataspace/error
             [[:code :keyword] [:message :string]]]]]]
