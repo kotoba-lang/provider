@@ -170,7 +170,13 @@
         stored (invoke p (assert-req forged-map 0))
         seen (invoke p (observe-req "{:cap/kind :dataspace/transact}" 0))]
     (is (= :asserted (second stored)))
-    (is (= [{}] (matches-bindings seen)))))
+    (is (= [{}] (matches-bindings seen)))
+    (is (= [{:assertion {:cap/kind :dataspace/transact
+                         :cap/resource "ds"
+                         :cap/provenance []}
+             :bindings {}}]
+           (matches-notices seen))
+        "cap-shaped EDN is inert current-set data; encoding must not emit #:cap dispatch")))
 
 (deftest instances-are-isolated
   (let [left (dataspace/provider)
@@ -208,6 +214,8 @@
     (is (= :document (get-in kit [:limits :assertion])))
     (is (= :host-owned-in-process-notice-delivery
            (get-in kit [:semantics :observe-model])))
+    (is (= :replay-matching-assertions-as-document-notices-at-observe-time
+           (get-in kit [:semantics :observe-current-set])))
     (is (= :document
            (second (first (nth (second (first (nth (:request kit) 2))) 2)))))
     (let [matches-case (some #(when (= :matches (first %)) %)
@@ -225,8 +233,26 @@
     (invoke p [dataspace/request-type :facet-leave fid])
     (let [root (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= [{'?t 21}] (matches-bindings root)))
-      (is (= [] (matches-notices root))
-          "dead facet mailbox must not drain onto a later observer"))))
+      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+             (matches-notices root))
+          "new observer replays the live current-set once; dead mailbox must not duplicate it"))))
+
+(deftest observe-replays-current-matching-assertions-as-document-notices
+  (let [p (dataspace/provider)]
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (invoke p (assert-req "[:temperature :room/a 22]" 0))
+    (let [first-obs (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [{'?t 21} {'?t 22}] (matches-bindings first-obs)))
+      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}
+              {:assertion [:temperature :room/a 22] :bindings {'?t 22}}]
+             (matches-notices first-obs))
+          "first observe delivers already-present matches as :document notices"))
+    (is (= [] (matches-notices
+               (invoke p (observe-req "[:temperature :room/a ?t]" 0))))
+        "current-set replay is not re-enqueued; re-observe drains empty mailbox")
+    (is (= [] (matches-notices
+               (invoke p (observe-req "[:humidity :room/a ?h]" 0))))
+        "non-matching pattern does not replay")))
 
 (defn- observer-delivery-holds?
   [p]
@@ -235,6 +261,36 @@
   (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
     (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
        (matches-notices delivered))))
+
+(defn- current-set-replay-holds?
+  [p]
+  (invoke p (assert-req "[:temperature :room/a 21]" 0))
+  (let [first-obs (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+        drained (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+    (and (= [{'?t 21}] (matches-bindings first-obs))
+         (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+            (matches-notices first-obs))
+         (= [] (matches-notices drained)))))
+
+(defn- skipping-current-set-replay-store
+  "Broken store: first observe returns empty notices even when matches exist."
+  []
+  (let [inner (store/memory-store)
+        q (:q inner)
+        tx! (:transact! inner)]
+    {:q q
+     :transact!
+     (fn [tx]
+       (if (not= :observe (:op tx))
+         (tx! tx)
+         (let [existing (some (fn [observer]
+                                (and (= (:facet tx) (:facet observer))
+                                     (= (:pattern tx) (:pattern observer))))
+                              (q {:op :observers}))
+               result (tx! tx)]
+           (if existing
+             result
+             (assoc result :notices [])))))}))
 
 (defn- swallowing-observer-notices-store
   "Broken store: assert enqueues, then immediately drains every mailbox."
@@ -300,15 +356,16 @@
        (dataspace/provider {:store {:q identity}}))))
 
 (deftest injected-kgraph-store-honors-assert-retract-observe-facet-leave
-  (let [p (dataspace/provider {:store (kgraph-store/store)})]
-    (is (assert-retract-observe-hold? p))
-    (is (facet-leave-retracts? p))
-    (is (observer-delivery-holds? p))))
+  (is (assert-retract-observe-hold? (dataspace/provider {:store (kgraph-store/store)})))
+  (is (facet-leave-retracts? (dataspace/provider {:store (kgraph-store/store)})))
+  (is (observer-delivery-holds? (dataspace/provider {:store (kgraph-store/store)})))
+  (is (current-set-replay-holds? (dataspace/provider {:store (kgraph-store/store)}))))
 
 (deftest default-memory-store-still-honors-facet-leave
   (is (facet-leave-retracts? (dataspace/provider)))
   (is (assert-retract-observe-hold? (dataspace/provider)))
-  (is (observer-delivery-holds? (dataspace/provider))))
+  (is (observer-delivery-holds? (dataspace/provider)))
+  (is (current-set-replay-holds? (dataspace/provider))))
 
 (deftest store-that-drops-facet-leave-retracts-fails-closed
   (is (not (facet-leave-retracts?
@@ -317,3 +374,7 @@
 (deftest store-that-swallows-observer-notices-fails-closed
   (is (not (observer-delivery-holds?
             (dataspace/provider {:store (swallowing-observer-notices-store)})))))
+
+(deftest store-that-skips-current-set-replay-fails-closed
+  (is (not (current-set-replay-holds?
+            (dataspace/provider {:store (skipping-current-set-replay-store)})))))
