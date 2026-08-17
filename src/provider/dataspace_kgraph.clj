@@ -111,12 +111,24 @@
        :result {:id n :notices notices}})
 
     :retract
-    (let [rows (query-eav datoms
-                         ['?e]
-                         [['?e value-attr (:value tx)]
-                          ['?e facet-attr (:facet tx)]])
-          eids (mapv first rows)]
-      {:datoms (reduce retract-entity datoms eids)
+    (let [assertion (:value tx)
+          rows (query-eav datoms
+                          ['?e]
+                          [['?e value-attr assertion]
+                           ['?e facet-attr (:facet tx)]])
+          eids (mapv first rows)
+          datoms (reduce retract-entity datoms eids)
+          datoms (if (seq eids)
+                   (reduce (fn [ds [oe pattern _facet]]
+                             (if-let [b (match/match pattern assertion)]
+                               (replace-attr ds oe observer-mailbox-attr
+                                             (conj (observer-mailbox ds oe)
+                                                   (store/notice :retract assertion b)))
+                               ds))
+                           datoms
+                           (observer-rows datoms))
+                   datoms)]
+      {:datoms datoms
        :ids ids
        :result {:removed (count eids)}})
 

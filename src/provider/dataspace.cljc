@@ -6,10 +6,11 @@
   id 24. Assertions are inert documents; copying them does not grant observe.
   Facet leave retracts assertions published in that facet and drops its
   observations including undelivered notice mailboxes. Matching asserts
-  enqueue inert `:document` notices on observers; the observer's next
+  enqueue inert `:document` notices on observers; a matching retract
+  enqueues a `:retract` notice on the same mailbox. The observer's next
   `:observe` (same facet+pattern) drains them. First observe of a
   facet+pattern also replays already-present matching assertions as
-  `:document` notices (Syndicate current-set). Guest callbacks / vat / `<-`
+  `:assert` notices (Syndicate current-set). Guest callbacks / vat / `<-`
   are not used.
 
   Persistence is a swappable `{:q :transact!}` store (provider.dataspace-store).
@@ -114,7 +115,8 @@
 
 (defn- encode-notices [notices]
   (encode-edn (mapv (fn [n]
-                      {:assertion (:assertion n)
+                      {:kind (or (:kind n) :assert)
+                       :assertion (:assertion n)
                        :bindings (into {} (:bindings n))})
                     notices)))
 

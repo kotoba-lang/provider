@@ -13,6 +13,7 @@
              :maps :keys-present-extra-ok
              :observe-model :host-owned-in-process-notice-delivery
              :observe-current-set :replay-matching-assertions-as-document-notices-at-observe-time
+             :observe-retract :document-notice-on-matching-retract
              :facet-exit :retracts-owned-assertions-and-drops-observations-and-undelivered-notices
              :authority "Lexical/argument possession of this capability. Serializing an assertion or writing #cap does not restore authority."
              :encoding :in-process-document

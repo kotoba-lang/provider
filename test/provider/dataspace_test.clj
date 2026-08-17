@@ -38,6 +38,12 @@
 (defn- matches-notices [result]
   (doc-edn (nth (nth result 2) 2)))
 
+(defn- assert-notice [assertion bindings]
+  {:kind :assert :assertion assertion :bindings bindings})
+
+(defn- retract-notice [assertion bindings]
+  {:kind :retract :assertion assertion :bindings bindings})
+
 (deftest abi-assertions-are-documents-not-edn-strings
   (is (= :document (second (first (nth dataspace/assert-type 2)))))
   (is (= :document (second (first (nth dataspace/observe-type 2)))))
@@ -56,7 +62,7 @@
     (is (= [{'?t 21}] (doc-edn (last (nth asserted 2)))))
     (let [again (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= [{'?t 21}] (matches-bindings again)))
-      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+      (is (= [{:kind :assert :assertion [:temperature :room/a 21] :bindings {'?t 21}}]
              (matches-notices again))))))
 
 (deftest matching-assert-delivers-document-notice-to-observer
@@ -65,7 +71,7 @@
     (invoke p (assert-req "[:temperature :room/a 21]" 0))
     (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= :matches (second delivered)))
-      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+      (is (= [{:kind :assert :assertion [:temperature :room/a 21] :bindings {'?t 21}}]
              (matches-notices delivered)))
       (is (= [] (matches-notices
                  (invoke p (observe-req "[:temperature :room/a ?t]" 0))))))))
@@ -82,7 +88,7 @@
       (is (= :retracted (second left)))
       (is (= 0 (last (nth left 2))))
       (is (= [{'?t 21}] (matches-bindings root)))
-      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+      (is (= [{:kind :assert :assertion [:temperature :room/a 21] :bindings {'?t 21}}]
              (matches-notices root))))))
 
 (deftest facet-exit-retracts-owned-assertions-and-drops-observations
@@ -171,7 +177,8 @@
         seen (invoke p (observe-req "{:cap/kind :dataspace/transact}" 0))]
     (is (= :asserted (second stored)))
     (is (= [{}] (matches-bindings seen)))
-    (is (= [{:assertion {:cap/kind :dataspace/transact
+    (is (= [{:kind :assert
+             :assertion {:cap/kind :dataspace/transact
                          :cap/resource "ds"
                          :cap/provenance []}
              :bindings {}}]
@@ -216,6 +223,8 @@
            (get-in kit [:semantics :observe-model])))
     (is (= :replay-matching-assertions-as-document-notices-at-observe-time
            (get-in kit [:semantics :observe-current-set])))
+    (is (= :document-notice-on-matching-retract
+           (get-in kit [:semantics :observe-retract])))
     (is (= :document
            (second (first (nth (second (first (nth (:request kit) 2))) 2)))))
     (let [matches-case (some #(when (= :matches (first %)) %)
@@ -233,7 +242,7 @@
     (invoke p [dataspace/request-type :facet-leave fid])
     (let [root (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= [{'?t 21}] (matches-bindings root)))
-      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+      (is (= [{:kind :assert :assertion [:temperature :room/a 21] :bindings {'?t 21}}]
              (matches-notices root))
           "new observer replays the live current-set once; dead mailbox must not duplicate it"))))
 
@@ -243,8 +252,8 @@
     (invoke p (assert-req "[:temperature :room/a 22]" 0))
     (let [first-obs (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= [{'?t 21} {'?t 22}] (matches-bindings first-obs)))
-      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}
-              {:assertion [:temperature :room/a 22] :bindings {'?t 22}}]
+      (is (= [{:kind :assert :assertion [:temperature :room/a 21] :bindings {'?t 21}}
+              {:kind :assert :assertion [:temperature :room/a 22] :bindings {'?t 22}}]
              (matches-notices first-obs))
           "first observe delivers already-present matches as :document notices"))
     (is (= [] (matches-notices
@@ -254,12 +263,72 @@
                (invoke p (observe-req "[:humidity :room/a ?h]" 0))))
         "non-matching pattern does not replay")))
 
+(deftest matching-retract-delivers-document-notice-to-observer
+  (let [p (dataspace/provider)]
+    (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (is (= [(assert-notice [:temperature :room/a 21] {'?t 21})]
+           (matches-notices (invoke p (observe-req "[:temperature :room/a ?t]" 0)))))
+    (invoke p (retract-req "[:temperature :room/a 21]" 0))
+    (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [] (matches-bindings delivered)))
+      (is (= [(retract-notice [:temperature :room/a 21] {'?t 21})]
+             (matches-notices delivered))
+          "retract of a matching assertion enqueues a :retract notice")
+      (is (= [] (matches-notices
+                 (invoke p (observe-req "[:temperature :room/a ?t]" 0))))
+          "next observe drains the retraction notice"))))
+
+(deftest retract-and-assert-share-one-mailbox
+  (let [p (dataspace/provider)]
+    (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (invoke p (retract-req "[:temperature :room/a 21]" 0))
+    (is (= [(assert-notice [:temperature :room/a 21] {'?t 21})
+            (retract-notice [:temperature :room/a 21] {'?t 21})]
+           (matches-notices (invoke p (observe-req "[:temperature :room/a ?t]" 0))))
+        "assert then retract without drain yields both notices in order")))
+
+(deftest retract-of-non-matching-assertion-does-not-notify
+  (let [p (dataspace/provider)]
+    (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+    (invoke p (assert-req "[:humidity :room/a 40]" 0))
+    (invoke p (retract-req "[:humidity :room/a 40]" 0))
+    (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [] (matches-bindings delivered)))
+      (is (= [] (matches-notices delivered))
+          "retract of a non-matching assertion does not notify that observer"))))
+
+(deftest current-set-replay-is-assert-notices-not-retractions
+  (let [p (dataspace/provider)]
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (let [first-obs (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [(assert-notice [:temperature :room/a 21] {'?t 21})]
+             (matches-notices first-obs))
+          "first observe still returns present matches as :assert notices"))
+    (invoke p (retract-req "[:temperature :room/a 21]" 0))
+    (is (= [(retract-notice [:temperature :room/a 21] {'?t 21})]
+           (matches-notices (invoke p (observe-req "[:temperature :room/a ?t]" 0)))))))
+
+(deftest facet-leave-drops-undelivered-retraction-notices
+  (let [p (dataspace/provider)
+        entered (invoke p [dataspace/request-type :facet-enter true])
+        fid (last (nth entered 2))]
+    (invoke p (observe-req "[:temperature :room/a ?t]" fid))
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (invoke p (retract-req "[:temperature :room/a 21]" 0))
+    (invoke p [dataspace/request-type :facet-leave fid])
+    (let [root (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [] (matches-bindings root)))
+      (is (= [] (matches-notices root))
+          "facet-leave drops undelivered retraction mail; new observer sees empty current-set"))))
+
 (defn- observer-delivery-holds?
   [p]
   (invoke p (observe-req "[:temperature :room/a ?t]" 0))
   (invoke p (assert-req "[:temperature :room/a 21]" 0))
   (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
-    (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+    (= [{:kind :assert :assertion [:temperature :room/a 21] :bindings {'?t 21}}]
        (matches-notices delivered))))
 
 (defn- current-set-replay-holds?
@@ -268,9 +337,38 @@
   (let [first-obs (invoke p (observe-req "[:temperature :room/a ?t]" 0))
         drained (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
     (and (= [{'?t 21}] (matches-bindings first-obs))
-         (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+         (= [(assert-notice [:temperature :room/a 21] {'?t 21})]
             (matches-notices first-obs))
          (= [] (matches-notices drained)))))
+
+(defn- retraction-notice-holds?
+  [p]
+  (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+  (invoke p (assert-req "[:temperature :room/a 21]" 0))
+  (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+  (invoke p (retract-req "[:temperature :room/a 21]" 0))
+  (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+    (and (= [] (matches-bindings delivered))
+         (= [(retract-notice [:temperature :room/a 21] {'?t 21})]
+            (matches-notices delivered)))))
+
+(defn- dropping-retract-notices-store
+  "Broken store: retract removes the assertion but drains the mailbox so
+  retraction notices never survive until the observer's next observe."
+  []
+  (let [inner (store/memory-store)
+        q (:q inner)
+        tx! (:transact! inner)]
+    {:q q
+     :transact!
+     (fn [tx]
+       (let [result (tx! tx)]
+         (when (= :retract (:op tx))
+           (doseq [observer (q {:op :observers})]
+             (tx! {:op :observe
+                   :pattern (:pattern observer)
+                   :facet (:facet observer)})))
+         result))}))
 
 (defn- skipping-current-set-replay-store
   "Broken store: first observe returns empty notices even when matches exist."
@@ -359,13 +457,15 @@
   (is (assert-retract-observe-hold? (dataspace/provider {:store (kgraph-store/store)})))
   (is (facet-leave-retracts? (dataspace/provider {:store (kgraph-store/store)})))
   (is (observer-delivery-holds? (dataspace/provider {:store (kgraph-store/store)})))
-  (is (current-set-replay-holds? (dataspace/provider {:store (kgraph-store/store)}))))
+  (is (current-set-replay-holds? (dataspace/provider {:store (kgraph-store/store)})))
+  (is (retraction-notice-holds? (dataspace/provider {:store (kgraph-store/store)}))))
 
 (deftest default-memory-store-still-honors-facet-leave
   (is (facet-leave-retracts? (dataspace/provider)))
   (is (assert-retract-observe-hold? (dataspace/provider)))
   (is (observer-delivery-holds? (dataspace/provider)))
-  (is (current-set-replay-holds? (dataspace/provider))))
+  (is (current-set-replay-holds? (dataspace/provider)))
+  (is (retraction-notice-holds? (dataspace/provider))))
 
 (deftest store-that-drops-facet-leave-retracts-fails-closed
   (is (not (facet-leave-retracts?
@@ -378,3 +478,7 @@
 (deftest store-that-skips-current-set-replay-fails-closed
   (is (not (current-set-replay-holds?
             (dataspace/provider {:store (skipping-current-set-replay-store)})))))
+
+(deftest store-that-drops-retraction-enqueue-fails-closed
+  (is (not (retraction-notice-holds?
+            (dataspace/provider {:store (dropping-retract-notices-store)})))))
