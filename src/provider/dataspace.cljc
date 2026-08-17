@@ -7,7 +7,9 @@
   Facet leave retracts assertions published in that facet and drops its
   observations including undelivered notice mailboxes. Matching asserts
   enqueue inert `:document` notices on observers; the observer's next
-  `:observe` (same facet+pattern) drains them. Guest callbacks / vat / `<-`
+  `:observe` (same facet+pattern) drains them. First observe of a
+  facet+pattern also replays already-present matching assertions as
+  `:document` notices (Syndicate current-set). Guest callbacks / vat / `<-`
   are not used.
 
   Persistence is a swappable `{:q :transact!}` store (provider.dataspace-store).
@@ -103,7 +105,9 @@
                        :message (ex-message e)})))))
 
 (defn- encode-edn [form]
-  (value/document-edn-read (pr-str form)))
+  (value/document-edn-read
+   (binding [*print-namespace-maps* false]
+     (pr-str form))))
 
 (defn- encode-bindings [bindings]
   (encode-edn (mapv #(into {} %) bindings)))

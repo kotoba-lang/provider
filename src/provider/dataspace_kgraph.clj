@@ -134,13 +134,18 @@
            :ids ids
            :result {:id (tagged-id e) :notices notices}})
         (let [n (:next-observer ids)
-              e (observer-e n)]
+              e (observer-e n)
+              notices (store/current-set-notices
+                       (mapv (fn [[_e value facet]]
+                               {:value value :facet facet})
+                             (assertion-rows datoms))
+                       pattern)]
           {:datoms (-> datoms
                        (kgraph/assert-datom [e observer-pattern-attr pattern])
                        (kgraph/assert-datom [e observer-facet-attr facet-id])
                        (kgraph/assert-datom [e observer-mailbox-attr []]))
            :ids (update ids :next-observer inc)
-           :result {:id n :notices []}})))
+           :result {:id n :notices notices}})))
 
     :facet-enter
     (let [n (:next-facet ids)

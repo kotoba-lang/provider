@@ -15,7 +15,9 @@
     {:op :assert :value v :facet f} -> {:id n :notices [binding-map ...]}
     {:op :retract :value v :facet f} -> {:removed n}
     {:op :observe :pattern p :facet f} -> {:id n :notices [notice ...]}
-      ;; upsert by facet+pattern. Re-observe drains that observer's mailbox.
+      ;; upsert by facet+pattern. First observe replays already-present
+      ;; matching assertions as :document notices (Syndicate current-set).
+      ;; Re-observe drains that observer's mailbox of later asserts.
     {:op :facet-enter} -> {:id n}
     {:op :facet-leave :id n} -> {:removed n}
 
@@ -24,7 +26,10 @@
   and drops its observers including undelivered notice mailboxes.
 
   Matching asserts enqueue a notice `{:assertion v :bindings m}` on each
-  observer. Delivery is in-process and inert; there is no guest callback."
+  observer. First observe of a facet+pattern also returns that payload for
+  each already-present match (current-set replay), without leaving those
+  notices in the mailbox. Delivery is in-process and inert; there is no
+  guest callback."
   (:require [provider.dataspace-match :as match]))
 
 (def store-keys #{:q :transact!})
@@ -60,6 +65,18 @@
                              observer))
                          observers)]
     [observers' bindings]))
+
+(defn current-set-notices
+  "Already-present matching assertions as observe-time :document notices.
+
+  Syndicate current-set replay: registering an observer delivers the live
+  matching set now, not only later asserts. Facet-leave still drops."
+  [assertions pattern]
+  (into []
+        (keep (fn [cell]
+                (when-let [b (match/match pattern (:value cell))]
+                  (notice (:value cell) b))))
+        assertions))
 
 (defn- observer-for
   [observers facet-id pattern]
@@ -128,6 +145,7 @@
                                (:observers state)))
            :result {:id oid :notices notices}})
         (let [oid (:next-observer state)
+              notices (current-set-notices (:assertions state) pattern)
               observer {:id oid :pattern pattern :facet facet-id :mailbox []}]
           {:state (-> state
                       (update :observers conj observer)
@@ -135,7 +153,7 @@
                       (cond-> (pos? facet-id)
                         (update-in [:facets facet-id :observers]
                                    (fnil conj []) oid)))
-           :result {:id oid :notices []}})))
+           :result {:id oid :notices notices}})))
 
     :facet-enter
     (let [fid (:next-facet state)]
