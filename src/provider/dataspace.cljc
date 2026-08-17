@@ -5,7 +5,10 @@
   the typed request/result contract after the runtime has admitted capability
   id 24. Assertions are inert documents; copying them does not grant observe.
   Facet leave retracts assertions published in that facet and drops its
-  observations.
+  observations including undelivered notice mailboxes. Matching asserts
+  enqueue inert `:document` notices on observers; the observer's next
+  `:observe` (same facet+pattern) drains them. Guest callbacks / vat / `<-`
+  are not used.
 
   Persistence is a swappable `{:q :transact!}` store (provider.dataspace-store).
   Default is the in-memory reference. Hosts may inject provider.dataspace-kgraph
@@ -47,7 +50,8 @@
 (def retracted-type
   [:record :kotoba.dataspace/retracted [[:count :i64]]])
 (def matches-type
-  [:record :kotoba.dataspace/matches [[:bindings :document]]])
+  [:record :kotoba.dataspace/matches
+   [[:bindings :document] [:notices :document]]])
 (def facet-type
   [:record :kotoba.dataspace/facet [[:id :i64]]])
 (def error-type
@@ -98,8 +102,17 @@
                       {:phase :dataspace-provider
                        :message (ex-message e)})))))
 
+(defn- encode-edn [form]
+  (value/document-edn-read (pr-str form)))
+
 (defn- encode-bindings [bindings]
-  (value/document-edn-read (pr-str (mapv #(into {} %) bindings))))
+  (encode-edn (mapv #(into {} %) bindings)))
+
+(defn- encode-notices [notices]
+  (encode-edn (mapv (fn [n]
+                      {:assertion (:assertion n)
+                       :bindings (into {} (:bindings n))})
+                    notices)))
 
 (defn- facet-id-or-root [facet-id]
   (if (nil? facet-id) 0 (i64->long facet-id)))
@@ -148,11 +161,12 @@
                   (err :dataspace/capacity "assertion limit reached")
 
                   :else
-                  (let [notices (store/match-observers
-                                 (q {:op :observers}) assertion)]
-                    (tx! {:op :assert :value assertion :facet facet-id})
+                  (let [{:keys [notices]} (tx! {:op :assert
+                                                :value assertion
+                                                :facet facet-id})]
                     (result :asserted
-                            [asserted-type (->i64 1) (encode-bindings notices)]))))
+                            [asserted-type (->i64 1)
+                             (encode-bindings (or notices []))]))))
 
               :retract
               (let [[_ assertion-doc raw-facet] payload
@@ -187,15 +201,23 @@
                   (not (live-facet? q facet-id))
                   (err :dataspace/unknown-facet "facet handle is not live")
 
-                  (>= (:observers counts) max-observers)
+                  (and (not (some (fn [observer]
+                                    (and (= facet-id (:facet observer))
+                                         (= pattern (:pattern observer))))
+                                  (q {:op :observers})))
+                       (>= (:observers counts) max-observers))
                   (err :dataspace/capacity "observer limit reached")
 
                   :else
-                  (let [bindings (into []
+                  (let [{:keys [notices]} (tx! {:op :observe
+                                                :pattern pattern
+                                                :facet facet-id})
+                        bindings (into []
                                        (keep #(match/match pattern (:value %)))
                                        (q {:op :assertions}))]
-                    (tx! {:op :observe :pattern pattern :facet facet-id})
-                    (result :matches [matches-type (encode-bindings bindings)]))))
+                    (result :matches [matches-type
+                                      (encode-bindings bindings)
+                                      (encode-notices (or notices []))]))))
 
               :facet-enter
               (let [counts (q {:op :counts})]

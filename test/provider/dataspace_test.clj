@@ -32,22 +32,58 @@
 (defn- retract-req [edn facet]
   [dataspace/request-type :retract [dataspace/retract-type (edn-doc edn) facet]])
 
+(defn- matches-bindings [result]
+  (doc-edn (nth (nth result 2) 1)))
+
+(defn- matches-notices [result]
+  (doc-edn (nth (nth result 2) 2)))
+
 (deftest abi-assertions-are-documents-not-edn-strings
   (is (= :document (second (first (nth dataspace/assert-type 2)))))
   (is (= :document (second (first (nth dataspace/observe-type 2)))))
   (is (= :document (second (second (nth dataspace/asserted-type 2)))))
-  (is (= :document (second (first (nth dataspace/matches-type 2))))))
+  (is (= :document (second (first (nth dataspace/matches-type 2)))))
+  (is (= :document (second (second (nth dataspace/matches-type 2))))))
 
 (deftest observe-pattern-binds-and-fires-on-matching-assert
   (let [p (dataspace/provider)
         observed (invoke p (observe-req "[:temperature :room/a ?t]" 0))
         asserted (invoke p (assert-req "[:temperature :room/a 21]" 0))]
     (is (= :matches (second observed)))
-    (is (= [] (doc-edn (last (nth observed 2)))))
+    (is (= [] (matches-bindings observed)))
+    (is (= [] (matches-notices observed)))
     (is (= :asserted (second asserted)))
     (is (= [{'?t 21}] (doc-edn (last (nth asserted 2)))))
     (let [again (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
-      (is (= [{'?t 21}] (doc-edn (last (nth again 2))))))))
+      (is (= [{'?t 21}] (matches-bindings again)))
+      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+             (matches-notices again))))))
+
+(deftest matching-assert-delivers-document-notice-to-observer
+  (let [p (dataspace/provider)]
+    (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= :matches (second delivered)))
+      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+             (matches-notices delivered)))
+      (is (= [] (matches-notices
+                 (invoke p (observe-req "[:temperature :room/a ?t]" 0))))))))
+
+(deftest facet-leave-drops-undelivered-observer-notices
+  (let [p (dataspace/provider)
+        entered (invoke p [dataspace/request-type :facet-enter true])
+        fid (last (nth entered 2))]
+    (invoke p (observe-req "[:temperature :room/a ?t]" fid))
+    (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (let [left (invoke p [dataspace/request-type :facet-leave fid])
+          root (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= :retracted (second left)))
+      (is (= 0 (last (nth left 2))))
+      (is (= [{'?t 21}] (matches-bindings root)))
+      (is (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+             (matches-notices root))))))
 
 (deftest facet-exit-retracts-owned-assertions-and-drops-observations
   (let [p (dataspace/provider)
@@ -60,7 +96,8 @@
           remaining (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (is (= :retracted (second left)))
       (is (= 1 (last (nth left 2))))
-      (is (= [] (doc-edn (last (nth remaining 2))))))))
+      (is (= [] (matches-bindings remaining)))
+      (is (= [] (matches-notices remaining))))))
 
 (deftest equal-assertions-have-distinct-facet-ownership
   (let [p (dataspace/provider)
@@ -72,11 +109,9 @@
     (let [before (invoke p (observe-req "[:temperature :room/a ?t]" 0))
           left (invoke p [dataspace/request-type :facet-leave left-id])
           after (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
-      (is (= [{'?t 21} {'?t 21}]
-             (doc-edn (last (nth before 2)))))
+      (is (= [{'?t 21} {'?t 21}] (matches-bindings before)))
       (is (= 1 (last (nth left 2))))
-      (is (= [{'?t 21}]
-             (doc-edn (last (nth after 2)))))
+      (is (= [{'?t 21}] (matches-bindings after)))
       (is (= 1 (last (nth (invoke p [dataspace/request-type
                                       :facet-leave right-id]) 2)))))))
 
@@ -89,9 +124,8 @@
     (is (= 0 (last (nth (invoke p (retract-req assertion other-id)) 2))))
     (is (= 0 (last (nth (invoke p (retract-req assertion 0)) 2))))
     (is (= [{'?t 21}]
-           (doc-edn
-            (last (nth (invoke p (observe-req
-                                  "[:temperature :room/a ?t]" 0)) 2)))))
+           (matches-bindings (invoke p (observe-req
+                                        "[:temperature :room/a ?t]" 0)))))
     (is (= 1 (last (nth (invoke p (retract-req assertion owner-id)) 2))))
     (is (= 0 (last (nth (invoke p [dataspace/request-type
                                     :facet-leave owner-id]) 2))))))
@@ -103,7 +137,8 @@
     (invoke left (assert-req "[:temperature :room/a 21]" 0))
     (let [other (invoke right (observe-req assertion 0))]
       (is (= [:temperature :room/a 21] (doc-edn assertion)))
-      (is (= [] (doc-edn (last (nth other 2))))))))
+      (is (= [] (matches-bindings other)))
+      (is (= [] (matches-notices other))))))
 
 (deftest non-document-assertion-is-rejected
   (let [p (dataspace/provider)
@@ -135,18 +170,16 @@
         stored (invoke p (assert-req forged-map 0))
         seen (invoke p (observe-req "{:cap/kind :dataspace/transact}" 0))]
     (is (= :asserted (second stored)))
-    (is (= [{}] (doc-edn (last (nth seen 2)))))))
+    (is (= [{}] (matches-bindings seen)))))
 
 (deftest instances-are-isolated
   (let [left (dataspace/provider)
         right (dataspace/provider)]
     (invoke left (assert-req "[:temperature :room/a 21]" 0))
     (is (= [{'?t 21}]
-           (doc-edn
-            (last (nth (invoke left (observe-req "[:temperature :room/a ?t]" 0)) 2)))))
+           (matches-bindings (invoke left (observe-req "[:temperature :room/a ?t]" 0)))))
     (is (= []
-           (doc-edn
-            (last (nth (invoke right (observe-req "[:temperature :room/a ?t]" 0)) 2)))))))
+           (matches-bindings (invoke right (observe-req "[:temperature :room/a ?t]" 0)))))))
 
 (deftest contract-mismatch-is-refused
   (let [p (dataspace/provider)]
@@ -173,8 +206,52 @@
     (is (contains? names :dataspace)
         "dataspace is in provider-conformance inventory")
     (is (= :document (get-in kit [:limits :assertion])))
+    (is (= :host-owned-in-process-notice-delivery
+           (get-in kit [:semantics :observe-model])))
     (is (= :document
-           (second (first (nth (second (first (nth (:request kit) 2))) 2)))))))
+           (second (first (nth (second (first (nth (:request kit) 2))) 2)))))
+    (let [matches-case (some #(when (= :matches (first %)) %)
+                             (nth (:result kit) 2))
+          fields (nth (second matches-case) 2)]
+      (is (= [:bindings :document] (first fields)))
+      (is (= [:notices :document] (second fields))))))
+
+(deftest leftover-observer-notices-do-not-leak-after-facet-leave
+  (let [p (dataspace/provider)
+        entered (invoke p [dataspace/request-type :facet-enter true])
+        fid (last (nth entered 2))]
+    (invoke p (observe-req "[:temperature :room/a ?t]" fid))
+    (invoke p (assert-req "[:temperature :room/a 21]" 0))
+    (invoke p [dataspace/request-type :facet-leave fid])
+    (let [root (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+      (is (= [{'?t 21}] (matches-bindings root)))
+      (is (= [] (matches-notices root))
+          "dead facet mailbox must not drain onto a later observer"))))
+
+(defn- observer-delivery-holds?
+  [p]
+  (invoke p (observe-req "[:temperature :room/a ?t]" 0))
+  (invoke p (assert-req "[:temperature :room/a 21]" 0))
+  (let [delivered (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
+    (= [{:assertion [:temperature :room/a 21] :bindings {'?t 21}}]
+       (matches-notices delivered))))
+
+(defn- swallowing-observer-notices-store
+  "Broken store: assert enqueues, then immediately drains every mailbox."
+  []
+  (let [inner (store/memory-store)
+        q (:q inner)
+        tx! (:transact! inner)]
+    {:q q
+     :transact!
+     (fn [tx]
+       (let [result (tx! tx)]
+         (when (= :assert (:op tx))
+           (doseq [observer (q {:op :observers})]
+             (tx! {:op :observe
+                   :pattern (:pattern observer)
+                   :facet (:facet observer)})))
+         result))}))
 
 (defn- dropping-facet-leave-store
   "Broken store: facet-leave drops observers and the facet, not assertions."
@@ -203,7 +280,7 @@
           remaining (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
       (and (= :retracted (second left))
            (= 1 (last (nth left 2)))
-           (= [] (doc-edn (last (nth remaining 2))))))))
+           (= [] (matches-bindings remaining))))))
 
 (defn- assert-retract-observe-hold?
   [p]
@@ -211,9 +288,9 @@
   (let [seen (invoke p (observe-req "[:temperature :room/a ?t]" 0))
         retracted (invoke p (retract-req "[:temperature :room/a 21]" 0))
         after (invoke p (observe-req "[:temperature :room/a ?t]" 0))]
-    (and (= [{'?t 21}] (doc-edn (last (nth seen 2))))
+    (and (= [{'?t 21}] (matches-bindings seen))
          (= 1 (last (nth retracted 2)))
-         (= [] (doc-edn (last (nth after 2)))))))
+         (= [] (matches-bindings after)))))
 
 (deftest default-memory-store-is-the-inject-boundary
   (is (store/store? (store/memory-store)))
@@ -225,12 +302,18 @@
 (deftest injected-kgraph-store-honors-assert-retract-observe-facet-leave
   (let [p (dataspace/provider {:store (kgraph-store/store)})]
     (is (assert-retract-observe-hold? p))
-    (is (facet-leave-retracts? p))))
+    (is (facet-leave-retracts? p))
+    (is (observer-delivery-holds? p))))
 
 (deftest default-memory-store-still-honors-facet-leave
   (is (facet-leave-retracts? (dataspace/provider)))
-  (is (assert-retract-observe-hold? (dataspace/provider))))
+  (is (assert-retract-observe-hold? (dataspace/provider)))
+  (is (observer-delivery-holds? (dataspace/provider))))
 
 (deftest store-that-drops-facet-leave-retracts-fails-closed
   (is (not (facet-leave-retracts?
             (dataspace/provider {:store (dropping-facet-leave-store)})))))
+
+(deftest store-that-swallows-observer-notices-fails-closed
+  (is (not (observer-delivery-holds?
+            (dataspace/provider {:store (swallowing-observer-notices-store)})))))
