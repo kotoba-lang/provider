@@ -14,10 +14,11 @@
   `:transact!` requests:
     {:op :assert :value v :facet f} -> {:id n :notices [binding-map ...]}
     {:op :retract :value v :facet f} -> {:removed n}
+      ;; matching retract enqueues a :retract notice on observers.
     {:op :observe :pattern p :facet f} -> {:id n :notices [notice ...]}
       ;; upsert by facet+pattern. First observe replays already-present
-      ;; matching assertions as :document notices (Syndicate current-set).
-      ;; Re-observe drains that observer's mailbox of later asserts.
+      ;; matching assertions as :assert :document notices (Syndicate current-set).
+      ;; Re-observe drains that observer's mailbox of later asserts/retracts.
     {:op :facet-enter} -> {:id n}
     {:op :facet-leave :id n} -> {:removed n}
 
@@ -25,11 +26,12 @@
   created by :facet-enter. :facet-leave retracts that facet's assertions
   and drops its observers including undelivered notice mailboxes.
 
-  Matching asserts enqueue a notice `{:assertion v :bindings m}` on each
-  observer. First observe of a facet+pattern also returns that payload for
-  each already-present match (current-set replay), without leaving those
-  notices in the mailbox. Delivery is in-process and inert; there is no
-  guest callback."
+  Matching asserts enqueue `{:kind :assert :assertion v :bindings m}`.
+  Matching retracts enqueue `{:kind :retract :assertion v :bindings m}`
+  on the same mailbox. First observe of a facet+pattern also returns
+  `:assert` notices for each already-present match (current-set replay),
+  without leaving those notices in the mailbox. Delivery is in-process
+  and inert; there is no guest callback."
   (:require [provider.dataspace-match :as match]))
 
 (def store-keys #{:q :transact!})
@@ -50,21 +52,31 @@
         observers))
 
 (defn notice
-  "Inert document payload delivered to an observer."
-  [assertion bindings]
-  {:assertion assertion :bindings (into {} bindings)})
+  "Inert document payload delivered to an observer.
+
+  KIND is `:assert` or `:retract` (Syndicate observed-assertion events).
+  Same mailbox; the field distinguishes the event. Default is `:assert`
+  so current-set replay stays an assert notice."
+  ([assertion bindings]
+   (notice :assert assertion bindings))
+  ([kind assertion bindings]
+   {:kind kind :assertion assertion :bindings (into {} bindings)}))
 
 (defn deliver-to-observers
-  "Enqueue a notice on each matching observer. Return [observers' bindings]."
-  [observers assertion]
-  (let [bindings (match-observers observers assertion)
-        observers' (mapv (fn [observer]
-                           (if-let [b (match/match (:pattern observer) assertion)]
-                             (update observer :mailbox (fnil conj [])
-                                     (notice assertion b))
-                             observer))
-                         observers)]
-    [observers' bindings]))
+  "Enqueue a notice on each matching observer. Return [observers' bindings].
+
+  KIND is `:assert` (default) or `:retract`."
+  ([observers assertion]
+   (deliver-to-observers observers :assert assertion))
+  ([observers kind assertion]
+   (let [bindings (match-observers observers assertion)
+         observers' (mapv (fn [observer]
+                            (if-let [b (match/match (:pattern observer) assertion)]
+                              (update observer :mailbox (fnil conj [])
+                                      (notice kind assertion b))
+                              observer))
+                          observers)]
+     [observers' bindings])))
 
 (defn current-set-notices
   "Already-present matching assertions as observe-time :document notices.
@@ -124,8 +136,12 @@
 
     :retract
     (let [[kept removed-ids]
-          (retract-owned-value (:assertions state) (:facet tx) (:value tx))]
-      {:state (cond-> (assoc state :assertions kept)
+          (retract-owned-value (:assertions state) (:facet tx) (:value tx))
+          [observers' _]
+          (if (seq removed-ids)
+            (deliver-to-observers (:observers state) :retract (:value tx))
+            [(:observers state) []])]
+      {:state (cond-> (assoc state :assertions kept :observers observers')
                 (pos? (:facet tx))
                 (update-in [:facets (:facet tx) :assertions]
                            #(apply disj (or % #{}) removed-ids)))
