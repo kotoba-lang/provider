@@ -168,9 +168,12 @@
   (try (guest-accept listener)
        (catch :default e {:threw (.-message e)})))
 
+;; One listener per concern: if the bound under test ever regresses, the
+;; over-limit request lands in the queue and wedges the accept slot -- on a
+;; shared listener that would abort the run before the check that names the
+;; regression could report it.
 (defn- case-over-limit-body []
-  ;; a short reply timeout so that a REGRESSION here (an over-limit body that
-  ;; does reach the queue and is never replied to) fails fast instead of
+  ;; a short reply timeout so a regression here fails fast rather than
   ;; parking the run on the 30s default
   (p/let [listener (transport/start-listener! {:max-body-bytes 64
                                                :reply-timeout-ms 2000})
@@ -186,12 +189,7 @@
           chunked (http-req {:port port :method "POST" :path "/big-chunked"
                              :body big})
           snap ((:snapshot listener))
-          none-after-chunked (try-accept listener)
-          inflight [(http-req {:port port :method "POST" :path "/small" :body "ok"})]
-          _ (wait-for #(pos? (:queued ((:snapshot listener)))))
-          accepted (guest-accept listener)
-          _ (guest-reply listener 200 "accepted")
-          under-response (first inflight)]
+          none-after-chunked (try-accept listener)]
     (check! "over-limit/declared-body-rejected-413"
             (and (= 413 (:status declared))
                  (= "body-too-large" (get (:headers declared) "x-kotoba-ingress-reject")))
@@ -208,10 +206,21 @@
                  (= [ingress/accept-result-type false] none-after-chunked))
             (pr-str {:declared snap-declared :chunked snap
                      :accepts [none-after-declared none-after-chunked]}))
-    (check! "over-limit/under-limit-body-still-served"
+    ((:stop! listener))))
+
+(defn- case-under-limit-body []
+  (p/let [listener (transport/start-listener! {:max-body-bytes 64})
+          port (:port listener)
+          inflight [(http-req {:port port :method "POST" :path "/small" :body "ok"})]
+          _ (wait-for #(pos? (:queued ((:snapshot listener)))))
+          accepted (guest-accept listener)
+          _ (guest-reply listener 200 "accepted")
+          response (first inflight)]
+    (check! "under-limit/body-under-the-bound-is-served"
             (and (= "ok" (nth (nth accepted 2) 4))
-                 (= 200 (:status under-response)))
-            (pr-str {:accepted accepted :response under-response}))
+                 (= 200 (:status response))
+                 (= "accepted" (:body response)))
+            (pr-str {:accepted accepted :response response}))
     ((:stop! listener))))
 
 ;; ---------------------------------------------------------------------------
@@ -322,6 +331,7 @@
   (-> (p/do (case-round-trip)
             (case-queue-full)
             (case-over-limit-body)
+            (case-under-limit-body)
             (case-empty-accept)
             (case-unpaired-reply)
             (case-reply-timeout)
