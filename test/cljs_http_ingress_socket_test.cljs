@@ -164,21 +164,29 @@
 ;;    (both the declared content-length path and the chunked/streamed path)
 ;; ---------------------------------------------------------------------------
 
+(defn- try-accept [listener]
+  (try (guest-accept listener)
+       (catch :default e {:threw (.-message e)})))
+
 (defn- case-over-limit-body []
-  (p/let [listener (transport/start-listener! {:max-body-bytes 64})
+  ;; a short reply timeout so that a REGRESSION here (an over-limit body that
+  ;; does reach the queue and is never replied to) fails fast instead of
+  ;; parking the run on the 30s default
+  (p/let [listener (transport/start-listener! {:max-body-bytes 64
+                                               :reply-timeout-ms 2000})
           port (:port listener)
           big (apply str (repeat 200 "x"))
           declared (http-req {:port port :method "POST" :path "/big"
                               :headers {"content-length" (str (count big))}
                               :body big})
           snap-declared ((:snapshot listener))
-          none-after-declared (guest-accept listener)
+          none-after-declared (try-accept listener)
           ;; no content-length => node sends it chunked, so the host cannot
           ;; know the size up front and must bound the stream as it arrives
           chunked (http-req {:port port :method "POST" :path "/big-chunked"
                              :body big})
           snap ((:snapshot listener))
-          none-after-chunked (guest-accept listener)
+          none-after-chunked (try-accept listener)
           inflight [(http-req {:port port :method "POST" :path "/small" :body "ok"})]
           _ (wait-for #(pos? (:queued ((:snapshot listener)))))
           accepted (guest-accept listener)
