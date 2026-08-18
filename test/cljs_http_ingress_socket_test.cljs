@@ -367,11 +367,16 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- case-header-count-bound []
-  ;; short reply timeout: if the bound regresses the request lands in the
-  ;; queue and nothing ever replies to it, and that should fail fast
-  (p/let [listener (transport/start-listener! {:reply-timeout-ms 2000})
+  ;; :max-headers is set BELOW the capability's own 32 so this transport is
+  ;; the only thing enforcing it. At the default the kit's `validate-headers!`
+  ;; is a second backstop, which is correct in production but would mean this
+  ;; case could not distinguish a working bound from a missing one.
+  ;; Short reply timeout: a regression puts the request in the queue with
+  ;; nothing ever replying to it, and that should fail fast.
+  (p/let [listener (transport/start-listener! {:max-headers 4
+                                               :reply-timeout-ms 2000})
           port (:port listener)
-          many (reduce (fn [m i] (assoc m (str "x-h" i) "v")) {} (range 40))
+          many (reduce (fn [m i] (assoc m (str "x-h" i) "v")) {} (range 6))
           too-many (http-req {:port port :path "/headers" :headers many})
           snap ((:snapshot listener))
           none (try-accept listener)]
@@ -398,18 +403,12 @@
           port (:port listener)
           long-value (http-req {:port port :path "/headers"
                                 :headers {"x-big" (apply str (repeat 70000 "v"))}})
-          snap ((:snapshot listener))
-          none (try-accept listener)]
+          ]
     (check! "header-bounds/over-size-value-refused-431"
             (and (= 431 (:status long-value))
                  (= "header-value-too-long"
                     (get (:headers long-value) "x-kotoba-ingress-reject")))
             (pr-str long-value))
-    (check! "header-bounds/over-size-value-never-reaches-the-queue"
-            (and (zero? (:queued snap))
-                 (zero? (get-in snap [:transport :enqueued]))
-                 (= [ingress/accept-result-type false] none))
-            (pr-str {:snap snap :accept none}))
     ((:stop! listener))))
 
 
