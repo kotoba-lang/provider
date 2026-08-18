@@ -40,12 +40,32 @@
     size, `reply requires a prior accept`) runs first and throws first --
     and writes to the socket only if the real reply returned `true`.
 
-  The two FIFOs stay in lockstep because they are only ever appended to and
-  popped from by the same two operations. A host that calls the kit's
-  `enqueue!` directly (bypassing this listener) is not an error: the accept
-  wrapper then finds its own FIFO empty, marks the in-flight slot
-  `:detached`, and the matching reply is counted (`:detached-replies`) and
-  dropped rather than misrouted onto some other client's socket.
+  ## Correlation, and how it is kept honest
+
+  Position in the FIFO is what says which socket a reply belongs to, so the
+  FIFO has to mean exactly the same thing as the kit's queue. Two things make
+  that true, and a third catches it when it is not:
+
+  1. Everything that enqueues through this listener -- a socket request, or a
+     host calling the listener's own `:enqueue!` -- appends to the FIFO. A
+     socketless host injection appends the marker `:detached`, so it still
+     occupies its position; its reply is counted (`:detached-replies`) and
+     dropped rather than written anywhere.
+  2. Accept pops the FIFO head only when the kit's accept returned the `some`
+     arm, so the two move together.
+  3. Before every accept, the FIFO's length is compared against the kit's own
+     `:queued`. A host that reaches past this listener for the kit's raw
+     `enqueue!` desynchronizes them, and from that moment position no longer
+     identifies a socket. The transport does not guess: it counts
+     `:desync-events`, answers every socket still in its FIFO with 503, drops
+     the FIFO, and treats replies it cannot correlate as `:desynced-replies`.
+     Once the kit's queue drains, the two agree again and routing resumes.
+
+  Point 3 exists because an earlier version of this namespace only marked
+  `:detached` when its FIFO happened to be *empty*, which is not the same
+  question. The socket test caught it doing exactly what this section
+  promises it will not: with a host injection sitting between two socket
+  requests, the second client received the host's reply body and status.
 
   ## The guest never receives a socket
 
@@ -312,7 +332,9 @@
       :timed-out 0
       :stopped-open 0
       :dropped-replies 0
-      :detached-replies 0}))
+      :detached-replies 0
+      :desynced-replies 0
+      :desync-events 0}))
 
 #?(:cljs
    (defn- bump! [state k]
@@ -382,25 +404,49 @@
 ;; --- provider wrappers -----------------------------------------------------
 
 #?(:cljs
+   (defn- desync!
+     "Correlation is lost: the FIFO's length no longer matches the kit's
+     queue, so position no longer identifies a socket. Fail closed -- answer
+     every socket still held here with 503 and drop the FIFO -- rather than
+     hand one client's response to another. Self-healing: once the kit's
+     queue drains, an empty FIFO and an empty queue agree again."
+     [state]
+     (bump! state :desync-events)
+     (doseq [entry (:queue @state)]
+       (when (and (map? entry) (not @(:done entry)))
+         (bump! state :stopped-open)
+         (write-response!
+          entry 503
+          {"content-type" "text/plain; charset=utf-8"
+           "connection" "close"
+           "x-kotoba-ingress-reject" "correlation-lost"}
+          "ingress lost track of which reply belongs to this request\n")))
+     (swap! state assoc :queue [])))
+
+#?(:cljs
    (defn- wrap-accept
      "Delegate to the kit's real accept, then -- only on the `some` arm --
      move this namespace's FIFO head into the in-flight slot. The returned
      value is the kit's, byte for byte; nothing is added to it and nothing
      socket-shaped can reach the guest through it."
-     [state accept-provider]
+     [state kit accept-provider]
      (assoc accept-provider :invoke
             (fn [request]
-              (let [result ((:invoke accept-provider) request)]
+              ;; Sampled BEFORE delegating, because accept pops the kit's
+              ;; queue: after the call the two counts differ by one by
+              ;; construction and the comparison would say nothing.
+              (let [queued-before (:queued ((:snapshot kit)))
+                    shadow (:queue @state)
+                    correlated? (= (count shadow) queued-before)
+                    result ((:invoke accept-provider) request)]
                 (when (true? (second result))
-                  (let [{:keys [queue]} @state]
-                    (if-let [entry (first queue)]
+                  (if correlated?
+                    (let [head (first shadow)]
                       (swap! state assoc
-                             :queue (vec (rest queue))
-                             :inflight entry)
-                      ;; The kit had a request we did not put there: some
-                      ;; host called `(:enqueue! kit)` directly. Do not
-                      ;; misroute the reply onto an unrelated socket.
-                      (swap! state assoc :inflight :detached))))
+                             :queue (vec (rest shadow))
+                             :inflight (if (map? head) head :detached)))
+                    (do (desync! state)
+                        (swap! state assoc :inflight :desynced))))
                 result)))))
 
 #?(:cljs
@@ -417,6 +463,9 @@
                   (let [entry (:inflight @state)]
                     (swap! state assoc :inflight nil)
                     (cond
+                      (= :desynced entry)
+                      (bump! state :desynced-replies)
+
                       (or (nil? entry) (= :detached entry))
                       (bump! state :detached-replies)
 
@@ -586,9 +635,12 @@
                    are the kit's own providers, wrapped to observe outcomes;
                    the queue, the pairing rule and the types are the kit's.
        :kit        the underlying `ingress/create-provider` result
-       :enqueue!   the kit's `enqueue!`, for host-side injection with no
-                   socket behind it (its replies are counted as
-                   `:detached-replies` and discarded)
+       :enqueue!   host-side injection with no socket behind it. It takes
+                   its place in the FIFO like any other request, so a reply
+                   that follows it is recognised as socketless -- counted as
+                   `:detached-replies` and discarded -- instead of being
+                   written to the next client's socket. Use THIS, not
+                   `(:enqueue! (:kit listener))`; see 'Correlation' above.
        :port       the port actually bound
        :host       the interface actually bound
        :server     the `node:http` server, for hosts that must attach their
@@ -666,13 +718,23 @@
                         (resolve
                          {:providers
                           {ingress/accept-capability-id
-                           (wrap-accept state (get (:providers kit)
-                                                   ingress/accept-capability-id))
+                           (wrap-accept state kit
+                                        (get (:providers kit)
+                                             ingress/accept-capability-id))
                            ingress/reply-capability-id
                            (wrap-reply state (get (:providers kit)
                                                   ingress/reply-capability-id))}
                           :kit kit
-                          :enqueue! (:enqueue! kit)
+                          ;; NOT the kit's raw `enqueue!`: a host injection
+                          ;; still has to take its place in the FIFO, or the
+                          ;; reply that follows it would be handed to
+                          ;; whichever socket happened to be next.
+                          :enqueue!
+                          (fn [method path headers body]
+                            (let [ok ((:enqueue! kit) method path headers body)]
+                              (when ok
+                                (swap! state update :queue conj :detached))
+                              ok))
                           :port bound
                           :host host
                           :server server

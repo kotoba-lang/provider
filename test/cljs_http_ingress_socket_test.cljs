@@ -333,26 +333,34 @@
 (defn- case-detached-enqueue []
   (p/let [listener (transport/start-listener! {})
           port (:port listener)
-          inflight [(http-req {:port port :path "/from-socket"})]
+          ;; two real sockets with a socketless host injection between them,
+          ;; so a transport that popped the wrong end of its FIFO -- or that
+          ;; handed the host-injected reply to whichever socket happened to
+          ;; be next -- shows up as one client receiving another's response
+          a-inflight [(http-req {:port port :path "/a"})]
           _ (wait-for #(= 1 (:queued ((:snapshot listener)))))
-          ;; host-side injection, bypassing the listener entirely
           _ ((:enqueue! listener) :http/get "/from-host" {} "")
-          socket-accept (guest-accept listener)
-          _ (guest-reply listener 200 "for-the-socket")
-          response (first inflight)
-          host-accept (guest-accept listener)
-          _ (guest-reply listener 201 "for-the-host")
+          b-inflight [(http-req {:port port :path "/b"})]
+          _ (wait-for #(= 3 (:queued ((:snapshot listener)))))
+          accept-a (guest-accept listener)
+          _ (guest-reply listener 200 "body-a")
+          a-response (first a-inflight)
+          accept-host (guest-accept listener)
+          _ (guest-reply listener 201 "body-host")
+          accept-b (guest-accept listener)
+          _ (guest-reply listener 202 "body-b")
+          b-response (first b-inflight)
           snap ((:snapshot listener))]
     (check! "detached/fifo-order-is-preserved"
-            (and (= "/from-socket" (nth (nth socket-accept 2) 2))
-                 (= "/from-host" (nth (nth host-accept 2) 2)))
-            (pr-str [socket-accept host-accept]))
+            (= ["/a" "/from-host" "/b"]
+               (mapv #(nth (nth % 2) 2) [accept-a accept-host accept-b]))
+            (pr-str (mapv #(nth (nth % 2) 2) [accept-a accept-host accept-b])))
     (check! "detached/socketless-reply-is-dropped-not-misrouted"
-            (and (= 200 (:status response))
-                 (= "for-the-socket" (:body response))
+            (and (= 200 (:status a-response)) (= "body-a" (:body a-response))
+                 (= 202 (:status b-response)) (= "body-b" (:body b-response))
                  (= 1 (get-in snap [:transport :detached-replies]))
-                 (= 1 (get-in snap [:transport :replied])))
-            (pr-str {:response response :snap snap}))
+                 (= 2 (get-in snap [:transport :replied])))
+            (pr-str {:a a-response :b b-response :snap snap}))
     ((:stop! listener))))
 
 ;; ---------------------------------------------------------------------------
@@ -360,7 +368,9 @@
 ;; ---------------------------------------------------------------------------
 
 (defn- case-header-count-bound []
-  (p/let [listener (transport/start-listener! {})
+  ;; short reply timeout: if the bound regresses the request lands in the
+  ;; queue and nothing ever replies to it, and that should fail fast
+  (p/let [listener (transport/start-listener! {:reply-timeout-ms 2000})
           port (:port listener)
           many (reduce (fn [m i] (assoc m (str "x-h" i) "v")) {} (range 40))
           too-many (http-req {:port port :path "/headers" :headers many})
@@ -384,7 +394,8 @@
 ;; client sees ECONNRESET) before this transport is ever called -- so the
 ;; listener here raises it, and the 431 below really is this namespace's.
 (defn- case-header-value-bound []
-  (p/let [listener (transport/start-listener! {:max-header-size 131072})
+  (p/let [listener (transport/start-listener! {:max-header-size 131072
+                                               :reply-timeout-ms 2000})
           port (:port listener)
           long-value (http-req {:port port :path "/headers"
                                 :headers {"x-big" (apply str (repeat 70000 "v"))}})
