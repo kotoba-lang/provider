@@ -326,6 +326,83 @@
             (pr-str refused))))
 
 ;; ---------------------------------------------------------------------------
+;; 8. a host that enqueues directly, with no socket behind it, must not have
+;;    its reply misrouted onto some other client's socket
+;; ---------------------------------------------------------------------------
+
+(defn- case-detached-enqueue []
+  (p/let [listener (transport/start-listener! {})
+          port (:port listener)
+          inflight [(http-req {:port port :path "/from-socket"})]
+          _ (wait-for #(= 1 (:queued ((:snapshot listener)))))
+          ;; host-side injection, bypassing the listener entirely
+          _ ((:enqueue! listener) :http/get "/from-host" {} "")
+          socket-accept (guest-accept listener)
+          _ (guest-reply listener 200 "for-the-socket")
+          response (first inflight)
+          host-accept (guest-accept listener)
+          _ (guest-reply listener 201 "for-the-host")
+          snap ((:snapshot listener))]
+    (check! "detached/fifo-order-is-preserved"
+            (and (= "/from-socket" (nth (nth socket-accept 2) 2))
+                 (= "/from-host" (nth (nth host-accept 2) 2)))
+            (pr-str [socket-accept host-accept]))
+    (check! "detached/socketless-reply-is-dropped-not-misrouted"
+            (and (= 200 (:status response))
+                 (= "for-the-socket" (:body response))
+                 (= 1 (get-in snap [:transport :detached-replies]))
+                 (= 1 (get-in snap [:transport :replied])))
+            (pr-str {:response response :snap snap}))
+    ((:stop! listener))))
+
+;; ---------------------------------------------------------------------------
+;; 9. header bounds are refused at the host with 431
+;; ---------------------------------------------------------------------------
+
+(defn- case-header-count-bound []
+  (p/let [listener (transport/start-listener! {})
+          port (:port listener)
+          many (reduce (fn [m i] (assoc m (str "x-h" i) "v")) {} (range 40))
+          too-many (http-req {:port port :path "/headers" :headers many})
+          snap ((:snapshot listener))
+          none (try-accept listener)]
+    (check! "header-bounds/over-count-refused-431"
+            (and (= 431 (:status too-many))
+                 (= "too-many-headers"
+                    (get (:headers too-many) "x-kotoba-ingress-reject")))
+            (pr-str too-many))
+    (check! "header-bounds/over-count-never-reaches-the-queue"
+            (and (zero? (:queued snap))
+                 (zero? (get-in snap [:transport :enqueued]))
+                 (= [ingress/accept-result-type false] none))
+            (pr-str {:snap snap :accept none}))
+    ((:stop! listener))))
+
+;; The per-value byte bound is only reachable over a socket when the host
+;; raises node's own `maxHeaderSize` past it. Measured 2026-08-18: at node's
+;; default of 16 KiB, a 70 KB header value is refused by node's parser (the
+;; client sees ECONNRESET) before this transport is ever called -- so the
+;; listener here raises it, and the 431 below really is this namespace's.
+(defn- case-header-value-bound []
+  (p/let [listener (transport/start-listener! {:max-header-size 131072})
+          port (:port listener)
+          long-value (http-req {:port port :path "/headers"
+                                :headers {"x-big" (apply str (repeat 70000 "v"))}})
+          snap ((:snapshot listener))
+          none (try-accept listener)]
+    (check! "header-bounds/over-size-value-refused-431"
+            (and (= 431 (:status long-value))
+                 (= "header-value-too-long"
+                    (get (:headers long-value) "x-kotoba-ingress-reject")))
+            (pr-str long-value))
+    (check! "header-bounds/over-size-value-never-reaches-the-queue"
+            (and (zero? (:queued snap))
+                 (zero? (get-in snap [:transport :enqueued]))
+                 (= [ingress/accept-result-type false] none))
+            (pr-str {:snap snap :accept none}))
+    ((:stop! listener))))
+
+;; ---------------------------------------------------------------------------
 
 (defn -main []
   (-> (p/do (case-round-trip)
@@ -335,7 +412,10 @@
             (case-empty-accept)
             (case-unpaired-reply)
             (case-reply-timeout)
-            (case-stop-answers-outstanding))
+            (case-stop-answers-outstanding)
+            (case-detached-enqueue)
+            (case-header-count-bound)
+            (case-header-value-bound))
       (p/then
        (fn [_]
          (doseq [{:keys [name ok? detail]} @results]

@@ -153,7 +153,18 @@
   value/keyword-value-byte-limit)
 
 (def max-header-value-bytes
-  "As above, for `value/bounded-string!` on the header value."
+  "As above, for `value/bounded-string!` on the header value.
+
+  Measured 2026-08-18: at node's DEFAULT `maxHeaderSize` of 16 KiB, this
+  65536-byte bound is unreachable over a socket -- node's own parser refuses
+  the request (and resets the connection) long before `classify-request` is
+  called, so the 431 a client sees for an enormous header value comes from
+  node, not from here. The check is kept because it is the capability's own
+  bound (`validate-headers!` puts every header value through
+  `value/bounded-string!` at exactly this limit) and because a host that
+  raises `:max-header-size` past 64 KiB makes it the operative one. Do not
+  read it as 'this namespace is what refuses a 70 KB header on a default
+  listener' -- it is not."
   value/string-value-byte-limit)
 
 (def default-max-path-bytes
@@ -560,6 +571,12 @@
        :max-path-bytes   default `ingress/max-path-bytes` (4096)
        :reply-timeout-ms host answers 504 after this, default 30000;
                          a non-positive value disables the timer
+       :max-header-size  node's own parser bound on the TOTAL size of a
+                         request's header block. Left at node's default
+                         (16 KiB) when unset -- see the note on
+                         `max-header-value-bytes` for why that default means
+                         node, not this namespace, is what a very large
+                         header actually meets first
        :kit              an existing `ingress/create-provider` result to bind
                          to, instead of creating one
 
@@ -592,8 +609,13 @@
                          :stopped? false
                          :sockets #{}
                          :counters zero-counters})
-            server (.createServer http (fn [req res]
-                                         (handle-request! state kit opts req res)))
+            server (.createServer
+                    http
+                    (if-let [mhs (:max-header-size opts)]
+                      #js {:maxHeaderSize mhs}
+                      #js {})
+                    (fn [req res]
+                      (handle-request! state kit opts req res)))
             host (get opts :host default-host)
             port (get opts :port default-port)]
         (.on server "connection"
