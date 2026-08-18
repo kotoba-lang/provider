@@ -351,12 +351,11 @@
           _ (guest-reply listener 202 "body-b")
           b-response (first b-inflight)
           snap ((:snapshot listener))]
-    (check! "detached/fifo-order-is-preserved"
-            (= ["/a" "/from-host" "/b"]
-               (mapv #(nth (nth % 2) 2) [accept-a accept-host accept-b]))
-            (pr-str (mapv #(nth (nth % 2) 2) [accept-a accept-host accept-b])))
     (check! "detached/socketless-reply-is-dropped-not-misrouted"
-            (and (= 200 (:status a-response)) (= "body-a" (:body a-response))
+            (and ;; precondition: the kit hands them back in enqueue order
+                 (= ["/a" "/from-host" "/b"]
+                    (mapv #(nth (nth % 2) 2) [accept-a accept-host accept-b]))
+                 (= 200 (:status a-response)) (= "body-a" (:body a-response))
                  (= 202 (:status b-response)) (= "body-b" (:body b-response))
                  (= 1 (get-in snap [:transport :detached-replies]))
                  (= 2 (get-in snap [:transport :replied])))
@@ -413,6 +412,51 @@
             (pr-str {:snap snap :accept none}))
     ((:stop! listener))))
 
+
+;; ---------------------------------------------------------------------------
+;; 10. a host that reaches PAST the listener for the kit's raw enqueue!
+;;     desynchronizes the FIFO. Position no longer identifies a socket, so
+;;     the transport must fail closed rather than guess -- and recover once
+;;     the kit's queue drains.
+;; ---------------------------------------------------------------------------
+
+(defn- case-desync-fails-closed []
+  (p/let [listener (transport/start-listener! {})
+          port (:port listener)
+          a-inflight [(http-req {:port port :path "/a"})]
+          _ (wait-for #(= 1 (:queued ((:snapshot listener)))))
+          ;; deliberately bypassing the listener's own :enqueue!
+          _ ((:enqueue! (:kit listener)) :http/get "/raw" {} "")
+          accept-1 (guest-accept listener)
+          _ (guest-reply listener 200 "would-be-misrouted")
+          a-response (first a-inflight)
+          snap ((:snapshot listener))
+          ;; drain what the kit still holds, then prove routing recovers
+          accept-2 (guest-accept listener)
+          _ (guest-reply listener 200 "also-uncorrelated")
+          b-inflight [(http-req {:port port :path "/b"})]
+          _ (wait-for #(= 1 (:queued ((:snapshot listener)))))
+          accept-b (guest-accept listener)
+          _ (guest-reply listener 200 "body-b")
+          b-response (first b-inflight)
+          after ((:snapshot listener))]
+    (check! "desync/socket-answered-503-not-misrouted"
+            (and (= 503 (:status a-response))
+                 (= "correlation-lost"
+                    (get (:headers a-response) "x-kotoba-ingress-reject"))
+                 (= 1 (get-in snap [:transport :desync-events]))
+                 (= 1 (get-in snap [:transport :desynced-replies]))
+                 (zero? (get-in snap [:transport :replied])))
+            (pr-str {:a a-response :snap snap}))
+    (check! "desync/routing-recovers-once-the-queue-drains"
+            (and (= 2 (get-in after [:transport :desynced-replies]))
+                 (= 200 (:status b-response))
+                 (= "body-b" (:body b-response))
+                 (= 1 (get-in after [:transport :replied])))
+            (pr-str {:accepts [accept-1 accept-2 accept-b]
+                     :b b-response :after after}))
+    ((:stop! listener))))
+
 ;; ---------------------------------------------------------------------------
 
 (defn -main []
@@ -426,7 +470,8 @@
             (case-stop-answers-outstanding)
             (case-detached-enqueue)
             (case-header-count-bound)
-            (case-header-value-bound))
+            (case-header-value-bound)
+            (case-desync-fails-closed))
       (p/then
        (fn [_]
          (doseq [{:keys [name ok? detail]} @results]
