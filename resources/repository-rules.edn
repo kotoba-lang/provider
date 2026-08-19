@@ -7,4 +7,8 @@
   :tier :t3
   :role :provider
   :must-not [:be-linked-into-a-compiler :grant-itself-authority :expose-ambient-WASI]
-  :depends-on ["kotoba-lang/kotoba-kir"]}}
+  ;; Compared by verify-repository-roles.cljs against every :git/url in
+  ;; production :deps, so a dependency added there has to be added here in the
+  ;; same commit. kgraph stood in deps.edn and not here.
+  :depends-on ["kotoba-lang/kgraph"
+               "kotoba-lang/kotoba-kir"]}}
