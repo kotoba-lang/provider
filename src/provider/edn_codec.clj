@@ -15,7 +15,7 @@
   Requires Node and a resolvable `browser-host.mjs` (sibling compiler checkout
   or `KOTOBA_BROWSER_HOST`). When unavailable, functions return
   `{:ok false :reason :browser-host-unavailable}`."
-  (:require [clojure.data.json :as json]
+  (:require [json.data-json :as json]
             [clojure.java.io :as io]
             [clojure.string :as str]
             [provider.git :as git]

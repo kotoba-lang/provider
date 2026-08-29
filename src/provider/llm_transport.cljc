@@ -39,7 +39,7 @@
   Wire shape, ①→②→③ model resolution, typed HTTP status errors, and
   `:on-call` audit match the `:clj` transport. See ADR 0064 + ADR 0118."
   (:require [clojure.string :as string]
-            #?(:clj [clojure.data.json :as json]))
+            #?(:clj [json.data-json :as json]))
   #?(:clj
      (:import (java.net URI)
               (java.net.http HttpClient HttpClient$Version HttpRequest
