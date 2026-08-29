@@ -88,7 +88,7 @@
   (:require [clojure.string :as string]
             [provider.storage :as storage]
             [kotoba.kir.value :as value]
-            #?(:clj [clojure.data.json :as json]))
+            #?(:clj [json.data-json :as json]))
   #?(:clj
      (:import (java.net URI)
               (java.net.http HttpClient HttpClient$Version HttpRequest
