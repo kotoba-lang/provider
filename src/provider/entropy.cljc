@@ -8,7 +8,7 @@
 
   This closes the W6 kbb `clock-and-random` gap's entropy half (clock is
   already landed as id 7)."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [kotoba.kir.value :as value]))
 
 (def capability-id 23)
@@ -58,7 +58,7 @@
 (defn hex->bytes
   "Pure hex decode (even length, lowercase or uppercase). Test helper."
   [s]
-  (let [s (str/lower-case (str s))]
+  (let [s (str/lower (str s))]
     (when (or (odd? (count s)) (not (re-matches #"[0-9a-f]*" s)))
       (throw (ex-info "entropy hex->bytes invalid hex" {:phase :entropy-provider})))
     (mapv (fn [[a b]]

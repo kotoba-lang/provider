@@ -1,5 +1,5 @@
 (ns provider-test
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is]]
             [kotoba.kir.value :as value]
             [provider.conformance :as conformance]

@@ -15,7 +15,7 @@
   network.
 
   ADR 0272: pure `validate-*` deny fixtures (stable error keywords)."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [kotoba.kir.value :as value]))
 
 (def get-stream-capability-id 14)

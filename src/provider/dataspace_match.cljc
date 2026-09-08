@@ -17,7 +17,7 @@
   - other values: `=`
 
   Bindings never carry authority. A copied assertion vector is inert data."
-  (:require [clojure.string :as str]))
+  (:require [kotoba.lang.text :as str]))
 
 (defn- unwrap-quote [form]
   (if (and (seq? form) (= 'quote (first form)) (= 2 (count form)))

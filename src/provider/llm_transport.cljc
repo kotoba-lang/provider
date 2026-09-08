@@ -38,7 +38,7 @@
   `child_process.spawnSync` (same pattern as ADR 0117's HTTP transport).
   Wire shape, ①→②→③ model resolution, typed HTTP status errors, and
   `:on-call` audit match the `:clj` transport. See ADR 0064 + ADR 0118."
-  (:require [clojure.string :as string]
+  (:require [kotoba.lang.text :as string]
             #?(:clj [json.data-json :as json]))
   #?(:clj
      (:import (java.net URI)

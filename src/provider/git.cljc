@@ -7,7 +7,7 @@
 
   This is the kbb git ability gap first slice: pure policy + injectable
   transport."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [kotoba.kir.value :as value]))
 
 (def capability-id 22)

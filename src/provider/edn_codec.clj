@@ -17,7 +17,7 @@
   `{:ok false :reason :browser-host-unavailable}`."
   (:require [json.data-json :as json]
             [clojure.java.io :as io]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [provider.git :as git]
             [provider.git-transport :as git-t]
             [provider.http-transport :as http-t]

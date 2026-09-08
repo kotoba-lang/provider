@@ -74,7 +74,7 @@
   `:cljs` resolves hostnames through the same child (`dns.lookup`); IP
   literals are checked without DNS. DNS-rebinding TOCTOU remains an
   explicit remaining gap (same honesty as ADR 0066's `:clj` path)."
-  (:require [clojure.string :as string]
+  (:require [kotoba.lang.text :as string]
             [provider.http :as http]
             [kotoba.kir.value :as value])
   #?(:clj
@@ -137,7 +137,7 @@
   [url]
   (when (and (string? url) (not (string/includes? url "#")))
     (when-let [[_ host port] (re-matches origin-pattern url)]
-      (str "https://" (string/lower-case host) (when port (str ":" port))))))
+      (str "https://" (string/lower host) (when port (str ":" port))))))
 
 ;; ---------------------------------------------------------------------------
 ;; destination-IP check (best-effort; see ns docstring point 2 and
@@ -232,7 +232,7 @@
      [^java.net.http.HttpHeaders response-headers]
      (->> (.map response-headers)
           (keep (fn [[name values]]
-                  (let [folded (string/lower-case name)]
+                  (let [folded (string/lower name)]
                     (when (and (seq values)
                                (<= (value/utf8-byte-count! folded) value/keyword-value-byte-limit))
                       [(keyword folded)
@@ -252,7 +252,7 @@
      ^HttpResponse [^HttpClient http-client ^URI uri headers body timeout-ms]
      (let [safe-headers (remove (fn [[k _]]
                                   (contains? restricted-header-names
-                                             (string/lower-case (name k))))
+                                             (string/lower (name k))))
                                 headers)
            builder (-> (HttpRequest/newBuilder uri)
                       (.timeout (Duration/ofMillis (long timeout-ms))))
@@ -272,7 +272,7 @@
      ^HttpResponse [^HttpClient http-client ^URI uri headers timeout-ms]
      (let [safe-headers (remove (fn [[k _]]
                                   (contains? restricted-header-names
-                                             (string/lower-case (name k))))
+                                             (string/lower (name k))))
                                 headers)
            builder (-> (HttpRequest/newBuilder uri)
                        (.timeout (Duration/ofMillis (long timeout-ms)))
@@ -773,7 +773,7 @@
                parsed
                (let [hdrs (into {}
                                 (map (fn [[k v]]
-                                       [(keyword (string/lower-case (name k)))
+                                       [(keyword (string/lower (name k)))
                                         (truncate-to-byte-limit (str v) value/string-value-byte-limit)])
                                      (:headers parsed)))
                      body* (truncate-to-byte-limit (str (:body parsed)) value/string-value-byte-limit)]

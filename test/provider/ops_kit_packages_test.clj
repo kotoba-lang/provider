@@ -2,7 +2,7 @@
   "W6 ops kit packages: EDN surface + honest qualification claims."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]))
 
 (def ops-kits
@@ -189,10 +189,10 @@
                     tmp (java.io.File/createTempFile "bounds" ".wasm")
                     _ (java.nio.file.Files/write (.toPath tmp) bytes
                                                  (into-array java.nio.file.OpenOption []))
-                    args-js (clojure.string/join ","
+                    args-js (str/join ","
                               (map (fn [args]
                                      (str "Number(f("
-                                          (clojure.string/join "," (map #(str % "n") args))
+                                          (str/join "," (map #(str % "n") args))
                                           "))"))
                                    cases))
                     script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"
@@ -335,10 +335,10 @@
                     tmp (java.io.File/createTempFile "vlen" ".wasm")
                     _ (java.nio.file.Files/write (.toPath tmp) bytes
                                                  (into-array java.nio.file.OpenOption []))
-                    args-js (clojure.string/join ","
+                    args-js (str/join ","
                               (map (fn [args]
                                      (str "Number(f("
-                                          (clojure.string/join "," (map #(str % "n") args))
+                                          (str/join "," (map #(str % "n") args))
                                           "))"))
                                    cases))
                     script (str "const b=require('fs').readFileSync(" (pr-str (.getAbsolutePath tmp)) ");"

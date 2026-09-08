@@ -37,7 +37,7 @@
 
   spawnSync Node hop (same pattern as ADR 0117/0119). Required `:endpoint`,
   fixed path, base64 bytes, fail-closed wire parsing match the `:clj` path."
-  (:require [clojure.string :as string]
+  (:require [kotoba.lang.text :as string]
             [provider.object :as object]
             [kotoba.kir.value :as value]
             #?(:clj [json.data-json :as json]))

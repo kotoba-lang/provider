@@ -30,7 +30,7 @@
   `security find-generic-password -s s -a a -w` only. Never uses
   `-g` (attribute dump can leak the password onto stderr). No
   dump-keychain / find-generic-password without -s."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [provider.secret :as secret])
   #?(:clj (:require [clojure.java.shell :as sh])))
 
