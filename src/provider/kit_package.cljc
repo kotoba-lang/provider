@@ -96,7 +96,7 @@
 
   See ADR 0152–0198."
   (:require [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             #?(:clj [clojure.java.io :as io]))
   #?(:clj (:import (java.security MessageDigest)
                    (javax.crypto Mac)
@@ -436,8 +436,8 @@
   [entry wasm-bytes]
   (and (map? entry)
        (string? (:sha256 entry))
-       (= (str/lower-case (:sha256 entry))
-          (str/lower-case (sha256-hex-bytes wasm-bytes)))))
+       (= (str/lower (:sha256 entry))
+          (str/lower (sha256-hex-bytes wasm-bytes)))))
 
 (defn sign-kit-package-receipt
   "Attach a host signature to an unsigned kit package receipt.
@@ -978,8 +978,8 @@
       (conj! host-blockers :registry-digest-mismatch))
     (when (and package-entry wasm-dig
                (string? (:sha256 package-entry))
-               (not= (str/lower-case (:sha256 package-entry))
-                     (str/lower-case (str wasm-dig))))
+               (not= (str/lower (:sha256 package-entry))
+                     (str/lower (str wasm-dig))))
       (conj! host-blockers :registry-digest-mismatch))
     (let [host-blockers (persistent! host-blockers)
           host-ok? (empty? host-blockers)

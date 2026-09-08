@@ -7,7 +7,7 @@
 
   This is the kbb process ability gap first slice: pure validation +
   injectable transport. Production OS spawn remains host-configured."
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [kotoba.kir.value :as value]))
 
 (def capability-id 20)

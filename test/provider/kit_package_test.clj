@@ -1,6 +1,6 @@
 (ns provider.kit-package-test
   (:require [clojure.edn :as edn]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.java.io :as io]
             [clojure.test :refer [deftest is testing]]
             [ed25519.core :as ed]

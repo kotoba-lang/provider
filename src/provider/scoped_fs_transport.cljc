@@ -17,7 +17,7 @@
   - **`:clj`** — `java.io.File` + NIO read/write + canonical under-root
   - **`:cljs` / nbb** — Node `fs` + `path` sync APIs; realpath of root and
     of existing parents/files before IO"
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [provider.scoped-fs :as scoped-fs])
   #?(:clj
      (:import (java.io File)

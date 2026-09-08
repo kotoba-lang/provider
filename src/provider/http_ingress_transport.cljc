@@ -139,7 +139,7 @@
   has none, deliberately. The classification and canonicalization helpers
   above the socket section are portable `.cljc` so they can be reasoned
   about, and tested, without binding a port."
-  (:require [clojure.string :as string]
+  (:require [kotoba.lang.text :as string]
             [provider.http-ingress :as ingress]
             [kotoba.kir.value :as value]
             #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
@@ -235,7 +235,7 @@
   method reads as HTTP's method and cannot collide with an unrelated bare
   keyword. Well under `value/keyword-value-byte-limit` for every method."
   [method]
-  (keyword "http" (string/lower-case (str method))))
+  (keyword "http" (string/lower (str method))))
 
 (defn- reject [status reason message]
   {:tag :reject :status status :reason reason :message message})
@@ -300,7 +300,7 @@
   [headers]
   (reduce (fn [m [_ n v]]
             (let [field (name n)
-                  lower (string/lower-case field)]
+                  lower (string/lower field)]
               (if (and (header-name-ok? field)
                        (header-value-safe? v)
                        (not (contains? restricted-response-header-names lower)))

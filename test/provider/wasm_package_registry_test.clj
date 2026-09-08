@@ -17,7 +17,7 @@
   source-to-artifact direction stays unguarded here on purpose rather than by
   omission."
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is]]
             [provider.kit-package :as kit]))
 

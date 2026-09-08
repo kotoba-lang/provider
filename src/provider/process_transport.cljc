@@ -23,7 +23,7 @@
   - **`:clj`** — `ProcessBuilder` + `waitFor` timeout + bounded stream drain
   - **`:cljs` / nbb** — `child_process.spawnSync` with absolute binary path,
     `timeout`, `maxBuffer`, encoding utf8 (sync contract for reference host)"
-  (:require [clojure.string :as str]
+  (:require [kotoba.lang.text :as str]
             [provider.process :as process])
   #?(:clj
      (:import (java.io ByteArrayOutputStream InputStream)

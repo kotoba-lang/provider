@@ -1,6 +1,6 @@
 (ns provider.edn-codec-test
   (:require [clojure.java.io :as io]
-            [clojure.string :as str]
+            [kotoba.lang.text :as str]
             [clojure.test :refer [deftest is testing]]
             [provider.edn-codec :as codec]
             [provider.value-codec :as value-codec]))

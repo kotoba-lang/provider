@@ -8,7 +8,7 @@
   clock and ADR 0079 / provider#2 applied to log sequence). Plain cljs
   numbers fail `typed-cap-call` result validation and make range checks
   unreliable when mixed with bigint."
-  (:require [clojure.string :as string]
+  (:require [kotoba.lang.text :as string]
             [kotoba.kir.value :as value]
             #?@(:cljs [[kotoba.kir.cljs-i64 :as i64]])))
 
@@ -56,7 +56,7 @@
   (if-let [[_ host port]
            (re-matches #"https://([A-Za-z0-9](?:[A-Za-z0-9.-]*[A-Za-z0-9])?)(?::([0-9]+))?(?:/[^ ]*)?"
                        url)]
-    (str "https://" (string/lower-case host) (when port (str ":" port)))
+    (str "https://" (string/lower host) (when port (str ":" port)))
     (throw (ex-info "HTTP URL must be an absolute HTTPS URL"
                     {:phase :http-provider :url url}))))
 
