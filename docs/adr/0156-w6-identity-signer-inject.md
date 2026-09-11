@@ -42,7 +42,7 @@ provider; readiness `:signed-wasm` stays pending.
 ## Evidence
 
 - `identity-signer` + hex encode/decode + fixture load
-- `test/provider/kit_package_test.clj` identity inject round-trip on kit + wasm receipts
+- `test/provider/kit_package_test.cljk` identity inject round-trip on kit + wasm receipts
 
 ## Related
 

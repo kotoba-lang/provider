@@ -23,4 +23,4 @@ need a proven Ed25519 path.
 
 ## Evidence
 
-- `test/provider/kit_package_test.clj` `ed25519-identity-signer-kit-and-wasm`
+- `test/provider/kit_package_test.cljk` `ed25519-identity-signer-kit-and-wasm`
