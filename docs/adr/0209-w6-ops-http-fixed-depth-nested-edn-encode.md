@@ -41,7 +41,7 @@ Registry `:http-request-edn`. kit-readiness + http-v1 notes updated.
 ### Rebuild
 
 ```sh
-clojure -Sdeps '{:deps {io.github.kotoba-lang/compiler
+kbb -Sdeps '{:deps {io.github.kotoba-lang/compiler
   {:git/url "https://github.com/kotoba-lang/compiler.git"
    :git/sha "98b56bdb6886236281b634cc3409088ed2fe72a4"}
   io.github.kotoba-lang/abi

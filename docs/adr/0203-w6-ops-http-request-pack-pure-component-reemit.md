@@ -32,7 +32,7 @@ kotoba-component#98 admits the package and Canonical WAT phase machine.
 
 ```sh
 # requires kotoba-component pin ≥ 5ce90f13
-clojure -Sdeps '{:deps {io.github.kotoba-lang/kotoba-component
+kbb -Sdeps '{:deps {io.github.kotoba-lang/kotoba-component
   {:git/url "https://github.com/kotoba-lang/kotoba-component.git"
    :git/sha "5ce90f130c6f38e8c699d64685bebd36fef2c1f7"}}}' \
   -M -m kotoba.compiler.cli compile \

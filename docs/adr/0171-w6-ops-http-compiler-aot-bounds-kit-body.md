@@ -56,7 +56,7 @@ Registry names `:http-post-bounds` / `:http-post-bounds-component` with
 ### Rebuild recipe (optional)
 
 ```sh
-clojure -Sdeps '{:deps {io.github.kotoba-lang/compiler
+kbb -Sdeps '{:deps {io.github.kotoba-lang/compiler
   {:git/url "https://github.com/kotoba-lang/compiler.git"
    :git/sha "<compiler pin>"}}}' \
   -M -m kotoba.compiler.cli compile \

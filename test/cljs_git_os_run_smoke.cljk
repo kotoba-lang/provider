@@ -1,5 +1,5 @@
 ;; nbb smoke: git cljs os-run (ADR 0150)
-;;   nbb --classpath "src:$(clojure -Spath)" test/cljs_git_os_run_smoke.cljk
+;;   kbb --backend sci --classpath "src:$(kbb -Spath)" test/cljs_git_os_run_smoke.cljk
 (ns cljs-git-os-run-smoke
   (:require [kotoba.lang.text :as str]
             [provider.git :as git]
