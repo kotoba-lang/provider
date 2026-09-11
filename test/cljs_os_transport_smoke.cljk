@@ -1,5 +1,5 @@
 ;; nbb smoke: dual-runtime OS transports (ADR 0147)
-;;   nbb --classpath "src:$(clojure -Spath)" test/cljs_os_transport_smoke.cljs
+;;   nbb --classpath "src:$(clojure -Spath)" test/cljs_os_transport_smoke.cljk
 (ns cljs-os-transport-smoke
   (:require [kotoba.lang.text :as str]
             [provider.process :as process]

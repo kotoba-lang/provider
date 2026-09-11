@@ -1,6 +1,6 @@
 ;; nbb socket test: HTTP ingress node:http transport
 ;;   npm run test-nbb-http-ingress-socket
-;;   nbb --classpath "src:$(clojure -Spath)" test/cljs_http_ingress_socket_test.cljs
+;;   nbb --classpath "src:$(clojure -Spath)" test/cljs_http_ingress_socket_test.cljk
 ;;
 ;; Every case binds port 0 and reads the port the kernel assigned back off
 ;; the listener -- a hardcoded port is a flake waiting for a busy machine.

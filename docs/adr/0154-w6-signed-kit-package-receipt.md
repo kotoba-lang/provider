@@ -40,8 +40,8 @@ HMAC test signer is for unit tests only.
 
 ## Evidence
 
-- `src/provider/kit_package.cljc` signed receipt path
-- `test/provider/kit_package_test.clj` sign/verify round-trip + forgery reject
+- `src/provider/kit_package.cljk` signed receipt path
+- `test/provider/kit_package_test.cljk` sign/verify round-trip + forgery reject
 
 ## Related
 

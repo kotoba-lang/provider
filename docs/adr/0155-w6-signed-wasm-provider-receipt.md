@@ -54,8 +54,8 @@ grant binding, CM linking). We need an honest intermediate that:
 
 ## Evidence
 
-- `src/provider/kit_package.cljc` wasm receipt path
-- `test/provider/kit_package_test.clj` sign/verify + forgery + production gate still false
+- `src/provider/kit_package.cljk` wasm receipt path
+- `test/provider/kit_package_test.cljk` sign/verify + forgery + production gate still false
 
 ## Related
 
