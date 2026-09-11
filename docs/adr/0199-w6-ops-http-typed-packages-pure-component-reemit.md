@@ -50,7 +50,7 @@ Re-emit four pure Components from the existing sources and register twins:
 
 ```sh
 # requires kotoba-component pin ≥ f857f8e3 (helper-mediated error package)
-clojure -Sdeps '{:deps {io.github.kotoba-lang/kotoba-component
+kbb -Sdeps '{:deps {io.github.kotoba-lang/kotoba-component
   {:git/url "https://github.com/kotoba-lang/kotoba-component.git"
    :git/sha "f857f8e3a5a1ffb117a200d6a3c3c1c3e69edcc9"}}}' \
   -M -m kotoba.compiler.cli compile \

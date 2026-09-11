@@ -41,7 +41,7 @@ Re-emit one pure Component and register a twin:
 
 ```sh
 # requires kotoba-component pin ≥ cfcc0a23 (loop-desugar admission)
-clojure -Sdeps '{:deps {io.github.kotoba-lang/kotoba-component
+kbb -Sdeps '{:deps {io.github.kotoba-lang/kotoba-component
   {:git/url "https://github.com/kotoba-lang/kotoba-component.git"
    :git/sha "cfcc0a23eba43dbc4cb83e593a3509237cdc1612"}}}' \
   -M -m kotoba.compiler.cli compile \
