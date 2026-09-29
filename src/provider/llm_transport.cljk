@@ -1,7 +1,7 @@
 (ns provider.llm-transport
   "Production transport for the bounded LLM capability kit (ADR 0027,
   `provider.llm`), wired to the repo-wide `murakumo-main`
-  fleet alias (root superproject CLAUDE.md, 'LLM モデル選択 -- murakumo-main
+  fleet alias (root superproject AGENTS.md, 'LLM モデル選択 -- murakumo-main
   alias', ADR-2607173100).
 
   This namespace does NOT define a new provider or a new capability. It
@@ -15,7 +15,7 @@
   it already enforces before calling the transport is unchanged and un-
   weakened by this namespace.
 
-  Model resolution follows the repo-wide mandatory order (CLAUDE.md, 'LLM
+  Model resolution follows the repo-wide mandatory order (AGENTS.md, 'LLM
   モデル選択'): ① env var / constructor-option override → ② `murakumo-main`
   alias resolution (`GET {default-endpoint}/infer/models/murakumo-main` →
   its `:alias-for`, consulted only for the concrete model name) → ③ on
@@ -62,7 +62,7 @@
   "How long a resolved {:endpoint :model} pair is reused before re-resolving
   via ②. Keeps a hot loop from hitting the alias endpoint on every single
   `:llm/generate` call while still picking up a fleet-main swap (PUT to the
-  alias entry, CLAUDE.md 'LLM モデル選択') within one TTL window."
+  alias entry, AGENTS.md 'LLM モデル選択') within one TTL window."
   60000)
 
 (def env-endpoint-var "KOTOBA_LLM_MURAKUMO_ENDPOINT")
